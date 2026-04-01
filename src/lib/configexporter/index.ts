@@ -82,6 +82,12 @@ export interface NormalizedAttribute {
   length?: number;
   description?: string;
   columnName: string;
+  refEntity?: string;
+  referenceTargetType?: 'entity' | 'masterdata';
+  masterDataId?: string;
+  masterDataName?: string;
+  masterDataIds?: string[];
+  masterDataNames?: string[];
 }
 
 export interface NormalizedRelation {
@@ -203,6 +209,12 @@ export class ConfigExporter {
       length: attr.length,
       description: attr.description,
       columnName: this.toColumnName(attr.nameEn || attr.name),
+      refEntity: attr.refEntity,
+      referenceTargetType: attr.referenceTargetType,
+      masterDataId: attr.masterDataId,
+      masterDataName: attr.masterDataName,
+      masterDataIds: attr.masterDataIds,
+      masterDataNames: attr.masterDataNames,
     };
   }
 

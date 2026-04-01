@@ -100,13 +100,16 @@ export interface Attribute {
   default?: string;
   enumRef?: string;
   refEntity?: string;
+  referenceTargetType?: 'entity' | 'masterdata';
   refDisplayField?: string;
   autoFill?: string;
   description?: string;
   metadataId?: string;  // 关联的元数据ID
   metadataName?: string;  // 关联的元数据名称（用于显示）
-  masterDataId?: string;  // 关联的主数据ID
-  masterDataName?: string;  // 关联的主数据名称（用于显示）
+  masterDataId?: string;  // 兼容旧数据：首个关联主数据ID
+  masterDataName?: string;  // 兼容旧数据：关联主数据名称（用于显示）
+  masterDataIds?: string[];  // 多选关联的主数据ID列表
+  masterDataNames?: string[];  // 多选关联的主数据名称列表
 }
 
 export interface Relation {
