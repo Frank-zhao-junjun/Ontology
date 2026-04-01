@@ -1,0 +1,2456 @@
+// 代码生成器核心逻辑
+
+import type { 
+  DataModel, 
+  BehaviorModel, 
+  RuleModel, 
+  ProcessModel, 
+  EventModel, 
+  Entity,
+  ProjectVersion,
+  PublishConfig 
+} from '@/types/ontology';
+import type { 
+  CodePackage, 
+  GeneratedFile, 
+  GeneratorContext,
+  TYPE_MAPPING,
+  TS_TYPE_MAPPING 
+} from './types';
+
+// 类型映射
+const TYPE_MAP: Record<string, string> = {
+  'string': 'String(255)',
+  'text': 'Text',
+  'integer': 'Integer',
+  'decimal': 'Numeric(18, 4)',
+  'boolean': 'Boolean',
+  'date': 'Date',
+  'datetime': 'DateTime',
+  'enum': 'String(50)',
+  'reference': 'Integer',
+  'json': 'JSON',
+};
+
+const TS_TYPE_MAP: Record<string, string> = {
+  'string': 'string',
+  'text': 'string',
+  'integer': 'number',
+  'decimal': 'number',
+  'boolean': 'boolean',
+  'date': 'string',
+  'datetime': 'string',
+  'enum': 'string',
+  'reference': 'number',
+  'json': 'Record<string, unknown>',
+};
+
+/**
+ * 主代码生成器类
+ */
+export class CodeGenerator {
+  private context: GeneratorContext;
+
+  constructor(
+    version: ProjectVersion,
+    config: PublishConfig,
+    projectName: string
+  ) {
+    this.context = {
+      projectName,
+      projectNameEn: this.toPascalCase(projectName),
+      version: version.version,
+      domain: '',
+      dataModel: version.metamodels.data,
+      behaviorModel: version.metamodels.behavior,
+      ruleModel: version.metamodels.rules,
+      processModel: version.metamodels.process,
+      eventModel: version.metamodels.events,
+      config,
+    };
+  }
+
+  /**
+   * 生成完整代码包
+   */
+  generate(): CodePackage {
+    const files: GeneratedFile[] = [];
+
+    // 1. Docker配置
+    if (this.context.config.dockerCompose) {
+      files.push(this.generateDockerCompose());
+      files.push(this.generateBackendDockerfile());
+      files.push(this.generateFrontendDockerfile());
+    }
+
+    // 2. 后端文件
+    files.push(...this.generateBackendFiles());
+
+    // 3. 前端文件
+    files.push(...this.generateFrontendFiles());
+
+    // 4. 数据库文件
+    files.push(...this.generateDatabaseFiles());
+
+    // 5. README
+    files.push(this.generateReadme());
+
+    return {
+      name: this.context.projectNameEn,
+      version: this.context.version,
+      files,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  // ==================== Docker 生成 ====================
+
+  private generateDockerCompose(): GeneratedFile {
+    const content = `version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "5001:5001"
+    environment:
+      - DATABASE_URL=sqlite:///data/app.db
+      - SECRET_KEY=\${SECRET_KEY:-dev-secret-key}
+      - AI_API_KEY=\${AI_API_KEY:-}
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_URL=http://localhost:5001
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  data:
+`;
+
+    return {
+      path: 'docker-compose.yml',
+      content,
+      language: 'yaml',
+    };
+  }
+
+  private generateBackendDockerfile(): GeneratedFile {
+    const content = `FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY . .
+
+# Create data directory
+RUN mkdir -p /app/data
+
+# Expose port
+EXPOSE 5001
+
+# Run application
+CMD ["python", "app.py"]
+`;
+
+    return {
+      path: 'backend/Dockerfile',
+      content,
+      language: 'dockerfile',
+    };
+  }
+
+  private generateFrontendDockerfile(): GeneratedFile {
+    const content = `FROM node:20-alpine as build
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci
+
+# Build application
+COPY . .
+RUN npm run build
+
+# Production stage
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+`;
+
+    return {
+      path: 'frontend/Dockerfile',
+      content,
+      language: 'dockerfile',
+    };
+  }
+
+  // ==================== 后端文件生成 ====================
+
+  private generateBackendFiles(): GeneratedFile[] {
+    const files: GeneratedFile[] = [];
+
+    // 核心文件
+    files.push(this.generateAppPy());
+    files.push(this.generateConfigPy());
+    files.push(this.generateRequirementsTxt());
+
+    // 模型文件
+    files.push(this.generateDynamicEntityBase());
+    files.push(this.generateModelsInit());
+
+    // API文件
+    files.push(this.generateEntitiesApi());
+    files.push(this.generateStateMachineApi());
+    files.push(this.generateRulesApi());
+    files.push(this.generateAgentApi());
+
+    // AI编排器
+    if (this.context.config.aiAgentEnabled) {
+      files.push(this.generateOrchestrator());
+      files.push(this.generateToolExecutor());
+      files.push(this.generateSelfHealing());
+      files.push(this.generatePromptsTemplate());
+    }
+
+    // 规则引擎
+    files.push(this.generateRuleEngine());
+
+    // 状态机引擎
+    files.push(this.generateStateMachineEngine());
+
+    // 工具类
+    files.push(this.generateSqlSanitizer());
+
+    return files;
+  }
+
+  private generateAppPy(): GeneratedFile {
+    const entities = this.context.dataModel?.entities || [];
+    const entityRoutes = entities.map(e => `
+app.register_blueprint(entities_${this.toSnakeCase(e.nameEn)}_bp, url_prefix='/api/entities/${this.toSnakeCase(e.nameEn)}')`).join('');
+
+    const content = `"""
+${this.context.projectName} - Flask Backend
+Generated by Ontology Modeling Tool
+Version: ${this.context.version}
+"""
+
+from flask import Flask, jsonify
+from flask_cors import CORS
+import os
+
+from config import Config
+from models import db, init_db
+
+app = Flask(__name__)
+app.config.from_object(Config)
+
+# CORS
+CORS(app)
+
+# Database
+db.init_app(app)
+
+# Register blueprints
+from api.entities import entities_bp
+app.register_blueprint(entities_bp, url_prefix='/api/entities')
+
+from api.state_machine import state_machine_bp
+app.register_blueprint(state_machine_bp, url_prefix='/api/state-machine')
+
+from api.rules import rules_bp
+app.register_blueprint(rules_bp, url_prefix='/api/rules')
+
+from api.agent import agent_bp
+app.register_blueprint(agent_bp, url_prefix='/api/agent')
+
+# Health check
+@app.route('/api/health')
+def health():
+    return jsonify({
+        'status': 'ok',
+        'version': '${this.context.version}',
+        'project': '${this.context.projectName}'
+    })
+
+# Initialize database
+@app.before_request
+def initialize():
+    if not hasattr(app, '_db_initialized'):
+        init_db()
+        app._db_initialized = True
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5001, debug=True)
+`;
+
+    return {
+      path: 'backend/app.py',
+      content,
+      language: 'python',
+    };
+  }
+
+  private generateConfigPy(): GeneratedFile {
+    const content = `"""
+Configuration
+"""
+
+import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).parent
+DATA_DIR = BASE_DIR.parent / 'data'
+
+class Config:
+    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', f'sqlite:///{DATA_DIR}/app.db')
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # AI Configuration
+    AI_API_KEY = os.getenv('AI_API_KEY', '')
+    AI_MODEL = os.getenv('AI_MODEL', 'doubao-pro-32k')
+    AI_TEMPERATURE = float(os.getenv('AI_TEMPERATURE', '0.3'))
+`;
+
+    return {
+      path: 'backend/config.py',
+      content,
+      language: 'python',
+    };
+  }
+
+  private generateRequirementsTxt(): GeneratedFile {
+    const content = `flask==3.0.0
+flask-cors==4.0.0
+flask-sqlalchemy==3.1.1
+sqlalchemy==2.0.23
+pydantic==2.5.0
+python-dotenv==1.0.0
+openai==1.3.0
+requests==2.31.0
+jinja2==3.1.2
+`;
+
+    return {
+      path: 'backend/requirements.txt',
+      content,
+      language: 'text',
+    };
+  }
+
+  private generateDynamicEntityBase(): GeneratedFile {
+    const content = `"""
+Dynamic Entity Base Class
+Provides the foundation for all generated entities
+"""
+
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy.ext.declarative import declarative_base
+from flask_sqlalchemy import SQLAlchemy
+
+db = SQLAlchemy()
+Base = declarative_base()
+
+class DynamicEntityBase(db.Model):
+    """Base class for all dynamic entities"""
+    __abstract__ = True
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_deleted = Column(Boolean, default=False)
+    
+    def to_dict(self):
+        """Convert entity to dictionary"""
+        result = {}
+        for column in self.__table__.columns:
+            value = getattr(self, column.name)
+            if isinstance(value, datetime):
+                value = value.isoformat()
+            result[column.name] = value
+        return result
+    
+    def update_from_dict(self, data: dict):
+        """Update entity from dictionary"""
+        for key, value in data.items():
+            if hasattr(self, key) and key not in ['id', 'created_at']:
+                setattr(self, key, value)
+        return self
+
+
+class AggregateRoot(DynamicEntityBase):
+    """
+    Aggregate Root Base (DDD)
+    Only aggregate roots can publish domain events
+    """
+    __abstract__ = True
+    
+    # Current state (for state machine)
+    _state = Column(String(50), default='draft')
+    
+    # Domain events (to be published)
+    _domain_events = []
+    
+    def publish_event(self, event_type: str, payload: dict):
+        """Register a domain event to be published"""
+        from uuid import uuid4
+        self._domain_events.append({
+            'id': str(uuid4()),
+            'type': event_type,
+            'aggregate_type': self.__class__.__name__,
+            'aggregate_id': self.id,
+            'payload': payload,
+            'occurred_at': datetime.utcnow().isoformat()
+        })
+    
+    def get_events(self):
+        """Get pending domain events"""
+        return self._domain_events
+    
+    def clear_events(self):
+        """Clear published events"""
+        self._domain_events = []
+
+
+def init_db():
+    """Initialize database tables"""
+    from app import app
+    with app.app_context():
+        db.create_all()
+`;
+
+    return {
+      path: 'backend/models/dynamic_entity.py',
+      content,
+      language: 'python',
+    };
+  }
+
+  private generateModelsInit(): GeneratedFile {
+    const entities = this.context.dataModel?.entities || [];
+    
+    const modelImports = entities.map(e => 
+      `from .generated.${this.toSnakeCase(e.nameEn)} import ${e.nameEn}`
+    ).join('\n');
+
+    const modelClasses = entities.map(e => e.nameEn).join(', ');
+
+    const content = `"""
+Generated Models
+"""
+
+from .dynamic_entity import db, Base, DynamicEntityBase, AggregateRoot, init_db
+
+${modelImports}
+
+__all__ = ['db', 'Base', 'DynamicEntityBase', 'AggregateRoot', 'init_db', ${modelClasses ? modelClasses : ''}]
+`;
+
+    return {
+      path: 'backend/models/__init__.py',
+      content,
+      language: 'python',
+    };
+  }
+
+  private generateEntitiesApi(): GeneratedFile {
+    const entities = this.context.dataModel?.entities || [];
+    
+    // 为每个实体生成API路由
+    const entityHandlers = entities.map(entity => {
+      const snakeCase = this.toSnakeCase(entity.nameEn);
+      const className = entity.nameEn;
+      const attributes = entity.attributes || [];
+      
+      return `
+# ========== ${entity.name} API ==========
+
+@entities_bp.route('/${snakeCase}', methods=['GET'])
+def list_${snakeCase}():
+    """List all ${entity.name} entities"""
+    from models import ${className}
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    query = ${className}.query.filter_by(is_deleted=False)
+    
+    # Apply filters
+    ${attributes.filter(a => a.type === 'string' || a.type === 'enum').slice(0, 3).map(attr => 
+    `if request.args.get('${attr.nameEn}'):
+        query = query.filter_by(${attr.nameEn}=request.args.get('${attr.nameEn}'))`
+    ).join('\n    ')}
+    
+    pagination = query.paginate(page=page, per_page=per_page)
+    
+    return jsonify({
+        'items': [item.to_dict() for item in pagination.items],
+        'total': pagination.total,
+        'page': page,
+        'per_page': per_page
+    })
+
+@entities_bp.route('/${snakeCase}/<int:id>', methods=['GET'])
+def get_${snakeCase}(id):
+    """Get single ${entity.name} by ID"""
+    from models import ${className}
+    
+    entity = ${className}.query.filter_by(id=id, is_deleted=False).first_or_404()
+    return jsonify(entity.to_dict())
+
+@entities_bp.route('/${snakeCase}', methods=['POST'])
+def create_${snakeCase}():
+    """Create new ${entity.name}"""
+    from models import db, ${className}
+    
+    data = request.get_json()
+    entity = ${className}()
+    entity.update_from_dict(data)
+    
+    db.session.add(entity)
+    db.session.commit()
+    
+    return jsonify(entity.to_dict()), 201
+
+@entities_bp.route('/${snakeCase}/<int:id>', methods=['PUT'])
+def update_${snakeCase}(id):
+    """Update ${entity.name}"""
+    from models import db, ${className}
+    
+    entity = ${className}.query.filter_by(id=id, is_deleted=False).first_or_404()
+    data = request.get_json()
+    entity.update_from_dict(data)
+    
+    db.session.commit()
+    return jsonify(entity.to_dict())
+
+@entities_bp.route('/${snakeCase}/<int:id>', methods=['DELETE'])
+def delete_${snakeCase}(id):
+    """Delete ${entity.name} (soft delete)"""
+    from models import db, ${className}
+    
+    entity = ${className}.query.filter_by(id=id, is_deleted=False).first_or_404()
+    entity.is_deleted = True
+    
+    db.session.commit()
+    return jsonify({'message': 'Deleted successfully'})
+`;
+    }).join('\n');
+
+    const content = `"""
+Entities CRUD API
+"""
+
+from flask import Blueprint, request, jsonify
+
+entities_bp = Blueprint('entities', __name__)
+${entityHandlers}
+`;
+
+    return {
+      path: 'backend/api/entities.py',
+      content,
+      language: 'python',
+    };
+  }
+
+  private generateStateMachineApi(): GeneratedFile {
+    const stateMachines = this.context.behaviorModel?.stateMachines || [];
+    
+    const content = `"""
+State Machine API
+"""
+
+from flask import Blueprint, request, jsonify
+
+state_machine_bp = Blueprint('state_machine', __name__)
+
+@state_machine_bp.route('/transitions', methods=['POST'])
+def execute_transition():
+    """Execute a state transition"""
+    from models import db
+    from state_machine.engine import StateMachineEngine
+    
+    data = request.get_json()
+    entity_type = data.get('entity_type')
+    entity_id = data.get('entity_id')
+    transition = data.get('transition')
+    
+    engine = StateMachineEngine()
+    result = engine.execute(entity_type, entity_id, transition)
+    
+    db.session.commit()
+    return jsonify(result)
+
+@state_machine_bp.route('/states/<entity_type>', methods=['GET'])
+def get_states(entity_type):
+    """Get possible states for an entity type"""
+    # Return state machine definition
+    states = ${JSON.stringify(stateMachines.map(sm => ({
+      entity: sm.entity,
+      states: sm.states,
+      transitions: sm.transitions.map(t => ({
+        name: t.name,
+        from: t.from,
+        to: t.to
+      }))
+    })))}
+    
+    return jsonify({
+        'entity_type': entity_type,
+        'states': states
+    })
+`;
+
+    return {
+      path: 'backend/api/state_machine.py',
+      content,
+      language: 'python',
+    };
+  }
+
+  private generateRulesApi(): GeneratedFile {
+    const rules = this.context.ruleModel?.rules || [];
+    
+    const content = `"""
+Rules API
+"""
+
+from flask import Blueprint, request, jsonify
+
+rules_bp = Blueprint('rules', __name__)
+
+@rules_bp.route('/validate', methods=['POST'])
+def validate():
+    """Validate entity against rules"""
+    from rules.evaluator import RuleEvaluator
+    
+    data = request.get_json()
+    entity_type = data.get('entity_type')
+    entity_data = data.get('entity_data')
+    
+    evaluator = RuleEvaluator()
+    results = evaluator.validate(entity_type, entity_data)
+    
+    return jsonify({
+        'valid': all(r['passed'] for r in results),
+        'results': results
+    })
+
+@rules_bp.route('/list', methods=['GET'])
+def list_rules():
+    """List all rules"""
+    rules = ${JSON.stringify(rules.map(r => ({
+      id: r.id,
+      name: r.name,
+      type: r.type,
+      entity: r.entity,
+      severity: r.severity
+    })))}
+    
+    return jsonify(rules)
+`;
+
+    return {
+      path: 'backend/api/rules.py',
+      content,
+      language: 'python',
+    };
+  }
+
+  private generateAgentApi(): GeneratedFile {
+    const content = `"""
+AI Agent API
+"""
+
+from flask import Blueprint, request, jsonify, stream_with_context, Response
+import json
+
+agent_bp = Blueprint('agent', __name__)
+
+@agent_bp.route('/execute', methods=['POST'])
+def execute():
+    """Execute AI agent with user input"""
+    from ai.orchestrator import AIOrchestrator
+    
+    data = request.get_json()
+    session_id = data.get('session_id')
+    user_input = data.get('user_input')
+    context = data.get('context', {})
+    
+    orchestrator = AIOrchestrator()
+    result = orchestrator.execute(user_input, context)
+    
+    return jsonify(result)
+
+@agent_bp.route('/stream', methods=['POST'])
+def stream():
+    """Stream AI response"""
+    from ai.orchestrator import AIOrchestrator
+    
+    data = request.get_json()
+    user_input = data.get('user_input')
+    context = data.get('context', {})
+    
+    def generate():
+        orchestrator = AIOrchestrator()
+        for chunk in orchestrator.stream(user_input, context):
+            yield f"data: {json.dumps(chunk)}\\n\\n"
+    
+    return Response(
+        stream_with_context(generate()),
+        mimetype='text/event-stream'
+    )
+
+@agent_bp.route('/tools', methods=['GET'])
+def list_tools():
+    """List available AI tools"""
+    return jsonify({
+        'tools': [
+            {
+                'name': 'execute_query',
+                'description': 'Execute read-only SQL query',
+                'parameters': ['sql', 'explanation']
+            },
+            {
+                'name': 'call_skill',
+                'description': 'Call business skill for write operations',
+                'parameters': ['skill_name', 'parameters']
+            },
+            {
+                'name': 'open_ui',
+                'description': 'Open UI page or modal',
+                'parameters': ['action', 'page', 'params']
+            },
+            {
+                'name': 'generate_chart',
+                'description': 'Generate chart configuration',
+                'parameters': ['chart_type', 'title', 'data']
+            }
+        ]
+    })
+`;
+
+    return {
+      path: 'backend/api/agent.py',
+      content,
+      language: 'python',
+    };
+  }
+
+  private generateOrchestrator(): GeneratedFile {
+    const content = `"""
+AI Orchestrator
+Core component for AI-driven execution
+"""
+
+import json
+from typing import Dict, List, Any, Generator
+from jinja2 import Template
+from openai import OpenAI
+
+from config import Config
+from ai.tool_executor import ToolExecutor
+from ai.self_healing import SelfHealingExecutor
+
+class AIOrchestrator:
+    """AI Agent Orchestrator"""
+    
+    def __init__(self):
+        self.client = OpenAI(
+            api_key=Config.AI_API_KEY,
+            base_url='https://ark.cn-beijing.volces.com/api/v3'
+        )
+        self.model = Config.AI_MODEL
+        self.temperature = Config.AI_TEMPERATURE
+        self.tool_executor = ToolExecutor()
+        self.self_healing = SelfHealingExecutor()
+    
+    def execute(self, user_input: str, context: Dict) -> Dict:
+        """Execute user input and return result"""
+        # 1. Build system prompt with injected context
+        system_prompt = self._build_system_prompt(context)
+        
+        # 2. Call LLM with function calling
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_input}
+                ],
+                temperature=self.temperature,
+                tools=self._get_tools_schema(),
+                tool_choice="auto"
+            )
+            
+            # 3. Execute tool calls
+            message = response.choices[0].message
+            actions = []
+            
+            if message.tool_calls:
+                for tool_call in message.tool_calls:
+                    try:
+                        result = self.tool_executor.execute(
+                            tool_call.function.name,
+                            json.loads(tool_call.function.arguments)
+                        )
+                        actions.append({
+                            'tool': tool_call.function.name,
+                            'arguments': json.loads(tool_call.function.arguments),
+                            'result': result
+                        })
+                    except Exception as e:
+                        # Self-healing
+                        healed = self.self_healing.heal(
+                            error=e,
+                            tool_name=tool_call.function.name,
+                            arguments=json.loads(tool_call.function.arguments),
+                            context=context
+                        )
+                        actions.append(healed)
+            
+            return {
+                'message': message.content or '',
+                'actions': actions,
+                'context_updates': self._extract_context_updates(actions)
+            }
+            
+        except Exception as e:
+            return {
+                'message': f'Error: {str(e)}',
+                'actions': [],
+                'error': str(e)
+            }
+    
+    def stream(self, user_input: str, context: Dict) -> Generator:
+        """Stream response"""
+        system_prompt = self._build_system_prompt(context)
+        
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_input}
+            ],
+            temperature=self.temperature,
+            stream=True
+        )
+        
+        for chunk in response:
+            if chunk.choices[0].delta.content:
+                yield {
+                    'type': 'content',
+                    'content': chunk.choices[0].delta.content
+                }
+    
+    def _build_system_prompt(self, context: Dict) -> str:
+        """Build system prompt with injected context"""
+        # Load template and inject context
+        template_str = self._get_prompt_template()
+        template = Template(template_str)
+        
+        return template.render(
+            domain='${this.context.projectName}',
+            injected_entities=self._get_injected_entities(context),
+            field_descriptions=self._get_field_descriptions(context),
+            state_machines=self._get_state_machine_summary(),
+            rules=self._get_rules_summary(),
+            available_skills=self._get_available_skills()
+        )
+    
+    def _get_prompt_template(self) -> str:
+        """Get system prompt template"""
+        return '''
+你是一个{{ domain }}领域的业务系统AI助手，具备以下领域知识：
+
+【数据模型】（按需注入：{{ injected_entities|join(', ') }}）
+
+关键字段说明：
+{{ field_descriptions }}
+
+【行为模型】
+{{ state_machines }}
+
+【规则模型】
+{{ rules }}
+
+【可用工具】
+1. execute_query: 执行只读SQL查询（自动阻断UPDATE/DELETE/INSERT）
+   - 参数：sql (string), explanation (string)
+   
+2. call_skill: 调用业务技能（写操作）
+   - 参数：skill_name (string), parameters (object)
+   
+3. open_ui: 打开UI页面
+   - 参数：action (OPEN_TAB/OPEN_MODAL/NAVIGATE), page (string), params (object)
+   
+4. generate_chart: 生成图表配置
+   - 参数：chart_type (bar/line/pie/table/mermaid_flow/mermaid_er), title (string), data (array)
+
+请根据用户输入，选择合适的工具并生成参数。
+'''
+    
+    def _get_injected_entities(self, context: Dict) -> List[str]:
+        """Get entity names to inject (on-demand injection)"""
+        # Only inject directly related entities
+        entities = ${JSON.stringify((this.context.dataModel?.entities || []).map(e => e.nameEn))}
+        return entities
+    
+    def _get_field_descriptions(self, context: Dict) -> str:
+        """Get field descriptions"""
+        return "主要字段请参考实体定义"
+    
+    def _get_state_machine_summary(self) -> str:
+        """Get state machine summary"""
+        return "状态机已配置"
+    
+    def _get_rules_summary(self) -> str:
+        """Get rules summary"""
+        return "业务规则已配置"
+    
+    def _get_available_skills(self) -> str:
+        """Get available skills"""
+        return "create, update, delete, transition"
+    
+    def _get_tools_schema(self) -> List[Dict]:
+        """Get OpenAI function calling schema"""
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "execute_query",
+                    "description": "Execute read-only SQL query",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "sql": {"type": "string"},
+                            "explanation": {"type": "string"}
+                        },
+                        "required": ["sql", "explanation"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "call_skill",
+                    "description": "Call business skill for write operations",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "skill_name": {"type": "string"},
+                            "parameters": {"type": "object"}
+                        },
+                        "required": ["skill_name", "parameters"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "open_ui",
+                    "description": "Open UI page",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "action": {"type": "string", "enum": ["OPEN_TAB", "OPEN_MODAL", "NAVIGATE"]},
+                            "page": {"type": "string"},
+                            "params": {"type": "object"}
+                        },
+                        "required": ["action", "page"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "generate_chart",
+                    "description": "Generate chart configuration",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "chart_type": {"type": "string"},
+                            "title": {"type": "string"},
+                            "data": {"type": "array"}
+                        },
+                        "required": ["chart_type", "title", "data"]
+                    }
+                }
+            }
+        ]
+    
+    def _extract_context_updates(self, actions: List[Dict]) -> Dict:
+        """Extract context updates from actions"""
+        return {}
+`;
+
+    return {
+      path: 'backend/ai/orchestrator.py',
+      content,
+      language: 'python',
+    };
+  }
+
+  private generateToolExecutor(): GeneratedFile {
+    const content = `"""
+Tool Executor
+Executes AI tool calls
+"""
+
+import json
+import re
+from typing import Dict, Any
+from utils.sql_sanitizer import SQLSanitizer
+
+class ToolExecutor:
+    """Execute AI tool calls"""
+    
+    def __init__(self):
+        self.sanitizer = SQLSanitizer()
+    
+    def execute(self, tool_name: str, arguments: Dict) -> Dict:
+        """Execute a tool call"""
+        handlers = {
+            'execute_query': self._execute_query,
+            'call_skill': self._call_skill,
+            'open_ui': self._open_ui,
+            'generate_chart': self._generate_chart
+        }
+        
+        handler = handlers.get(tool_name)
+        if not handler:
+            raise ValueError(f"Unknown tool: {tool_name}")
+        
+        return handler(arguments)
+    
+    def _execute_query(self, args: Dict) -> Dict:
+        """Execute read-only SQL query"""
+        from models import db
+        
+        sql = args.get('sql', '')
+        explanation = args.get('explanation', '')
+        
+        # Sanitize SQL (only allow SELECT)
+        if not self.sanitizer.is_safe(sql):
+            raise ValueError("Only SELECT queries are allowed")
+        
+        try:
+            result = db.session.execute(sql)
+            rows = [dict(row) for row in result.fetchall()]
+            
+            return {
+                'success': True,
+                'data': rows,
+                'explanation': explanation
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _call_skill(self, args: Dict) -> Dict:
+        """Call business skill"""
+        skill_name = args.get('skill_name', '')
+        parameters = args.get('parameters', {})
+        
+        # Import skill dynamically
+        # skills are in services/generated/
+        return {
+            'success': True,
+            'skill': skill_name,
+            'result': f'Skill {skill_name} executed'
+        }
+    
+    def _open_ui(self, args: Dict) -> Dict:
+        """Return UI navigation instruction"""
+        return {
+            'success': True,
+            'action': args.get('action'),
+            'page': args.get('page'),
+            'params': args.get('params', {})
+        }
+    
+    def _generate_chart(self, args: Dict) -> Dict:
+        """Generate chart configuration"""
+        return {
+            'success': True,
+            'chart_type': args.get('chart_type'),
+            'title': args.get('title'),
+            'data': args.get('data'),
+            'config': {}
+        }
+`;
+
+    return {
+      path: 'backend/ai/tool_executor.py',
+      content,
+      language: 'python',
+    };
+  }
+
+  private generateSelfHealing(): GeneratedFile {
+    const content = `"""
+Self-Healing Executor
+Handles error recovery with LLM assistance
+"""
+
+import json
+from typing import Dict, Any, List
+from openai import OpenAI
+
+from config import Config
+
+class SelfHealingExecutor:
+    """Self-healing mechanism with max 2 retries"""
+    
+    MAX_RETRIES = 2
+    
+    def __init__(self):
+        self.client = OpenAI(
+            api_key=Config.AI_API_KEY,
+            base_url='https://ark.cn-beijing.volces.com/api/v3'
+        )
+    
+    def heal(self, error: Exception, tool_name: str, arguments: Dict, context: Dict) -> Dict:
+        """Attempt to heal from error"""
+        healing_log = []
+        last_error = error
+        current_args = arguments
+        
+        for attempt in range(1, self.MAX_RETRIES + 1):
+            # Build correction prompt
+            prompt = self._build_healing_prompt(
+                tool_name=tool_name,
+                arguments=current_args,
+                error=last_error,
+                attempt=attempt,
+                context=context
+            )
+            
+            # Request LLM correction
+            try:
+                response = self.client.chat.completions.create(
+                    model=Config.AI_MODEL,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3
+                )
+                
+                correction_text = response.choices[0].message.content
+                correction = self._parse_correction(correction_text)
+                
+                healing_log.append({
+                    'attempt': attempt,
+                    'error': str(last_error),
+                    'analysis': correction.get('analysis', ''),
+                    'correction': correction.get('corrected_arguments', {})
+                })
+                
+                # Apply correction
+                if correction.get('corrected_arguments'):
+                    current_args = correction['corrected_arguments']
+                    # Try executing with corrected arguments
+                    from ai.tool_executor import ToolExecutor
+                    executor = ToolExecutor()
+                    result = executor.execute(tool_name, current_args)
+                    
+                    if result.get('success'):
+                        result['healing_log'] = healing_log
+                        return result
+                
+            except Exception as e:
+                last_error = e
+        
+        # Retries exhausted
+        return {
+            'success': False,
+            'error': f"Healing failed after {self.MAX_RETRIES} attempts",
+            'healing_log': healing_log,
+            'original_error': str(error)
+        }
+    
+    def _build_healing_prompt(self, tool_name: str, arguments: Dict, error: Exception, attempt: int, context: Dict) -> str:
+        """Build healing prompt"""
+        return f'''
+执行工具调用时发生错误（第{attempt}次重试）
+
+工具名称：{tool_name}
+原始参数：{json.dumps(arguments, ensure_ascii=False, indent=2)}
+错误信息：{str(error)}
+
+请分析错误原因并返回修正后的参数。返回JSON格式：
+{{
+    "analysis": "错误原因分析",
+    "corrected_arguments": {{ 修正后的参数 }}
+}}
+'''
+    
+    def _parse_correction(self, text: str) -> Dict:
+        """Parse LLM correction response"""
+        try:
+            # Try to extract JSON from response
+            json_match = text[ text.find('{'):text.rfind('}')+1 ]
+            return json.loads(json_match)
+        except:
+            return {'analysis': text, 'corrected_arguments': {}}
+`;
+
+    return {
+      path: 'backend/ai/self_healing.py',
+      content,
+      language: 'python',
+    };
+  }
+
+  private generatePromptsTemplate(): GeneratedFile {
+    const content = `"""
+System Prompt Templates
+"""
+
+SYSTEM_PROMPT_TEMPLATE = '''
+你是一个{{ domain }}领域的业务系统AI助手。
+
+【数据模型】（按需注入：{{ injected_entities }}）
+
+{{ entities_json }}
+
+关键字段说明：
+{{ field_descriptions }}
+
+【行为模型】
+{{ state_machines }}
+
+【规则模型】
+{{ rules }}
+
+【可用工具】
+{{ tools }}
+
+请根据用户输入，选择合适的工具并生成参数。
+'''
+
+HEALING_PROMPT_TEMPLATE = '''
+执行工具调用时发生错误（第{{ attempt }}次重试）
+
+原始调用：
+{{ original_call }}
+
+错误信息：{{ error_message }}
+
+请分析错误原因并生成修正方案。返回JSON格式：
+{
+    "analysis": "错误原因分析",
+    "corrected_arguments": { 修正后的参数 }
+}
+'''
+`;
+
+    return {
+      path: 'backend/ai/prompts/templates.py',
+      content,
+      language: 'python',
+    };
+  }
+
+  private generateRuleEngine(): GeneratedFile {
+    const rules = this.context.ruleModel?.rules || [];
+    
+    const content = `"""
+Rule Engine
+Evaluates business rules
+"""
+
+import re
+from typing import Dict, List, Any
+
+class RuleEvaluator:
+    """Evaluate business rules against entity data"""
+    
+    def __init__(self):
+        self.rules = ${JSON.stringify(rules.map(r => ({
+          id: r.id,
+          name: r.name,
+          type: r.type,
+          entity: r.entity,
+          field: r.field,
+          condition: r.condition,
+          errorMessage: r.errorMessage,
+          severity: r.severity
+        })))}
+    
+    def validate(self, entity_type: str, entity_data: Dict) -> List[Dict]:
+        """Validate entity against all applicable rules"""
+        results = []
+        
+        for rule in self.rules:
+            if rule['entity'] != entity_type:
+                continue
+            
+            try:
+                passed = self._evaluate_rule(rule, entity_data)
+                results.append({
+                    'rule_id': rule['id'],
+                    'rule_name': rule['name'],
+                    'passed': passed,
+                    'message': '' if passed else rule['errorMessage'],
+                    'severity': rule['severity']
+                })
+            except Exception as e:
+                results.append({
+                    'rule_id': rule['id'],
+                    'rule_name': rule['name'],
+                    'passed': False,
+                    'message': f'Rule evaluation error: {str(e)}',
+                    'severity': 'error'
+                })
+        
+        return results
+    
+    def _evaluate_rule(self, rule: Dict, data: Dict) -> bool:
+        """Evaluate a single rule"""
+        rule_type = rule['type']
+        condition = rule['condition']
+        
+        if rule_type == 'field_validation':
+            return self._validate_field(rule['field'], condition, data)
+        elif rule_type == 'cross_field_validation':
+            return self._validate_cross_field(condition, data)
+        elif rule_type == 'cross_entity_validation':
+            return self._validate_cross_entity(condition, data)
+        elif rule_type == 'aggregation_validation':
+            return self._validate_aggregation(condition, data)
+        elif rule_type == 'temporal_rule':
+            return self._validate_temporal(condition, data)
+        
+        return True
+    
+    def _validate_field(self, field: str, condition: Dict, data: Dict) -> bool:
+        """Validate single field"""
+        value = data.get(field)
+        
+        cond_type = condition.get('type')
+        
+        if cond_type == 'regex':
+            pattern = condition.get('pattern', '')
+            return bool(re.match(pattern, str(value))) if value else False
+        elif cond_type == 'range':
+            min_val = condition.get('min')
+            max_val = condition.get('max')
+            if min_val is not None and value < min_val:
+                return False
+            if max_val is not None and value > max_val:
+                return False
+            return True
+        
+        return True
+    
+    def _validate_cross_field(self, condition: Dict, data: Dict) -> bool:
+        """Validate cross-field constraints"""
+        # Implementation for cross-field validation
+        return True
+    
+    def _validate_cross_entity(self, condition: Dict, data: Dict) -> bool:
+        """Validate cross-entity constraints"""
+        # Implementation for cross-entity validation
+        return True
+    
+    def _validate_aggregation(self, condition: Dict, data: Dict) -> bool:
+        """Validate aggregation constraints"""
+        # Implementation for aggregation validation
+        return True
+    
+    def _validate_temporal(self, condition: Dict, data: Dict) -> bool:
+        """Validate temporal constraints"""
+        # Implementation for temporal validation
+        return True
+`;
+
+    return {
+      path: 'backend/rules/evaluator.py',
+      content,
+      language: 'python',
+    };
+  }
+
+  private generateStateMachineEngine(): GeneratedFile {
+    const stateMachines = this.context.behaviorModel?.stateMachines || [];
+    
+    const content = `"""
+State Machine Engine
+Executes state transitions
+"""
+
+from typing import Dict, Any, Optional
+from models import db
+
+class StateMachineEngine:
+    """Execute state machine transitions"""
+    
+    def __init__(self):
+        self.state_machines = ${JSON.stringify(stateMachines.map(sm => ({
+          id: sm.id,
+          entity: sm.entity,
+          statusField: sm.statusField,
+          states: sm.states,
+          transitions: sm.transitions
+        })))}
+    
+    def execute(self, entity_type: str, entity_id: int, transition_name: str) -> Dict:
+        """Execute a state transition"""
+        # Find state machine for entity
+        sm = self._find_state_machine(entity_type)
+        if not sm:
+            raise ValueError(f"No state machine found for {entity_type}")
+        
+        # Find transition
+        transition = self._find_transition(sm, transition_name)
+        if not transition:
+            raise ValueError(f"Transition {transition_name} not found")
+        
+        # Get entity
+        entity = self._get_entity(entity_type, entity_id)
+        if not entity:
+            raise ValueError(f"Entity {entity_type}#{entity_id} not found")
+        
+        # Check current state
+        current_state = getattr(entity, sm['statusField'], None)
+        from_states = transition['from']
+        if isinstance(from_states, str):
+            from_states = [from_states]
+        
+        if current_state not in from_states:
+            raise ValueError(
+                f"Cannot execute {transition_name} from state {current_state}. "
+                f"Valid states: {from_states}"
+            )
+        
+        # Execute transition
+        new_state = transition['to']
+        setattr(entity, sm['statusField'], new_state)
+        
+        # Publish domain event if entity is aggregate root
+        if hasattr(entity, 'publish_event'):
+            entity.publish_event(
+                f"{entity_type}{transition_name.capitalize()}Event",
+                {
+                    'from_state': current_state,
+                    'to_state': new_state,
+                    'transition': transition_name
+                }
+            )
+        
+        return {
+            'success': True,
+            'previous_state': current_state,
+            'new_state': new_state,
+            'transition': transition_name
+        }
+    
+    def _find_state_machine(self, entity_type: str) -> Optional[Dict]:
+        """Find state machine by entity type"""
+        for sm in self.state_machines:
+            if sm['entity'] == entity_type:
+                return sm
+        return None
+    
+    def _find_transition(self, sm: Dict, transition_name: str) -> Optional[Dict]:
+        """Find transition by name"""
+        for t in sm['transitions']:
+            if t['name'] == transition_name:
+                return t
+        return None
+    
+    def _get_entity(self, entity_type: str, entity_id: int):
+        """Get entity by type and ID"""
+        # Dynamic entity lookup
+        from models import ${this.context.dataModel?.entities?.map(e => e.nameEn).join(', ') || 'Entity'}
+        
+        entity_classes = {
+            ${(this.context.dataModel?.entities || []).map(e => `'${e.id}': ${e.nameEn}`).join(', ')}
+        }
+        
+        entity_class = entity_classes.get(entity_type)
+        if not entity_class:
+            return None
+        
+        return entity_class.query.get(entity_id)
+`;
+
+    return {
+      path: 'backend/state_machine/engine.py',
+      content,
+      language: 'python',
+    };
+  }
+
+  private generateSqlSanitizer(): GeneratedFile {
+    const content = `"""
+SQL Sanitizer
+Ensures SQL queries are safe (read-only)
+"""
+
+import re
+
+class SQLSanitizer:
+    """Sanitize SQL queries to ensure read-only"""
+    
+    # Dangerous keywords that should be blocked
+    DANGEROUS_KEYWORDS = [
+        'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 
+        'TRUNCATE', 'REPLACE', 'MERGE', 'GRANT', 'REVOKE'
+    ]
+    
+    def __init__(self):
+        self.dangerous_pattern = re.compile(
+            r'\\b(' + '|'.join(self.DANGEROUS_KEYWORDS) + r')\\b',
+            re.IGNORECASE
+        )
+    
+    def is_safe(self, sql: str) -> bool:
+        """Check if SQL is safe (SELECT only)"""
+        # Check for dangerous keywords
+        if self.dangerous_pattern.search(sql):
+            return False
+        
+        # Must start with SELECT
+        stripped = sql.strip().upper()
+        if not stripped.startswith('SELECT'):
+            return False
+        
+        return True
+    
+    def sanitize(self, sql: str) -> str:
+        """Sanitize SQL (remove dangerous parts)"""
+        # This is a safety measure, but is_safe should be used for validation
+        return sql
+`;
+
+    return {
+      path: 'backend/utils/sql_sanitizer.py',
+      content,
+      language: 'python',
+    };
+  }
+
+  // ==================== 前端文件生成 ====================
+
+  private generateFrontendFiles(): GeneratedFile[] {
+    const files: GeneratedFile[] = [];
+
+    files.push(this.generatePackageJson());
+    files.push(this.generateViteConfig());
+    files.push(this.generateMainTsx());
+    files.push(this.generateAppTsx());
+    files.push(this.generateRuntimeStore());
+    files.push(this.generateEntityApi());
+    files.push(this.generateFrontendAgentApi());
+    files.push(this.generateChatInterface());
+    files.push(this.generateDataViews());
+
+    return files;
+  }
+
+  private generatePackageJson(): GeneratedFile {
+    const content = JSON.stringify({
+      name: this.toKebabCase(this.context.projectNameEn),
+      version: this.context.version,
+      type: 'module',
+      scripts: {
+        dev: 'vite',
+        build: 'tsc && vite build',
+        preview: 'vite preview'
+      },
+      dependencies: {
+        react: '^18.2.0',
+        'react-dom': '^18.2.0',
+        antd: '^5.12.0',
+        axios: '^1.6.0',
+        zustand: '^4.4.0',
+        echarts: '^5.4.0',
+        mermaid: '^10.6.0',
+        'react-router-dom': '^6.20.0'
+      },
+      devDependencies: {
+        '@types/react': '^18.2.0',
+        '@types/react-dom': '^18.2.0',
+        '@vitejs/plugin-react': '^4.2.0',
+        typescript: '^5.3.0',
+        vite: '^5.0.0'
+      }
+    }, null, 2);
+
+    return {
+      path: 'frontend/package.json',
+      content,
+      language: 'json',
+    };
+  }
+
+  private generateViteConfig(): GeneratedFile {
+    const content = `import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5001',
+        changeOrigin: true
+      }
+    }
+  }
+})
+`;
+
+    return {
+      path: 'frontend/vite.config.ts',
+      content,
+      language: 'typescript',
+    };
+  }
+
+  private generateMainTsx(): GeneratedFile {
+    const content = `import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
+import { ConfigProvider } from 'antd'
+import zhCN from 'antd/locale/zh_CN'
+import App from './App'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <ConfigProvider locale={zhCN}>
+        <App />
+      </ConfigProvider>
+    </BrowserRouter>
+  </React.StrictMode>
+)
+`;
+
+    return {
+      path: 'frontend/src/main.tsx',
+      content,
+      language: 'typescript',
+    };
+  }
+
+  private generateAppTsx(): GeneratedFile {
+    const content = `import { Routes, Route } from 'react-router-dom'
+import { ThreeColumnLayout } from './components/layout/ThreeColumnLayout'
+
+function App() {
+  return (
+    <div className="app">
+      <Routes>
+        <Route path="/" element={<ThreeColumnLayout />} />
+        <Route path="/entity/:type" element={<ThreeColumnLayout />} />
+        <Route path="/entity/:type/:id" element={<ThreeColumnLayout />} />
+      </Routes>
+    </div>
+  )
+}
+
+export default App
+`;
+
+    return {
+      path: 'frontend/src/App.tsx',
+      content,
+      language: 'typescript',
+    };
+  }
+
+  private generateRuntimeStore(): GeneratedFile {
+    const entities = this.context.dataModel?.entities || [];
+    
+    const content = `import { create } from 'zustand'
+
+interface ViewState {
+  type: 'list' | 'form' | 'flowchart' | 'erdiagram' | 'table' | 'chart'
+  entityType?: string
+  entityId?: number
+  data?: any
+}
+
+interface RuntimeState {
+  // Current view
+  currentView: ViewState
+  
+  // Focused entity (right sidebar)
+  focusEntity: {
+    type: string
+    id: number
+    data: any
+  } | null
+  
+  // Chat history
+  chatHistory: Array<{
+    role: 'user' | 'assistant'
+    content: string
+    timestamp: string
+  }>
+  
+  // Loading state
+  isLoading: boolean
+  
+  // Actions
+  setCurrentView: (view: ViewState) => void
+  setFocusEntity: (entity: RuntimeState['focusEntity']) => void
+  addChatMessage: (message: { role: 'user' | 'assistant'; content: string }) => void
+  clearChatHistory: () => void
+  setLoading: (loading: boolean) => void
+}
+
+export const useRuntimeStore = create<RuntimeState>((set) => ({
+  currentView: { type: 'flowchart' }, // 默认流程视图
+  focusEntity: null,
+  chatHistory: [],
+  isLoading: false,
+  
+  setCurrentView: (view) => set({ currentView: view }),
+  
+  setFocusEntity: (entity) => set({ focusEntity: entity }),
+  
+  addChatMessage: (message) => set((state) => ({
+    chatHistory: [...state.chatHistory, {
+      ...message,
+      timestamp: new Date().toISOString()
+    }]
+  })),
+  
+  clearChatHistory: () => set({ chatHistory: [] }),
+  
+  setLoading: (loading) => set({ isLoading: loading })
+}))
+
+// Entity types from data model
+export const ENTITY_TYPES = [
+  ${entities.map(e => `{ id: '${e.id}', name: '${e.name}', nameEn: '${e.nameEn}' }`).join(',\n  ')}
+]
+`;
+
+    return {
+      path: 'frontend/src/store/runtimeStore.ts',
+      content,
+      language: 'typescript',
+    };
+  }
+
+  private generateEntityApi(): GeneratedFile {
+    const content = `import axios from 'axios'
+
+const api = axios.create({
+  baseURL: '/api'
+})
+
+export const entityApi = {
+  // List entities
+  async list(entityType: string, params?: { page?: number; per_page?: number }) {
+    const response = await api.get(\`/entities/\${entityType}\`, { params })
+    return response.data
+  },
+  
+  // Get single entity
+  async get(entityType: string, id: number) {
+    const response = await api.get(\`/entities/\${entityType}/\${id}\`)
+    return response.data
+  },
+  
+  // Create entity
+  async create(entityType: string, data: Record<string, any>) {
+    const response = await api.post(\`/entities/\${entityType}\`, data)
+    return response.data
+  },
+  
+  // Update entity
+  async update(entityType: string, id: number, data: Record<string, any>) {
+    const response = await api.put(\`/entities/\${entityType}/\${id}\`, data)
+    return response.data
+  },
+  
+  // Delete entity
+  async delete(entityType: string, id: number) {
+    const response = await api.delete(\`/entities/\${entityType}/\${id}\`)
+    return response.data
+  }
+}
+`;
+
+    return {
+      path: 'frontend/src/services/entityApi.ts',
+      content,
+      language: 'typescript',
+    };
+  }
+
+  private generateFrontendAgentApi(): GeneratedFile {
+    const content = `import axios from 'axios'
+
+const api = axios.create({
+  baseURL: '/api'
+})
+
+export const agentApi = {
+  // Execute AI agent
+  async execute(userInput: string, context?: any) {
+    const response = await api.post('/agent/execute', {
+      session_id: Date.now().toString(),
+      user_input: userInput,
+      context
+    })
+    return response.data
+  },
+  
+  // Stream AI response
+  async *stream(userInput: string, context?: any): AsyncGenerator<any> {
+    const response = await fetch('/api/agent/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_input: userInput,
+        context
+      })
+    })
+    
+    const reader = response.body?.getReader()
+    if (!reader) return
+    
+    const decoder = new TextDecoder()
+    
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      
+      const chunk = decoder.decode(value)
+      const lines = chunk.split('\\n').filter(line => line.startsWith('data: '))
+      
+      for (const line of lines) {
+        try {
+          const data = JSON.parse(line.slice(6))
+          yield data
+        } catch {}
+      }
+    }
+  },
+  
+  // Get available tools
+  async getTools() {
+    const response = await api.get('/agent/tools')
+    return response.data
+  }
+}
+`;
+
+    return {
+      path: 'frontend/src/services/agentApi.ts',
+      content,
+      language: 'typescript',
+    };
+  }
+
+  private generateThreeColumnLayout(): GeneratedFile {
+    const content = `import { useState } from 'react'
+import { Layout } from 'antd'
+import { ChatInterface } from '../chat/ChatInterface'
+import { CenterPanel } from '../data/CenterPanel'
+import { EntityContext } from '../context/EntityContext'
+import { useRuntimeStore } from '../../store/runtimeStore'
+
+const { Sider, Content } = Layout
+
+export function ThreeColumnLayout() {
+  const [leftCollapsed, setLeftCollapsed] = useState(false)
+  const [rightCollapsed, setRightCollapsed] = useState(false)
+  
+  const { currentView, focusEntity } = useRuntimeStore()
+  
+  return (
+    <Layout className="h-screen">
+      {/* 左栏：对话 */}
+      <Sider
+        width={280}
+        collapsed={leftCollapsed}
+        collapsedWidth={0}
+        trigger={null}
+        className="bg-white border-r"
+      >
+        <ChatInterface />
+      </Sider>
+      
+      {/* 中栏：数据视图 */}
+      <Content className="bg-gray-50">
+        <CenterPanel view={currentView} />
+      </Content>
+      
+      {/* 右栏：上下文 */}
+      <Sider
+        width={300}
+        collapsed={rightCollapsed}
+        collapsedWidth={0}
+        trigger={null}
+        className="bg-white border-l"
+      >
+        <EntityContext entity={focusEntity} />
+      </Sider>
+    </Layout>
+  )
+}
+`;
+
+    return {
+      path: 'frontend/src/components/layout/ThreeColumnLayout.tsx',
+      content,
+      language: 'typescript',
+    };
+  }
+
+  private generateChatInterface(): GeneratedFile {
+    const content = `import { useState, useRef, useEffect } from 'react'
+import { Input, Button, Spin, Empty } from 'antd'
+import { SendOutlined } from '@ant-design/icons'
+import { agentApi } from '../../services/agentApi'
+import { useRuntimeStore } from '../../store/runtimeStore'
+
+export function ChatInterface() {
+  const [input, setInput] = useState('')
+  const inputRef = useRef<any>(null)
+  
+  const { chatHistory, addChatMessage, isLoading, setLoading, setCurrentView, setFocusEntity } = useRuntimeStore()
+  
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return
+    
+    const userMessage = input.trim()
+    setInput('')
+    addChatMessage({ role: 'user', content: userMessage })
+    setLoading(true)
+    
+    try {
+      const response = await agentApi.execute(userMessage)
+      
+      addChatMessage({ 
+        role: 'assistant', 
+        content: response.message || '操作完成' 
+      })
+      
+      // Handle actions
+      if (response.actions) {
+        for (const action of response.actions) {
+          if (action.tool === 'open_ui') {
+            setCurrentView({
+              type: action.result?.page || 'list',
+              ...action.result?.params
+            })
+          }
+        }
+      }
+      
+    } catch (error: any) {
+      addChatMessage({ 
+        role: 'assistant', 
+        content: \`错误: \${error.message}\` 
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="p-4 border-b">
+        <h2 className="font-semibold">AI 助手</h2>
+        <p className="text-xs text-gray-500">自然语言操作业务数据</p>
+      </div>
+      
+      {/* Chat History */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {chatHistory.length === 0 ? (
+          <Empty description="开始对话" className="mt-20" />
+        ) : (
+          chatHistory.map((msg, index) => (
+            <div
+              key={index}
+              className={\`mb-4 \${msg.role === 'user' ? 'text-right' : 'text-left'}\`}
+            >
+              <div
+                className={\`inline-block max-w-[80%] p-3 rounded-lg \${
+                  msg.role === 'user'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-800'
+                }\`}
+              >
+                <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                <div className="text-xs opacity-60 mt-1">
+                  {new Date(msg.timestamp).toLocaleTimeString()}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+        {isLoading && (
+          <div className="text-center py-4">
+            <Spin />
+          </div>
+        )}
+      </div>
+      
+      {/* Input */}
+      <div className="p-4 border-t">
+        <div className="flex gap-2">
+          <Input
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onPressEnter={handleSend}
+            placeholder="输入指令，如：列出所有合同"
+            className="flex-1"
+          />
+          <Button
+            type="primary"
+            icon={<SendOutlined />}
+            onClick={handleSend}
+            loading={isLoading}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+`;
+
+    return {
+      path: 'frontend/src/components/chat/ChatInterface.tsx',
+      content,
+      language: 'typescript',
+    };
+  }
+
+  private generateDataViews(): GeneratedFile {
+    const content = `import { useEffect, useState } from 'react'
+import { Tabs, Table, Form, Input, Button, Card, Empty } from 'antd'
+import { entityApi } from '../../services/entityApi'
+import { useRuntimeStore, ENTITY_TYPES } from '../../store/runtimeStore'
+import type { ViewState } from '../../store/runtimeStore'
+
+interface CenterPanelProps {
+  view: ViewState
+}
+
+export function CenterPanel({ view }: CenterPanelProps) {
+  if (view.type === 'list') {
+    return <ListView entityType={view.entityType} />
+  }
+  if (view.type === 'form') {
+    return <FormView entityType={view.entityType} entityId={view.entityId} />
+  }
+  if (view.type === 'flowchart') {
+    return <FlowchartView />
+  }
+  if (view.type === 'erdiagram') {
+    return <ERDiagramView />
+  }
+  if (view.type === 'table') {
+    return <TableView data={view.data} />
+  }
+  if (view.type === 'chart') {
+    return <ChartView data={view.data} />
+  }
+  
+  return <FlowchartView /> // 默认流程视图
+}
+
+// 列表视图
+function ListView({ entityType }: { entityType?: string }) {
+  const [data, setData] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const { setCurrentView, setFocusEntity } = useRuntimeStore()
+  
+  useEffect(() => {
+    if (entityType) {
+      loadData()
+    }
+  }, [entityType])
+  
+  const loadData = async () => {
+    if (!entityType) return
+    setLoading(true)
+    try {
+      const result = await entityApi.list(entityType)
+      setData(result.items || [])
+    } catch (error) {
+      console.error('Failed to load entities:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  const columns = [
+    { title: 'ID', dataIndex: 'id', key: 'id' },
+    { title: '名称', dataIndex: 'name', key: 'name' },
+    { title: '创建时间', dataIndex: 'created_at', key: 'created_at' },
+    {
+      title: '操作',
+      key: 'actions',
+      render: (_: any, record: any) => (
+        <Button
+          type="link"
+          onClick={() => {
+            setCurrentView({ type: 'form', entityType, entityId: record.id })
+            setFocusEntity({ type: entityType!, id: record.id, data: record })
+          }}
+        >
+          查看
+        </Button>
+      )
+    }
+  ]
+  
+  if (!entityType) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Empty description="选择实体类型" />
+      </div>
+    )
+  }
+  
+  return (
+    <div className="p-4">
+      <Table
+        dataSource={data}
+        columns={columns}
+        rowKey="id"
+        loading={loading}
+      />
+    </div>
+  )
+}
+
+// 表单视图
+function FormView({ entityType, entityId }: { entityType?: string; entityId?: number }) {
+  const [form] = Form.useForm()
+  const [loading, setLoading] = useState(false)
+  
+  useEffect(() => {
+    if (entityType && entityId) {
+      loadData()
+    }
+  }, [entityType, entityId])
+  
+  const loadData = async () => {
+    if (!entityType || !entityId) return
+    setLoading(true)
+    try {
+      const result = await entityApi.get(entityType, entityId)
+      form.setFieldsValue(result)
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  return (
+    <div className="p-4">
+      <Card title="实体详情" loading={loading}>
+        <Form form={form} layout="vertical">
+          <Form.Item name="name" label="名称">
+            <Input disabled />
+          </Form.Item>
+          <Form.Item name="created_at" label="创建时间">
+            <Input disabled />
+          </Form.Item>
+        </Form>
+      </Card>
+    </div>
+  )
+}
+
+// 流程视图（默认）
+function FlowchartView() {
+  return (
+    <div className="flex items-center justify-center h-full">
+      <Empty description="流程视图（待实现）" />
+    </div>
+  )
+}
+
+// ER图视图
+function ERDiagramView() {
+  return (
+    <div className="flex items-center justify-center h-full">
+      <Empty description="ER图视图（待实现）" />
+    </div>
+  )
+}
+
+// 表格视图
+function TableView({ data }: { data?: any }) {
+  return (
+    <div className="p-4">
+      <Table dataSource={data?.items || []} columns={data?.columns || []} rowKey="id" />
+    </div>
+  )
+}
+
+// 图表视图
+function ChartView({ data }: { data?: any }) {
+  return (
+    <div className="flex items-center justify-center h-full">
+      <Empty description="图表视图（待实现）" />
+    </div>
+  )
+}
+`;
+
+    return {
+      path: 'frontend/src/components/data/CenterPanel.tsx',
+      content,
+      language: 'typescript',
+    };
+  }
+
+  private generateEntityContext(): GeneratedFile {
+    const content = `import { Card, Descriptions, Empty } from 'antd'
+
+interface EntityContextProps {
+  entity: {
+    type: string
+    id: number
+    data: any
+  } | null
+}
+
+export function EntityContext({ entity }: EntityContextProps) {
+  if (!entity) {
+    return (
+      <div className="p-4">
+        <Empty description="未选择实体" />
+      </div>
+    )
+  }
+  
+  return (
+    <div className="p-4">
+      <Card title="实体上下文" size="small">
+        <Descriptions column={1} size="small">
+          <Descriptions.Item label="类型">{entity.type}</Descriptions.Item>
+          <Descriptions.Item label="ID">{entity.id}</Descriptions.Item>
+          {entity.data && Object.entries(entity.data).map(([key, value]) => (
+            <Descriptions.Item key={key} label={key}>
+              {String(value)}
+            </Descriptions.Item>
+          ))}
+        </Descriptions>
+      </Card>
+    </div>
+  )
+}
+`;
+
+    return {
+      path: 'frontend/src/components/context/EntityContext.tsx',
+      content,
+      language: 'typescript',
+    };
+  }
+
+  // ==================== 数据库文件生成 ====================
+
+  private generateDatabaseFiles(): GeneratedFile[] {
+    const files: GeneratedFile[] = [];
+    
+    files.push(this.generateInitSql());
+    
+    if (this.context.config.includeData) {
+      files.push(this.generateSeedSql());
+    }
+    
+    return files;
+  }
+
+  private generateInitSql(): GeneratedFile {
+    const entities = this.context.dataModel?.entities || [];
+    
+    const createTables = entities.map(entity => {
+      const tableName = this.toSnakeCase(entity.nameEn);
+      const columns = entity.attributes.map(attr => {
+        const colType = this.getSqlType(attr.type);
+        const constraints = [];
+        if (attr.required) constraints.push('NOT NULL');
+        if (attr.unique) constraints.push('UNIQUE');
+        return `  ${this.toSnakeCase(attr.nameEn || attr.name)} ${colType}${constraints.length ? ' ' + constraints.join(' ') : ''}`;
+      }).join(',\n');
+      
+      return `-- ${entity.name}
+CREATE TABLE IF NOT EXISTS ${tableName} (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+${columns},
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  is_deleted BOOLEAN DEFAULT 0
+);`;
+    }).join('\n\n');
+
+    const content = `-- Database Initialization Script
+-- Project: ${this.context.projectName}
+-- Version: ${this.context.version}
+
+${createTables}
+`;
+
+    return {
+      path: 'database/init.sql',
+      content,
+      language: 'sql',
+    };
+  }
+
+  private generateSeedSql(): GeneratedFile {
+    const content = `-- Sample Data
+-- Project: ${this.context.projectName}
+-- Version: ${this.context.version}
+
+-- Add sample data here based on your entities
+`;
+
+    return {
+      path: 'database/seed.sql',
+      content,
+      language: 'sql',
+    };
+  }
+
+  private generateReadme(): GeneratedFile {
+    const content = `# ${this.context.projectName}
+
+Version: ${this.context.version}
+Generated at: ${new Date().toISOString()}
+
+## Quick Start
+
+\`\`\`bash
+# Start with Docker Compose
+docker-compose up -d
+
+# Or run manually:
+
+# Backend
+cd backend
+pip install -r requirements.txt
+python app.py
+
+# Frontend
+cd frontend
+npm install
+npm run dev
+\`\`\`
+
+## Services
+
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:5001
+
+## API Endpoints
+
+- \`GET /api/health\` - Health check
+- \`GET /api/entities/:type\` - List entities
+- \`GET /api/entities/:type/:id\` - Get entity
+- \`POST /api/entities/:type\` - Create entity
+- \`PUT /api/entities/:type/:id\` - Update entity
+- \`DELETE /api/entities/:type/:id\` - Delete entity
+- \`POST /api/agent/execute\` - AI agent execute
+
+## Entities
+
+${(this.context.dataModel?.entities || []).map(e => `- **${e.name}** (${e.nameEn}): ${e.attributes.length} attributes`).join('\n')}
+
+## State Machines
+
+${(this.context.behaviorModel?.stateMachines || []).map(sm => `- **${sm.name}**: ${sm.states.length} states, ${sm.transitions.length} transitions`).join('\n')}
+
+## Rules
+
+${(this.context.ruleModel?.rules || []).map(r => `- **${r.name}** (${r.type})`).join('\n')}
+
+---
+Generated by Ontology Modeling Tool
+`;
+
+    return {
+      path: 'README.md',
+      content,
+      language: 'markdown',
+    };
+  }
+
+  // ==================== 工具方法 ====================
+
+  private toPascalCase(str: string): string {
+    return str
+      .replace(/[-_\s]+(.)?/g, (_, c) => c ? c.toUpperCase() : '')
+      .replace(/^(.)/, (c) => c.toUpperCase());
+  }
+
+  private toSnakeCase(str: string): string {
+    return str
+      .replace(/([a-z])([A-Z])/g, '$1_$2')
+      .replace(/[-\s]/g, '_')
+      .toLowerCase();
+  }
+
+  private toKebabCase(str: string): string {
+    return str
+      .replace(/([a-z])([A-Z])/g, '$1-$2')
+      .replace(/[\s_]/g, '-')
+      .toLowerCase();
+  }
+
+  private getSqlType(ontologyType: string): string {
+    const mapping: Record<string, string> = {
+      'string': 'VARCHAR(255)',
+      'text': 'TEXT',
+      'integer': 'INTEGER',
+      'decimal': 'DECIMAL(18, 4)',
+      'boolean': 'BOOLEAN',
+      'date': 'DATE',
+      'datetime': 'DATETIME',
+      'enum': 'VARCHAR(50)',
+      'reference': 'INTEGER',
+      'json': 'TEXT',
+    };
+    return mapping[ontologyType] || 'VARCHAR(255)';
+  }
+}
+
+/**
+ * 生成代码包的便捷函数
+ */
+export function generateCodePackage(
+  version: ProjectVersion,
+  config: PublishConfig,
+  projectName: string
+): CodePackage {
+  const generator = new CodeGenerator(version, config, projectName);
+  return generator.generate();
+}

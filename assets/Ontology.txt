@@ -1,0 +1,1424 @@
+本体模型+AI驱动系统需求规格说明书
+Ontology-Driven Metamodeling & Hybrid AI Execution Framework
+Requirements Specification Document
+版本：v1.0
+日期：2026-03-28
+状态：基于26项需求确认 finalized
+目录
+文档概述
+系统愿景与架构蓝图
+元模型层详细规格
+AI引擎层规格
+混合交互层规格
+技术实现方案
+非功能性需求
+实施路线图
+1. 文档概述
+1.1 文档目的
+本规格说明书定义"本体模型+AI驱动的原生应用系统"的完整需求，该系统是一个通用企业级应用框架，通过四大元模型（数据、行为、规则、流程）构建业务本体抽象，让AI贯穿"生成期（Auto-Dev）"与"运行期（Runtime）"全生命周期。
+1.2 目标读者
+系统架构师
+后端/前端工程师
+AI/算法工程师
+产品经理
+领域专家
+1.3 术语表
+表格
+术语	定义
+Metamodel（元模型）	描述业务本体结构的模型，包含数据、行为、规则、流程四类
+Ontology（本体）	领域概念的显式规范，包括实体、属性、关系、约束
+Skill（领域技能）	后端封装的业务能力单元，对应特定领域操作
+Agent（智能编排器）	运行时决策中枢，集成意图分析、LLM策略、工具调用
+Hybrid UI（混合交互）	自然语言界面（NLI）与结构化UI（GUI）的双模融合
+Auto-Dev（生成期）	基于元模型自动生成代码的开发阶段
+Semantic Injection（语义注入）	将元模型定义注入AI系统Prompt的机制
+2. 系统愿景与架构蓝图
+2.1 核心设计哲学
+plain
+复制
+业务本体抽象 -> 模型共识 -> AI生成底座 + AI动态运行
+范式转变：从"AI作为外挂插件"到"AI与业务本体深度融合"，系统架构围绕AI认知能力重新设计。
+2.2 三层架构
+plain
+复制
+┌─────────────────────────────────────────────────────────────┐
+│                    第三层：混合交互层                          │
+│  ┌──────────────┐  ┌──────────────────┐  ┌──────────────┐     │
+│  │   左侧栏      │  │     中间栏        │  │    右侧栏     │     │
+│  │  自然语言对话  │  │  结构化UI载体区   │  │  上下文辅助   │     │
+│  │  (NLI/Chat)   │  │ (表单/图表/列表) │  │  (实体概要)   │     │
+│  └──────────────┘  └──────────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+                              ↕ 指令路由 (OPEN_TAB等)
+┌─────────────────────────────────────────────────────────────┐
+│                    第二层：AI引擎层                           │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │              AI智能编排器 (Agent Orchestrator)        │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │   │
+│  │  │ 意图分析     │  │ LLM策略/RAG │  │ 工具执行器   │  │   │
+│  │  │(Intent      │  │(Semantic    │  │(Tools:      │  │   │
+│  │  │ Analysis)   │  │ Injection)  │  │ SQL/Skill/UI)│  │   │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘  │   │
+│  │  ┌─────────────────────────────────────────────────┐  │   │
+│  │  │           自愈与重试机制 (Self-Healing)           │  │   │
+│  │  │    错误反馈 → LLM分析 → 生成修正方案 → 重试      │  │   │
+│  │  └─────────────────────────────────────────────────┘  │   │
+│  └─────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │              领域技能包 (Domain Skills)              │   │
+│  │   contract_service │ customer_service │ invoice_service │   │
+│  │   (Flask Python Services + SQLite)                   │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+                              ↕ 元模型驱动
+┌─────────────────────────────────────────────────────────────┐
+│                    第一层：元模型层                            │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────┐  │
+│  │  数据模型    │ │  行为模型    │ │  规则模型    │ │ 流程模型│  │
+│  │ (Data Model)│ │(Behavior    │ │ (Rule Model)│ │(Process│  │
+│  │             │ │  Model)     │ │             │ │ Model) │  │
+│  │ • 实体定义   │ │ • 状态定义   │ │ • 校验规则   │ │ • 编排 │  │
+│  │ • 属性定义   │ │ • 状态流转   │ │ • 约束条件   │ │ • 决策 │  │
+│  │ • 关联关系   │ │ • 触发动作   │ │ • 触发时机   │ │ • 路由 │  │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └────────┘  │
+│                    models/ (Markdown/JSON/YAML)             │
+└─────────────────────────────────────────────────────────────┘
+2.3 双生命周期引擎
+表格
+阶段	名称	核心机制	输出产物
+生成期	Auto-Dev	AI读取元模型 → 生成代码	DB Schema、Python实体类、Service层、React组件
+运行期	Semantic Enrichment	元模型注入Prompt → AI动态决策	SQL查询、Skill调用、UI指令、可视化配置
+3. 元模型层详细规格
+3.1 元模型通用结构
+所有元模型采用统一的元元模型（Meta-metamodel）定义：
+yaml
+复制
+# metamodel-schema.yaml
+Metamodel:
+  id: string (唯一标识)
+  name: string (显示名称)
+  version: string (语义化版本)
+  domain: string (所属领域，通用框架可为空)
+  definitions: array (具体定义项)
+  created_at: datetime
+  updated_at: datetime
+3.2 数据模型（Data Model）
+3.2.1 核心能力
+全动态实体定义：运行时创建新实体类型，无需代码变更
+属性类型系统：支持基础类型、引用类型、集合类型
+关系定义：一对一、一对多、多对多关系，支持级联操作
+3.2.2 Schema定义
+yaml
+复制
+# data-model.yaml 示例结构
+DataModel:
+  entities:
+    - id: "contract"
+      name: "合同"
+      name_en: "Contract"
+      attributes:
+        - id: "contract_no"
+          name: "合同编号"
+          type: "string"
+          length: 50
+          required: true
+          unique: true
+          
+        - id: "customer_id"
+          name: "客户"
+          type: "reference"
+          ref_entity: "customer"
+          ref_display_field: "name"
+          required: true
+          
+        - id: "total_amount"
+          name: "合同金额"
+          type: "decimal"
+          precision: 18
+          scale: 2
+          required: true
+          
+        - id: "sign_date"
+          name: "签订日期"
+          type: "date"
+          required: false
+          
+        - id: "status"
+          name: "状态"
+          type: "enum"
+          enum_ref: "contract_status"  # 引用行为模型中的状态定义
+          default: "draft"
+          required: true
+          
+        - id: "created_by"
+          name: "创建人"
+          type: "reference"
+          ref_entity: "employee"
+          auto_fill: "current_user"
+          
+      relations:
+        - id: "invoices"
+          name: "关联发票"
+          type: "one_to_many"
+          target_entity: "invoice"
+          foreign_key: "contract_id"
+          cascade: "none"  # 不级联删除，业务规则控制
+          
+        - id: "products"
+          name: "产品清单"
+          type: "many_to_many"
+          target_entity: "product"
+          via_entity: "contract_product"  # 中间实体自动生成
+          
+  indexes:
+    - entity: "contract"
+      fields: ["customer_id", "sign_date"]
+      type: "btree"
+3.2.3 动态实体运行时机制
+Python
+复制
+# 运行时实体注册伪代码
+class DynamicEntityRegistry:
+    def register_entity(self, entity_def: DataEntity):
+        # 1. 创建SQLite表（若不存在）
+        self._create_table(entity_def)
+        # 2. 注册到SQLAlchemy动态映射
+        self._register_sqlalchemy_mapper(entity_def)
+        # 3. 生成Pydantic模型用于API校验
+        self._generate_pydantic_model(entity_def)
+        # 4. 通知AI编排器更新语义上下文
+        self._notify_agent_context_update(entity_def)
+3.2.4 AI语义注入格式
+JSON
+复制
+// 注入AI系统Prompt的数据模型语义
+{
+  "data_model": {
+    "entities": [
+      {
+        "id": "contract",
+        "name": "合同",
+        "description": "企业与客户签署的商务协议",
+        "attributes": [
+          {"id": "total_amount", "name": "合同金额", "type": "decimal", "unit": "元"},
+          {"id": "customer_id", "name": "客户", "type": "reference", "ref_to": "customer"}
+        ],
+        "relations": [
+          {"id": "invoices", "name": "关联发票", "type": "one_to_many", "target": "invoice"}
+        ]
+      }
+    ]
+  }
+}
+3.3 行为模型（Behavior Model）
+3.3.1 核心能力
+简单状态机：线性状态流转，无并行/子状态
+手动触发：状态转换仅由用户界面操作触发
+动作绑定：状态转换可触发预定义动作
+3.3.2 Schema定义
+yaml
+复制
+# behavior-model.yaml
+BehaviorModel:
+  state_machines:
+    - id: "contract_lifecycle"
+      name: "合同生命周期"
+      entity: "contract"  # 绑定的数据实体
+      status_field: "status"  # 实体中存储状态的字段
+      
+      states:
+        - id: "draft"
+          name: "草稿"
+          description: "合同起草阶段，可编辑所有字段"
+          is_initial: true
+          
+        - id: "pending_approval"
+          name: "待审批"
+          description: "已提交，等待审批"
+          
+        - id: "approved"
+          name: "已批准"
+          description: "审批通过，等待签署"
+          
+        - id: "active"
+          name: "生效中"
+          description: "合同已签署，正在执行"
+          
+        - id: "completed"
+          name: "已完成"
+          description: "合同义务履行完毕"
+          is_final: true
+          
+        - id: "cancelled"
+          name: "已作废"
+          description: "合同取消"
+          is_final: true
+          
+      transitions:
+        - id: "submit"
+          name: "提交审批"
+          from: "draft"
+          to: "pending_approval"
+          trigger: "manual"  # 手动触发
+          ui_action: "submit_for_approval"  # 对应前端按钮
+          
+        - id: "approve"
+          name: "审批通过"
+          from: "pending_approval"
+          to: "approved"
+          trigger: "manual"
+          
+        - id: "sign"
+          name: "正式签署"
+          from: "approved"
+          to: "active"
+          trigger: "manual"
+          
+        - id: "complete"
+          name: "履行完成"
+          from: "active"
+          to: "completed"
+          trigger: "manual"
+          
+        - id: "cancel"
+          name: "作废"
+          from: ["draft", "pending_approval", "approved", "active"]
+          to: "cancelled"
+          trigger: "manual"
+          
+      actions:  # 状态转换时触发的动作
+        - transition: "submit"
+          action_type: "validate"
+          rule_refs: ["contract_amount_positive", "customer_active"]  # 引用规则模型
+          
+        - transition: "sign"
+          action_type: "notify"
+          template: "contract_activated"
+          recipients: ["customer.contact_email", "created_by.email"]
+3.3.3 运行时状态机引擎
+Python
+复制
+class SimpleStateMachine:
+    def can_transition(self, entity, transition_id: str) -> bool:
+        current_state = entity.status
+        transition = self.get_transition(transition_id)
+        
+        # 检查当前状态是否匹配
+        if current_state not in transition.from_states:
+            return False
+            
+        # 检查规则条件（引用规则模型）
+        for rule_ref in transition.pre_conditions:
+            if not self.rule_engine.evaluate(rule_ref, entity):
+                return False
+                
+        return True
+    
+    def execute_transition(self, entity, transition_id: str, user: User):
+        if not self.can_transition(entity, transition_id):
+            raise InvalidTransitionError()
+            
+        transition = self.get_transition(transition_id)
+        
+        # 执行前置动作
+        self.execute_actions(transition.pre_actions, entity)
+        
+        # 更新状态
+        old_state = entity.status
+        entity.status = transition.to
+        entity.save()
+        
+        # 执行后置动作
+        self.execute_actions(transition.post_actions, entity)
+        
+        # 记录状态变更（即使Q4选择无审计，状态变更本身需要追踪用于业务逻辑）
+        self.log_state_change(entity, old_state, transition.to, user)
+3.4 规则模型（Rule Model）
+3.4.1 核心能力
+支持全部五类规则，规则存储于数据库，修改后热加载，但需配套版本迭代流程。
+3.4.2 Schema定义
+yaml
+复制
+# rule-model.yaml
+RuleModel:
+  rules:
+    # 1. 字段级校验
+    - id: "contract_no_format"
+      name: "合同编号格式"
+      type: "field_validation"
+      entity: "contract"
+      field: "contract_no"
+      condition:
+        type: "regex"
+        pattern: "^HT-[0-9]{4}-[0-9]{6}$"
+      error_message: "合同编号格式应为HT-YYYY-NNNNNN"
+      
+    - id: "amount_positive"
+      name: "金额必须为正数"
+      type: "field_validation"
+      entity: "contract"
+      field: "total_amount"
+      condition:
+        type: "range"
+        min: 0
+        exclusive_min: true
+      error_message: "合同金额必须大于0"
+      
+    # 2. 跨字段校验
+    - id: "date_logic"
+      name: "日期逻辑"
+      type: "cross_field_validation"
+      entity: "contract"
+      condition:
+        type: "expression"
+        expression: "end_date > start_date"
+        fields: ["start_date", "end_date"]
+      error_message: "结束日期必须晚于开始日期"
+      
+    # 3. 跨实体校验
+    - id: "customer_active"
+      name: "客户必须激活"
+      type: "cross_entity_validation"
+      entity: "contract"
+      condition:
+        type: "reference_check"
+        field: "customer_id"
+        ref_entity: "customer"
+        ref_field: "status"
+        ref_value: "active"
+      error_message: "只能与状态为激活的客户签署合同"
+      
+    # 4. 聚合校验
+    - id: "amount_match"
+      name: "金额匹配"
+      type: "aggregation_validation"
+      entity: "contract"
+      condition:
+        type: "sum_match"
+        master_field: "total_amount"
+        detail_entity: "payment_schedule"
+        detail_field: "amount"
+        detail_foreign_key: "contract_id"
+      error_message: "合同总金额必须等于各期收款金额之和"
+      
+    # 5. 时序规则
+    - id: "first_invoice_timing"
+      name: "首票时限"
+      type: "temporal_rule"
+      entity: "contract"
+      trigger:
+        event: "state_change"
+        from: "approved"
+        to: "active"
+      condition:
+        type: "deadline"
+        deadline_field: "sign_date"
+        days_after: 30
+        check_entity: "invoice"
+        check_condition: "exists with type='first' and contract_id={{entity.id}}"
+      error_message: "合同生效后30天内必须开具首张发票"
+      severity: "warning"  # warning/blocking
+3.4.3 规则引擎执行
+Python
+复制
+class RuleEngine:
+    def evaluate(self, rule_id: str, context: Dict) -> ValidationResult:
+        rule = self.load_rule_from_db(rule_id)
+        
+        evaluator = self.get_evaluator(rule.type)
+        return evaluator.evaluate(rule, context)
+    
+    def validate_entity(self, entity, action: str = None) -> List[ValidationResult]:
+        """验证实体是否符合所有适用规则"""
+        applicable_rules = self.get_rules_for_entity(entity.__class__.__name__, action)
+        
+        results = []
+        for rule in applicable_rules:
+            result = self.evaluate(rule.id, {"entity": entity})
+            results.append(result)
+            
+        return results
+3.5 流程模型（Process Model）
+3.5.1 核心能力
+AI原生编排：无预设BPMN流程图，由AI Agent根据上下文动态决策
+工具链组合：通过调用数据查询、Skill执行、UI路由等工具完成业务流程
+确定性约束：关键节点通过规则模型校验确保可控性
+3.5.2 Schema定义
+yaml
+复制
+# process-model.yaml
+ProcessModel:
+  orchestrations:
+    - id: "contract_creation"
+      name: "合同创建流程"
+      description: "从意向到合同生效的完整流程"
+      entry_points: ["user_intent:create_contract", "ui_action:new_contract"]
+      
+      # AI编排策略定义（非预设流程，而是决策上下文）
+      strategy:
+        context_gathering:
+          - "识别客户信息（询问或从上下文提取）"
+          - "确定合同类型和产品"
+          - "收集金额、期限等关键要素"
+          
+        validation_steps:
+          - rule: "customer_active"
+          - rule: "amount_positive"
+          
+        decision_points:
+          - condition: "total_amount > 1000000"
+            action: "add_approval_step:ceo"
+            
+        completion_actions:
+          - skill: "contract_service.create"
+          - ui: "OPEN_TAB:contract_detail"
+          
+    - id: "data_analysis"
+      name: "数据分析流程"
+      description: "用户自然语言查询的数据分析流程"
+      entry_points: ["user_intent:analyze_data"]
+      
+      strategy:
+        steps:
+          - intent_clarification: "解析用户查询意图，识别实体和指标"
+          - query_generation: "生成SQL查询（带自检机制）"
+          - data_retrieval: "执行只读查询"
+          - insight_generation: "分析结果并生成见解"
+          - visualization: "根据数据类型选择图表（ECharts/Mermaid）"
+          - presentation: "格式化输出到对话流"
+3.5.3 AI编排器运行时
+详见第4章。
+4. AI引擎层规格
+4.1 AI编排器（Agent Orchestrator）架构
+plain
+复制
+┌─────────────────────────────────────────────────────────┐
+│                    AI Agent Orchestrator                 │
+├─────────────────────────────────────────────────────────┤
+│  1. 上下文管理器 (Context Manager)                        │
+│     ├── 会话历史存储（SQLite）                            │
+│     ├── 当前聚焦实体追踪（Focus Entity）                  │
+│     └── 元模型语义缓存（Memory/Redis）                    │
+├─────────────────────────────────────────────────────────┤
+│  2. 意图分析器 (Intent Analyzer)                          │
+│     ├── 分类器：查询/录入/分析/操作/导航                   │
+│     ├── 实体识别：从自然语言提取实体引用                   │
+│     └── 参数提取：识别时间范围、条件、聚合需求             │
+├─────────────────────────────────────────────────────────┤
+│  3. 策略引擎 (Strategy Engine)                           │
+│     ├── 语义注入：组装System Prompt（元模型+上下文）       │
+│     └── LLM调用：单模型策略（DeepSeek-V3/GPT-4）          │
+├─────────────────────────────────────────────────────────┤
+│  4. 工具执行器 (Tool Executor)                            │
+│     ├── execute_query: 只读SQL执行（安全过滤）             │
+│     ├── call_skill: 领域服务调用（写操作）                 │
+│     ├── render_ui: 生成UI指令（OPEN_TAB等）                │
+│     └── generate_chart: 图表配置生成（ECharts/Mermaid）   │
+├─────────────────────────────────────────────────────────┤
+│  5. 自愈机制 (Self-Healing)                               │
+│     └── 错误捕获 → 上下文反馈 → LLM修正 → 重试（最多2次）  │
+└─────────────────────────────────────────────────────────┘
+4.2 系统Prompt模板（结构化注入）
+jinja2
+复制
+# System Prompt Template
+你是一个企业级业务系统的AI助手，具备以下领域知识：
+
+【数据模型】
+{{ data_model_json }}
+
+【行为模型】
+{{ behavior_model_json }}
+
+【规则模型】
+{{ rule_model_json }}
+
+【流程模型】
+{{ process_model_json }}
+
+【当前上下文】
+- 当前用户：{{ user.name }} ({{ user.role }})
+- 会话历史：{{ conversation_history }}
+- 当前聚焦实体：{{ focus_entity }}
+
+【可用工具】
+1. execute_query: 执行数据查询（只读）
+   - 参数：sql (string)
+   - 限制：自动阻断UPDATE/DELETE/INSERT
+   
+2. call_skill: 调用业务技能（写操作）
+   - 参数：skill_name (string), parameters (object)
+   - 可用技能：{{ available_skills }}
+   
+3. open_ui: 打开UI页面
+   - 参数：page (string), params (object)
+   
+4. generate_chart: 生成图表配置
+   - 参数：chart_type (string), data (array), config (object)
+
+【响应格式】
+你必须使用Function Calling格式响应，选择合适工具并填充参数。
+4.3 工具定义（Function Calling Schema）
+JSON
+复制
+{
+  "tools": [
+    {
+      "name": "execute_query",
+      "description": "执行安全的只读SQL查询，自动阻断任何数据修改操作",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sql": {
+            "type": "string",
+            "description": "SELECT语句，支持JOIN、GROUP BY、聚合函数"
+          },
+          "explanation": {
+            "type": "string",
+            "description": "用自然语言解释这条查询的业务意图"
+          }
+        },
+        "required": ["sql", "explanation"]
+      }
+    },
+    {
+      "name": "call_skill",
+      "description": "调用后端领域服务执行写操作或复杂业务逻辑",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "skill_name": {
+            "type": "string",
+            "enum": ["contract_service.create", "contract_service.update", "contract_service.transition", "customer_service.create", "invoice_service.create"]
+          },
+          "parameters": {
+            "type": "object",
+            "description": "技能所需的参数对象"
+          }
+        },
+        "required": ["skill_name", "parameters"]
+      }
+    },
+    {
+      "name": "open_ui",
+      "description": "指示前端打开特定页面或表单",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["OPEN_TAB", "OPEN_MODAL", "NAVIGATE"]
+          },
+          "page": {
+            "type": "string",
+            "description": "页面标识，如contract_list, contract_form, customer_detail"
+          },
+          "params": {
+            "type": "object",
+            "description": "页面参数，如{id: 123, mode: 'edit'}"
+          }
+        },
+        "required": ["action", "page"]
+      }
+    },
+    {
+      "name": "generate_chart",
+      "description": "生成数据可视化图表配置",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "chart_type": {
+            "type": "string",
+            "enum": ["bar", "line", "pie", "scatter", "table", "mermaid_flow", "mermaid_er", "relation_graph", "gantt"]
+          },
+          "title": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "description": "图表数据数组"
+          },
+          "config": {
+            "type": "object",
+            "description": "ECharts/Mermaid配置项"
+          }
+        },
+        "required": ["chart_type", "title", "data"]
+      }
+    },
+    {
+      "name": "respond",
+      "description": "直接向用户返回自然语言响应",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Markdown格式的响应内容"
+          },
+          "suggestions": {
+            "type": "array",
+            "description": "建议的下一步操作",
+            "items": {"type": "string"}
+          }
+        },
+        "required": ["message"]
+      }
+    }
+  ]
+}
+4.4 自愈机制（Self-Healing）详细规格
+Python
+复制
+class SelfHealingExecutor:
+    MAX_RETRIES = 2
+    
+    def execute_with_healing(self, tool_call: Dict, context: Dict) -> Result:
+        attempt = 0
+        last_error = None
+        
+        while attempt <= self.MAX_RETRIES:
+            try:
+                result = self.execute_tool(tool_call)
+                return Success(result)
+                
+            except ExecutionError as e:
+                last_error = e
+                attempt += 1
+                
+                if attempt > self.MAX_RETRIES:
+                    break
+                
+                # 构建修正Prompt
+                healing_prompt = self._build_healing_prompt(
+                    original_call=tool_call,
+                    error_message=str(e),
+                    error_type=e.type,
+                    context=context
+                )
+                
+                # 请求LLM生成修正方案
+                correction = self.llm.generate_correction(healing_prompt)
+                
+                # 更新tool_call参数
+                tool_call = self._apply_correction(tool_call, correction)
+        
+        # 重试耗尽，返回错误
+        return Failure(
+            message="执行失败，已达到最大重试次数",
+            last_error=str(last_error),
+            attempts=attempt
+        )
+    
+    def _build_healing_prompt(self, original_call, error_message, error_type, context):
+        return f"""
+执行工具调用时发生错误，请分析并生成修正方案。
+
+原始调用：
+{json.dumps(original_call, indent=2)}
+
+错误信息：{error_message}
+错误类型：{error_type}
+
+当前数据模型上下文：
+{context['data_model']}
+
+请分析错误原因，并返回修正后的工具调用参数。
+如果是SQL错误（如字段不存在），请检查数据模型定义并修正字段名。
+如果是参数错误，请修正参数格式或值。
+
+响应格式：JSON对象，包含"corrected_call"字段
+"""
+4.5 领域技能包（Domain Skills）
+Python
+复制
+# Skill接口规范
+class DomainSkill(ABC):
+    @property
+    @abstractmethod
+    def name(self) -> str: pass
+    
+    @property
+    @abstractmethod
+    def parameters_schema(self) -> Dict: pass
+    
+    @abstractmethod
+    def execute(self, parameters: Dict, user: User) -> SkillResult: pass
+    
+    @property
+    def required_permissions(self) -> List[str]:
+        return []
+
+# 示例：合同服务
+class ContractService(DomainSkill):
+    name = "contract_service"
+    
+    def create(self, parameters: Dict, user: User) -> SkillResult:
+        """创建合同"""
+        # 1. 参数校验（Pydantic模型）
+        data = ContractCreateSchema(**parameters)
+        
+        # 2. 规则校验（调用规则引擎）
+        validation_results = rule_engine.validate_entity(data, action="create")
+        if not all(r.is_valid for r in validation_results):
+            return SkillResult.error(validation_results)
+        
+        # 3. 状态机校验（初始状态）
+        if data.status != "draft":
+            return SkillResult.error("新合同必须是草稿状态")
+        
+        # 4. 持久化
+        contract = Contract(**data.dict())
+        contract.save()
+        
+        # 5. 返回结果
+        return SkillResult.success({
+            "id": contract.id,
+            "message": f"合同 {contract.contract_no} 创建成功"
+        })
+    
+    def transition(self, parameters: Dict, user: User) -> SkillResult:
+        """状态流转"""
+        contract_id = parameters.get("contract_id")
+        transition_id = parameters.get("transition_id")
+        
+        contract = Contract.get_by_id(contract_id)
+        
+        # 调用状态机引擎
+        try:
+            state_machine.execute_transition(contract, transition_id, user)
+            return SkillResult.success({
+                "new_status": contract.status,
+                "message": f"合同状态已变更为 {contract.status}"
+            })
+        except InvalidTransitionError as e:
+            return SkillResult.error(str(e))
+5. 混合交互层规格
+5.1 三栏式布局详细规格
+plain
+复制
+┌─────────────────────────────────────────────────────────────────────────┐
+│  顶部导航栏 (全局)                                                        │
+│  [Logo] [全局搜索] [通知] [用户头像▼]                                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│  左栏: 240px固定宽度    │  中栏: 自适应剩余宽度    │  右栏: 280px固定宽度   │
+│  ┌─────────────────┐   │  ┌───────────────────┐   │  ┌─────────────────┐   │
+│  │ 对话历史         │   │ │  当前活动区域      │   │ │ 上下文辅助面板   │   │
+│  │                 │   │ │                   │   │ │                 │   │
+│  │ [新对话]         │   │ │ ┌─────────────┐   │   │ │ 当前聚焦:        │   │
+│  │                 │   │ │ │  列表视图    │   │   │ │ 合同 #2025-001  │   │
+│  │ • 今天          │   │ │ │  /表单视图   │   │   │ │                 │   │
+│  │   - 合同查询... │   │ │ │  /图表视图   │   │   │ │ [查看详情]      │   │
+│  │   - 创建客户... │   │ │ │  /空白欢迎页 │   │   │ │ [相关操作▼]     │   │
+│  │                 │   │ │ └─────────────┘   │   │ │                 │   │
+│  │ • 昨天          │   │ │                   │   │ │ 快捷操作:        │   │
+│  │   - 月度报表... │   │ │                   │   │ │ [新建发票]      │   │
+│  │                 │   │ │                   │   │ │ [查看付款计划]  │   │
+│  │                 │   │ │                   │   │ │                 │   │
+│  ├─────────────────┤   │ ├───────────────────┤   │ ├─────────────────┤   │
+│  │ 输入框           │   │ │  AI指令状态栏      │   │ │ 相关实体         │   │
+│  │ [                │   │ │  [执行中.../完成]  │   │ │ • 客户: 张三    │   │
+│  │  输入指令或问题.. │   │ │                   │   │ │ • 产品: SaaS版  │   │
+│  │ ] [发送]         │   │ │                   │   │ │ • 发票: 3张     │   │
+│  └─────────────────┘   │ └───────────────────┘   │ └─────────────────┘   │
+│                        │                         │                     │
+│  高度: 100vh            │  高度: 100vh            │  高度: 100vh         │
+│  可折叠: 是 (点击[<])   │  最小宽度: 600px        │  可折叠: 是 (点击[>]) │
+└─────────────────────────────────────────────────────────────────────────┘
+5.2 页面级UI路由规格
+表格
+页面标识	类型	参数	用途
+welcome	空白页	-	初始欢迎，展示快捷入口
+entity_list	列表	entity (实体类型)	实体列表视图
+entity_form	表单	entity, id?, mode (create/edit/view)	实体录入/编辑
+entity_detail	详情	entity, id	实体详情展示
+dashboard	仪表盘	type (统计类型)	数据概览面板
+chart_view	图表	chart_type, query_id	全屏图表展示
+5.3 AI指令协议（前后端通信）
+TypeScript
+复制
+// AI指令类型定义
+type AIAction = 
+  | { type: 'OPEN_TAB'; page: string; params?: Record<string, any> }
+  | { type: 'OPEN_MODAL'; page: string; params?: Record<string, any> }
+  | { type: 'NAVIGATE'; page: string; params?: Record<string, any> }
+  | { type: 'REFRESH_DATA'; entity?: string; id?: string }
+  | { type: 'SHOW_MESSAGE'; level: 'info' | 'success' | 'warning' | 'error'; content: string }
+  | { type: 'SET_FOCUS'; entity: string; id: string }
+  | { type: 'EXECUTE_QUERY'; sql: string; explanation: string }
+  | { type: 'CALL_SKILL'; skill: string; params: Record<string, any> }
+  | { type: 'RENDER_CHART'; config: EChartsConfig | MermaidConfig }
+  | { type: 'RESPOND'; message: string; suggestions?: string[] };
+
+// 后端响应格式
+interface AIResponse {
+  session_id: string;
+  message_id: string;
+  actions: AIAction[];
+  context_updates?: {
+    focus_entity?: { type: string; id: string };
+    conversation_state?: 'idle' | 'waiting_input' | 'executing';
+  };
+}
+5.4 可视化渲染规格
+ECharts图表（统计类）
+TypeScript
+复制
+// AI生成的ECharts配置示例（饼图）
+interface PieChartConfig {
+  type: 'echarts';
+  option: {
+    title: { text: string; subtext?: string };
+    tooltip: { trigger: 'item'; formatter: string };
+    legend: { orient: 'vertical'; left: 'left' };
+    series: [{
+      type: 'pie';
+      radius: ['40%', '70%'];  // 环形图
+      data: Array<{name: string; value: number}>;
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10;
+          shadowOffsetX: 0;
+          shadowColor: 'rgba(0, 0, 0, 0.5)';
+        };
+      };
+      label: {
+        formatter: '{b}: {c}万元 ({d}%)';  // 自动换算万元
+      };
+    }];
+    color: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de'];  // 商务配色
+  };
+}
+Mermaid图表（流程/关系类）
+TypeScript
+复制
+// AI生成的Mermaid配置示例（流程图）
+interface MermaidFlowConfig {
+  type: 'mermaid';
+  subtype: 'flowchart' | 'erDiagram' | 'gantt';
+  definition: string;  // Mermaid语法字符串
+  
+  // 示例：合同审批流程
+  example: `
+    flowchart TD
+      A[草稿] -->|提交审批| B[待审批]
+      B -->|审批通过| C[已批准]
+      B -->|驳回| A
+      C -->|正式签署| D[生效中]
+      D -->|履行完成| E[已完成]
+      D -->|提前终止| F[已作废]
+  `;
+}
+
+// AI生成的关系图谱（D3/G6）
+interface RelationGraphConfig {
+  type: 'relation_graph';
+  nodes: Array<{
+    id: string;
+    name: string;
+    entity_type: string;  // 'contract' | 'customer' | 'invoice' | ...
+    properties: Record<string, any>;
+  }>;
+  edges: Array<{
+    source: string;
+    target: string;
+    relation: string;  // 'belongs_to' | 'has_many' | 'references' | ...
+    properties?: Record<string, any>;
+  }>;
+  layout: 'force' | 'circular' | 'hierarchical';
+}
+5.5 前端组件架构
+plain
+复制
+src/
+├── components/
+│   ├── layout/
+│   │   ├── ThreeColumnLayout.tsx      # 三栏式布局容器
+│   │   ├── LeftSidebar.tsx            # 左栏：对话历史
+│   │   ├── CenterPanel.tsx            # 中栏：动态内容区
+│   │   └── RightSidebar.tsx           # 右栏：上下文辅助
+│   ├── chat/
+│   │   ├── ChatHistory.tsx            # 对话历史列表
+│   │   ├── ChatInput.tsx              # 输入框
+│   │   ├── MessageBubble.tsx          # 消息气泡（支持Markdown/图表）
+│   │   └── SuggestionChips.tsx        # 建议操作芯片
+│   ├── ui/
+│   │   ├── EntityList.tsx             # 实体列表（静态生成）
+│   │   ├── EntityForm.tsx             # 实体表单（静态生成）
+│   │   ├── EntityDetail.tsx           # 实体详情
+│   │   └── Dashboard.tsx              # 仪表盘
+│   └── visualization/
+│       ├── EChartsRenderer.tsx        # ECharts图表渲染
+│       ├── MermaidRenderer.tsx        # Mermaid图表渲染
+│       └── RelationGraph.tsx          # 关系图谱渲染
+├── pages/                               # 静态生成的页面组件
+│   ├── ContractList.tsx               # 合同列表页（AI生成）
+│   ├── ContractForm.tsx               # 合同表单页（AI生成）
+│   ├── CustomerList.tsx               # 客户列表页（AI生成）
+│   └── ...
+├── services/
+│   ├── aiAgent.ts                     # AI编排器通信服务
+│   ├── entityService.ts               # 实体CRUD服务
+│   └── skillService.ts                # 领域技能调用服务
+└── store/
+    ├── context.ts                       # 全局状态（当前用户、聚焦实体）
+    └── conversationStore.ts            # 对话历史状态
+6. 技术实现方案
+6.1 技术栈总览
+表格
+层级	技术选型	版本/说明
+后端	Python + Flask	2.3+
+数据库	SQLite	单文件，开发演示
+ORM	SQLAlchemy	2.0+，支持动态映射
+数据校验	Pydantic	2.0+
+AI集成	OpenAI SDK / DeepSeek API	Function Calling
+前端	React + TypeScript	18+
+UI组件	Ant Design	5.0+
+图表	ECharts	5.0+
+流程图	Mermaid.js	10.0+
+状态管理	Zustand	轻量级
+构建	Vite	快速开发
+6.2 后端架构详细
+plain
+复制
+backend/
+├── app.py                      # Flask应用入口
+├── config.py                   # 配置管理
+├── models/                     # 数据库模型（动态生成+基础模型）
+│   ├── dynamic_entity.py       # 动态实体基类
+│   ├── data_model_registry.py  # 数据模型注册中心
+│   └── audit_log.py            # 操作日志（即使Q4无审计，基础日志保留）
+├── metamodels/                 # 元模型定义存储
+│   ├── data/                   # 数据模型YAML/JSON
+│   ├── behavior/               # 行为模型YAML/JSON
+│   ├── rules/                  # 规则模型YAML/JSON
+│   └── process/                # 流程模型YAML/JSON
+├── services/                   # 领域技能包
+│   ├── base_skill.py           # Skill基类
+│   ├── contract_service.py     # 合同服务（示例）
+│   ├── customer_service.py     # 客户服务（示例）
+│   └── invoice_service.py      # 发票服务（示例）
+├── ai/                         # AI编排器
+│   ├── agent_orchestrator.py   # 主编排器
+│   ├── context_manager.py      # 上下文管理
+│   ├── intent_analyzer.py      # 意图分析
+│   ├── tool_executor.py        # 工具执行器
+│   ├── self_healing.py         # 自愈机制
+│   └── prompt_templates/       # Prompt模板
+│       └── system_prompt.jinja2
+├── rules/                      # 规则引擎
+│   ├── rule_engine.py          # 主引擎
+│   ├── evaluators/             # 各类规则求值器
+│   └── loaders/                # 规则加载器（DB热加载）
+├── state_machine/              # 状态机引擎
+│   ├── simple_state_machine.py # 简单状态机实现
+│   └── transition_validator.py # 转换校验器
+├── api/                        # REST API路由
+│   ├── chat.py                 # 对话接口
+│   ├── entities.py             # 实体CRUD接口
+│   ├── skills.py               # 技能调用接口
+│   └── metamodels.py           # 元模型管理接口
+└── utils/                      # 工具函数
+    ├── sql_sanitizer.py        # SQL注入防护
+    └── security_filter.py      # 安全过滤器
+6.3 数据库Schema设计
+sql
+复制
+-- 元数据表（系统核心）
+CREATE TABLE _meta_entities (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    name_en TEXT,
+    definition JSON NOT NULL,  -- 完整实体定义
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE _meta_attributes (
+    id TEXT PRIMARY KEY,
+    entity_id TEXT REFERENCES _meta_entities(id),
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,  -- string/integer/decimal/date/datetime/boolean/reference/enum/json
+    definition JSON NOT NULL,  -- 包含长度、精度、是否必填等
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE _meta_relations (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    from_entity TEXT REFERENCES _meta_entities(id),
+    to_entity TEXT REFERENCES _meta_entities(id),
+    type TEXT NOT NULL,  -- one_to_one/one_to_many/many_to_many
+    via_entity TEXT,  -- 多对多时的中间表
+    definition JSON NOT NULL
+);
+
+-- 行为模型表
+CREATE TABLE _meta_state_machines (
+    id TEXT PRIMARY KEY,
+    entity_id TEXT REFERENCES _meta_entities(id),
+    status_field TEXT NOT NULL,
+    definition JSON NOT NULL
+);
+
+-- 规则模型表
+CREATE TABLE _meta_rules (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,  -- field_validation/cross_field/cross_entity/aggregation/temporal
+    entity_id TEXT REFERENCES _meta_entities(id),
+    definition JSON NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    version INTEGER DEFAULT 1
+);
+
+-- 动态实体数据表（通用结构，EAV模式支撑全动态）
+CREATE TABLE _entity_data (
+    id TEXT PRIMARY KEY,
+    entity_type TEXT REFERENCES _meta_entities(id),
+    data JSON NOT NULL,  -- 所有属性值存储为JSON
+    status TEXT,  -- 当前状态（如有状态机）
+    created_by TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 关系数据表（独立存储多对多关系）
+CREATE TABLE _entity_relations (
+    id TEXT PRIMARY KEY,
+    relation_id TEXT REFERENCES _meta_relations(id),
+    from_entity_id TEXT REFERENCES _entity_data(id),
+    to_entity_id TEXT REFERENCES _entity_data(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 会话管理（支持Q14会话级上下文）
+CREATE TABLE _conversations (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    title TEXT,
+    focus_entity_type TEXT,
+    focus_entity_id TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE _conversation_messages (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT REFERENCES _conversations(id),
+    role TEXT NOT NULL,  -- user/assistant/system
+    content TEXT NOT NULL,
+    tool_calls JSON,  -- AI的Function Calling记录
+    context_snapshot JSON,  -- 发送时的元模型快照
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+6.4 AI集成详细规格
+6.4.1 单模型策略配置
+Python
+复制
+# config.py
+AI_CONFIG = {
+    "provider": "deepseek",  # 或 "openai"
+    "model": "deepseek-chat",  # 或 "gpt-4"
+    "api_key": os.getenv("DEEPSEEK_API_KEY"),
+    "base_url": "https://api.deepseek.com/v1",
+    "temperature": 0.3,  # 低温度确保确定性
+    "max_tokens": 4096,
+    "timeout": 30,
+    "function_calling": {
+        "auto": True,  # 模型自动选择工具
+    }
+}
+6.4.2 语义注入实现
+Python
+复制
+class SemanticInjector:
+    def __init__(self):
+        self.cache = {}
+        self.cache_ttl = 60  # 元模型变更不频繁，可缓存
+    
+    def get_system_prompt(self, conversation_id: str) -> str:
+        # 1. 加载四大元模型
+        data_model = self._load_data_model()
+        behavior_model = self._load_behavior_model()
+        rule_model = self._load_rule_model()
+        process_model = self._load_process_model()
+        
+        # 2. 获取会话上下文
+        context = self._get_conversation_context(conversation_id)
+        
+        # 3. 渲染Prompt模板
+        template = self._get_template()
+        return template.render(
+            data_model=json.dumps(data_model, ensure_ascii=False),
+            behavior_model=json.dumps(behavior_model, ensure_ascii=False),
+            rule_model=json.dumps(rule_model, ensure_ascii=False),
+            process_model=json.dumps(process_model, ensure_ascii=False),
+            user=context['user'],
+            conversation_history=context['history'],
+            focus_entity=context['focus_entity']
+        )
+6.5 安全规格
+6.5.1 SQL安全过滤（Q25基础过滤）
+Python
+复制
+class SQLSecurityFilter:
+    FORBIDDEN_KEYWORDS = [
+        'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER',
+        'TRUNCATE', 'EXEC', 'EXECUTE', 'UNION', '--', '/*', '*/'
+    ]
+    
+    @staticmethod
+    def validate(sql: str) -> bool:
+        upper_sql = sql.upper()
+        
+        # 1. 必须是SELECT开头
+        if not upper_sql.strip().startswith('SELECT'):
+            raise SecurityError("只允许SELECT查询")
+        
+        # 2. 检查禁止关键字
+        for keyword in SQLSecurityFilter.FORBIDDEN_KEYWORDS:
+            if keyword in upper_sql:
+                raise SecurityError(f"检测到禁止关键字: {keyword}")
+        
+        # 3. 检查注释
+        if '--' in sql or '/*' in sql:
+            raise SecurityError("不允许SQL注释")
+        
+        # 4. 检查多语句
+        if ';' in sql and not sql.strip().endswith(';'):
+            raise SecurityError("不允许多SQL语句")
+        
+        return True
+    
+    @staticmethod
+    def sanitize(sql: str) -> str:
+        # 强制添加LIMIT防止大数据查询（生产环境可配置）
+        if 'LIMIT' not in sql.upper():
+            sql = f"{sql.strip()} LIMIT 1000"
+        return sql
+6.5.2 基础输入过滤
+Python
+复制
+class InputFilter:
+    SENSITIVE_PATTERNS = [
+        r'忽略之前所有指令',
+        r'忽略上述.*指令',
+        r'forget previous',
+        r'ignore all above',
+    ]
+    
+    @staticmethod
+    def check(user_input: str) -> bool:
+        for pattern in InputFilter.SENSITIVE_PATTERNS:
+            if re.search(pattern, user_input, re.IGNORECASE):
+                return False
+        return True
+7. 非功能性需求
+7.1 性能需求
+表格
+指标	目标值	说明
+页面首屏加载	< 3秒	包含JS bundle加载和初始化
+AI响应时间（简单查询）	< 5秒	意图明确、单步执行
+AI响应时间（复杂分析）	< 15秒	涉及多步推理、SQL生成
+列表页数据加载	< 1秒	常规分页查询（<100条）
+表单提交响应	< 2秒	含规则校验和保存
+并发用户支持	1-5人	单体Flask + SQLite支撑
+单租户数据量	< 1万条实体记录	SQLite单文件性能拐点
+7.2 可用性需求
+表格
+需求	说明
+自愈成功率	SQL/工具执行错误后，1-2次重试内成功率 > 80%
+降级策略	AI服务不可用时，前端自动切换至纯UI模式（禁用NLI）
+数据持久化	SQLite自动备份（每日），支持导出迁移
+7.3 可维护性需求
+表格
+需求	说明
+元模型热加载	规则/流程模型修改后，无需重启服务即可生效（Q8配置期）
+代码生成可追溯	Auto-Dev生成的代码需包含元模型版本标记，支持重新生成
+日志记录	所有AI交互、工具调用、状态变更记录至SQLite日志表
+7.4 兼容性需求
+表格
+需求	说明
+浏览器支持	Chrome 90+, Edge 90+, Firefox 88+, Safari 14+
+响应式	三栏式布局仅支持桌面端（>1280px），移动端提示使用桌面访问
+8. 实施路线图
+8.1 里程碑规划（16-24周）
+plain
+复制
+Week 1-4: 基础架构搭建（M1）
+├── 后端：Flask项目结构、SQLite基础表、SQLAlchemy动态映射
+├── 前端：React+TypeScript项目、三栏式布局框架
+├── 元模型：数据模型Schema定义和持久化
+└── 交付：可动态创建实空的系统框架
+
+Week 5-8: 元模型引擎（M2）
+├── 数据模型：全动态实体CRUD API
+├── 行为模型：简单状态机引擎
+├── 规则模型：五类规则求值器
+├── AI集成：基础对话接口、语义注入
+└── 交付：可通过API操作动态实体，AI能理解实体结构
+
+Week 9-12: AI编排器核心（M3）
+├── Function Calling工具定义实现
+├── 意图分析器（查询/录入/分析/导航）
+├── 工具执行器（execute_query/call_skill/open_ui）
+├── 自愈机制（错误反馈-修正-重试循环）
+└── 交付：AI能执行查询、调用技能、打开页面
+
+Week 13-16: 混合交互层（M4）
+├── 前端静态页面生成（基于元模型）
+├── 可视化渲染（ECharts/Mermaid/关系图谱）
+├── 对话流与UI状态同步
+├── 右栏上下文辅助面板
+└── 交付：完整的三栏式混合交互体验
+
+Week 17-20: 流程模型与优化（M5）
+├── AI原生编排策略实现
+├── 分析性查询支持（Data-to-Insight）
+├── 自愈机制优化
+├── 性能调优（查询优化、缓存）
+└── 交付：支持复杂业务分析和流程编排
+
+Week 21-24: 集成测试与文档（M6）
+├── 端到端测试（合同管理场景全流程）
+├── 技术文档（API文档、架构说明）
+├── 用户手册（元模型定义指南、操作手册）
+├── 部署脚本和配置模板
+└── 交付：可演示的完整系统
+8.2 风险与缓解策略
+表格
+风险	可能性	影响	缓解策略
+AI生成SQL准确性不足	中	高	强化自愈机制，限制查询复杂度，关键查询人工确认
+全动态模型性能瓶颈	中	中	MVP数据量<1万，后续迁移PostgreSQL+分区
+元模型设计过于抽象	中	高	早期引入真实业务场景验证（合同管理）
+单模型Function Calling稳定性	低	高	备选ReAct模式，Prompt工程优化
+三栏式布局用户体验不佳	中	中	早期用户测试，预留布局调整空间
+8.3 验收标准
+表格
+场景	验收标准
+动态实体创建	管理员通过UI定义新实体"项目"，无需重启，AI立即理解该实体结构
+自然语言查询	用户输入"按部门统计本季度合同金额饼图"，AI生成正确SQL+ECharts配置，10秒内展示结果
+分析性查询	用户输入"找出可能存在回款风险的合同"，AI基于规则推断风险条件，返回符合条件的合同列表及理由
+混合交互	用户说"录入新合同"，AI返回OPEN_TAB指令，中栏打开合同表单，右栏显示客户选择辅助
+状态流转	用户在合同详情页点击"提交审批"，状态机校验规则通过后变更状态，AI在对话流确认操作结果
+自愈机制	AI生成错误SQL（如字段名拼写错误），系统捕获错误、反馈LLM、自动修正，2次内成功执行
+附录
+A. 元模型YAML完整示例
+yaml
+复制
+# contract-domain.yaml
+domain:
+  id: "contract_management"
+  name: "合同管理"
+  version: "1.0.0"
+
+data_model:
+  entities:
+    - id: "department"
+      name: "部门"
+      attributes:
+        - { id: "dept_code", name: "部门编码", type: "string", length: 20, required: true, unique: true }
+        - { id: "dept_name", name: "部门名称", type: "string", length: 50, required: true }
+        
+    - id: "employee"
+      name: "员工"
+      attributes:
+        - { id: "emp_code", name: "员工编号", type: "string", length: 20, required: true, unique: true }
+        - { id: "emp_name", name: "姓名", type: "string", length: 50, required: true }
+        - { id: "dept_id", name: "所属部门", type: "reference", ref_entity: "department", required: true }
+        - { id: "email", name: "邮箱", type: "string", format: "email" }
+        
+    - id: "customer"
+      name: "客户"
+      attributes:
+        - { id: "customer_code", name: "客户编码", type: "string", length: 20, required: true, unique: true }
+        - { id: "name", name: "客户名称", type: "string", length: 100, required: true }
+        - { id: "status", name: "客户状态", type: "enum", values: ["prospect", "active", "inactive"], default: "prospect" }
+        - { id: "contact_email", name: "联系邮箱", type: "string", format: "email" }
+        
+    - id: "product"
+      name: "产品"
+      attributes:
+        - { id: "product_code", name: "产品编码", type: "string", length: 20, required: true, unique: true }
+        - { id: "name", name: "产品名称", type: "string", length: 100, required: true }
+        - { id: "unit_price", name: "单价", type: "decimal", precision: 18, scale: 2 }
+        
+    - id: "contract"
+      name: "合同"
+      attributes:
+        - { id: "contract_no", name: "合同编号", type: "string", length: 50, required: true, unique: true }
+        - { id: "customer_id", name: "客户", type: "reference", ref_entity: "customer", required: true }
+        - { id: "sales_rep_id", name: "销售负责人", type: "reference", ref_entity: "employee", required: true }
+        - { id: "total_amount", name: "合同金额", type: "decimal", precision: 18, scale: 2, required: true }
+        - { id: "sign_date", name: "签订日期", type: "date" }
+        - { id: "start_date", name: "开始日期", type: "date" }
+        - { id: "end_date", name: "结束日期", type: "date" }
+        - { id: "status", name: "合同状态", type: "enum", ref_state_machine: "contract_lifecycle", default: "draft" }
+      relations:
+        - { id: "products", name: "产品清单", type: "many_to_many", target_entity: "product", via_entity: "contract_product" }
+        - { id: "invoices", name: "关联发票", type: "one_to_many", target_entity: "invoice", foreign_key: "contract_id" }
+        
+    - id: "invoice"
+      name: "发票"
+      attributes:
+        - { id: "invoice_no", name: "发票号码", type: "string", length: 20, required: true }
+        - { id: "contract_id", name: "关联合同", type: "reference", ref_entity: "contract", required: true }
+        - { id: "amount", name: "发票金额", type: "decimal", precision: 18, scale: 2, required: true }
+        - { id: "issue_date", name: "开票日期", type: "date", required: true }
+        - { id: "type", name: "发票类型", type: "enum", values: ["first", "interim", "final"], required: true }
+
+behavior_model:
+  state_machines:
+    - id: "contract_lifecycle"
+      entity: "contract"
+      status_field: "status"
+      states:
+        - { id: "draft", name: "草稿", is_initial: true }
+        - { id: "pending_approval", name: "待审批" }
+        - { id: "approved", name: "已批准" }
+        - { id: "active", name: "生效中" }
+        - { id: "completed", name: "已完成", is_final: true }
+        - { id: "cancelled", name: "已作废", is_final: true }
+      transitions:
+        - { id: "submit", name: "提交审批", from: "draft", to: "pending_approval", trigger: "manual" }
+        - { id: "approve", name: "审批通过", from: "pending_approval", to: "approved", trigger: "manual" }
+        - { id: "sign", name: "正式签署", from: "approved", to: "active", trigger: "manual" }
+        - { id: "complete", name: "履行完成", from: "active", to: "completed", trigger: "manual" }
+        - { id: "cancel", name: "作废", from: ["draft", "pending_approval", "approved", "active"], to: "cancelled", trigger: "manual" }
+
+rule_model:
+  rules:
+    # 字段级
+    - { id: "contract_no_format", type: "field_validation", entity: "contract", field: "contract_no", condition: { type: "regex", pattern: "^HT-[0-9]{4}-[0-9]{6}$" } }
+    - { id: "amount_positive", type: "field_validation", entity: "contract", field: "total_amount", condition: { type: "range", min: 0, exclusive_min: true } }
+    
+    # 跨字段
+    - { id: "date_logic", type: "cross_field_validation", entity: "contract", condition: { type: "expression", expression: "end_date > start_date", fields: ["start_date", "end_date"] } }
+    
+    # 跨实体
+    - { id: "customer_active", type: "cross_entity_validation", entity: "contract", condition: { type: "reference_check", field: "customer_id", ref_entity: "customer", ref_field: "status", ref_value: "active" } }
+    
+    # 聚合
+    - { id: "amount_match", type: "aggregation_validation", entity: "contract", condition: { type: "sum_match", master_field: "total_amount", detail_entity: "payment_schedule", detail_field: "amount", detail_foreign_key: "contract_id" } }
+    
+    # 时序
+    - { id: "first_invoice_timing", type: "temporal_rule", entity: "contract", trigger: { event: "state_change", from: "approved", to: "active" }, condition: { type: "deadline", deadline_field: "sign_date", days_after: 30, check_entity: "invoice", check_condition: "exists with type='first' and contract_id={{entity.id}}" }, severity: "warning" }
+
+process_model:
+  orchestrations:
+    - id: "contract_creation"
+      name: "合同创建流程"
+      entry_points: ["user_intent:create_contract", "ui_action:new_contract"]
+      strategy:
+        context_gathering:
+          - "识别客户信息（询问或从上下文提取）"
+          - "确定合同类型和产品"
+          - "收集金额、期限等关键要素"
+        validation_steps:
+          - rule: "customer_active"
+          - rule: "amount_positive"
+        completion_actions:
+          - skill: "contract_service.create"
+          - ui: "OPEN_TAB:contract_detail"
+文档结束
