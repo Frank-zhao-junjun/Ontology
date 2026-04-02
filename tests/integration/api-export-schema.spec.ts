@@ -33,6 +33,10 @@ describe('API Export Schema', () => {
       expect(typeof manifest.generatedAt).toBe('string');
       expect(manifest).toHaveProperty('entityCount');
       expect(typeof manifest.entityCount).toBe('number');
+      expect(manifest).toHaveProperty('epcCount');
+      expect(typeof manifest.epcCount).toBe('number');
+      expect(manifest).toHaveProperty('epcAggregates');
+      expect(Array.isArray(manifest.epcAggregates)).toBe(true);
     });
 
     it('config schema 应通过校验', async () => {
@@ -113,6 +117,21 @@ describe('API Export Schema', () => {
         expect(rule).toHaveProperty('condition');
         expect(rule).toHaveProperty('errorMessage');
       }
+    });
+
+    it('epc schema 应通过校验', async () => {
+      const project = createFrozenProject('1.0.0');
+      const result = await exporter.export(project, { includeData: false });
+
+      const epcFile = result.files.find(f => f.path === 'data/epc.json');
+      const epc = JSON.parse(epcFile!.content);
+
+      expect(epc).toHaveProperty('profiles');
+      expect(Array.isArray(epc.profiles)).toBe(true);
+      expect(epc.profiles.length).toBeGreaterThan(0);
+      expect(epc.profiles[0]).toHaveProperty('aggregateId');
+      expect(epc.profiles[0]).toHaveProperty('generatedDocument');
+      expect(epc.profiles[0]).toHaveProperty('validationSummary');
     });
   });
 });

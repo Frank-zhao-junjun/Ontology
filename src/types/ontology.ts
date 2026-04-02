@@ -13,6 +13,7 @@ export interface ProjectVersion {
     rules: RuleModel | null;
     process: ProcessModel | null;
     events: EventModel | null;
+    epc?: EpcModel | null;
   };
   createdAt: string;
   publishedAt?: string;
@@ -362,6 +363,149 @@ export interface EventModel {
   updatedAt: string;
 }
 
+// ========== EPC模型（聚合根业务活动规格说明书） ==========
+export type EpcProfileStatus = 'draft' | 'generated' | 'reviewed';
+export type EpcOrganizationalUnitType = 'role' | 'department' | 'system' | 'external_party';
+export type EpcSystemType = 'internal' | 'external' | 'platform';
+export type EpcInformationSourceType = 'aggregate' | 'child_entity' | 'masterdata' | 'manual';
+export type EpcActivityType = 'task' | 'auto_task' | 'review' | 'approval' | 'notification' | 'follow_up';
+export type EpcActivitySource = 'state_transition' | 'event' | 'rule' | 'manual';
+export type EpcConnectorType = 'xor' | 'and';
+export type EpcValidationSeverity = 'error' | 'warning' | 'info';
+
+export interface EpcOrganizationalUnit {
+  id: string;
+  name: string;
+  type?: EpcOrganizationalUnitType;
+  responsibilities?: string;
+  permissions?: string;
+}
+
+export interface EpcSystemActor {
+  id: string;
+  name: string;
+  type?: EpcSystemType;
+  description?: string;
+}
+
+export interface EpcInformationObject {
+  id: string;
+  name: string;
+  sourceType: EpcInformationSourceType;
+  sourceRefId?: string;
+  attributes: string[];
+  description?: string;
+}
+
+export interface EpcActivityDefinition {
+  id: string;
+  name: string;
+  activityType: EpcActivityType;
+  derivedFrom: EpcActivitySource;
+  transitionId?: string;
+  eventId?: string;
+  ruleIds?: string[];
+  ownerOrgUnitId?: string;
+  systemId?: string;
+  inputObjectIds?: string[];
+  outputObjectIds?: string[];
+  precondition?: string;
+  postcondition?: string;
+  sla?: string;
+  enabled?: boolean;
+}
+
+export interface EpcConnectorBranch {
+  label: string;
+  targetEventName: string;
+  ruleId?: string;
+}
+
+export interface EpcConnectorDefinition {
+  id: string;
+  type: EpcConnectorType;
+  sourceActivityId?: string;
+  sourceEventId?: string;
+  condition?: string;
+  branches: EpcConnectorBranch[];
+}
+
+export interface EpcExceptionDefinition {
+  id: string;
+  name: string;
+  triggerCondition: string;
+  handlingFlow: string;
+  ownerOrgUnitId?: string;
+}
+
+export interface EpcKpiDefinition {
+  id: string;
+  name: string;
+  target: string;
+  measurement: string;
+}
+
+export interface EpcIntegrationDefinition {
+  id: string;
+  systemName: string;
+  integrationContent: string;
+  integrationMode?: string;
+  description?: string;
+}
+
+export interface EpcComplianceDefinition {
+  id: string;
+  requirement: string;
+  verificationMethod?: string;
+}
+
+export interface EpcValidationIssue {
+  code: string;
+  severity: EpcValidationSeverity;
+  message: string;
+  field?: string;
+}
+
+export interface EpcValidationSummary {
+  isValid: boolean;
+  score?: number;
+  issues: EpcValidationIssue[];
+  validatedAt?: string;
+}
+
+export interface EpcAggregateProfile {
+  aggregateId: string;
+  businessName: string;
+  businessCode?: string;
+  documentVersion: string;
+  status: EpcProfileStatus;
+  purpose?: string;
+  scopeStart?: string;
+  scopeEnd?: string;
+  businessBackground?: string;
+  organizationalUnits: EpcOrganizationalUnit[];
+  systems: EpcSystemActor[];
+  informationObjects: EpcInformationObject[];
+  activities: EpcActivityDefinition[];
+  connectors: EpcConnectorDefinition[];
+  exceptions: EpcExceptionDefinition[];
+  kpis: EpcKpiDefinition[];
+  integrations: EpcIntegrationDefinition[];
+  complianceItems: EpcComplianceDefinition[];
+  notes?: string;
+  generatedDocument?: string;
+  validationSummary?: EpcValidationSummary;
+}
+
+export interface EpcModel {
+  id: string;
+  name: string;
+  version: string;
+  profiles: EpcAggregateProfile[];
+  generatedAt?: string;
+  updatedAt: string;
+}
+
 // ========== 领域模型 ==========
 export interface Domain {
   id: string;
@@ -380,6 +524,7 @@ export interface ModelingManual {
   ruleModel: RuleModel;
   processModel: ProcessModel; // 兼容保留字段
   eventModel: EventModel;
+  epcModel?: EpcModel | null;
   generatedAt: string;
 }
 
@@ -394,6 +539,7 @@ export interface OntologyProject {
   ruleModel: RuleModel | null;
   processModel: ProcessModel | null; // 兼容保留字段
   eventModel: EventModel | null;
+  epcModel?: EpcModel | null;
   createdAt: string;
   updatedAt: string;
 }

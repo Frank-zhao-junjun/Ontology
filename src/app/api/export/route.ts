@@ -56,6 +56,9 @@ export async function GET(request: NextRequest) {
           'data/state_machines.json',
           'data/rules.json',
           'data/events.json',
+          'data/epc.json',
+          'epc/{aggregate}.json',
+          'epc/{aggregate}.md',
           'data/seed_data.json (可选)',
         ]
       }

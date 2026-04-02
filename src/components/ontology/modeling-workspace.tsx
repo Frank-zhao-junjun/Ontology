@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useOntologyStore } from '@/store/ontology-store';
 import { useProjectSync } from '@/hooks/use-project-sync';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import { DataModelEditor } from './data-model-editor';
 import { BehaviorModelEditor } from './behavior-model-editor';
 import { RuleModelEditor } from './rule-model-editor';
 import { EventModelEditor } from './event-model-editor';
+import { EpcTab } from './epc-tab';
 import { ManualGenerator } from './manual-generator';
 import { MetadataManager } from './metadata-manager';
 import { MasterDataManager } from './masterdata-manager';
@@ -82,13 +83,14 @@ interface ModelingWorkspaceProps {
   project: OntologyProject;
 }
 
-type ModelType = 'data' | 'behavior' | 'rule' | 'event';
+type ModelType = 'data' | 'behavior' | 'rule' | 'event' | 'epc';
 
 const MODEL_TABS = [
   { id: 'data' as ModelType, label: '数据模型', icon: '🗄️' },
   { id: 'behavior' as ModelType, label: '行为模型', icon: '⚡' },
   { id: 'rule' as ModelType, label: '规则模型', icon: '📋' },
   { id: 'event' as ModelType, label: '事件模型', icon: '📨' },
+  { id: 'epc' as ModelType, label: 'EPC', icon: '🧭' },
 ];
 
 const PROJECT_COLORS = [
@@ -210,6 +212,13 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   };
 
   const relatedModels = getRelatedModels(selectedEntityId);
+
+  useEffect(() => {
+    const selectedEntity = selectedEntityId ? allEntities.find((entity) => entity.id === selectedEntityId) : null;
+    if (activeTab === 'epc' && selectedEntity && !isEntityAggregateRoot(selectedEntity)) {
+      setActiveTab('data');
+    }
+  }, [activeTab, allEntities, selectedEntityId]);
 
   // Handle create project
   const handleCreateProject = () => {
@@ -946,13 +955,21 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                     <div className="border-b px-4">
                       <TabsList className="h-12">
                         {MODEL_TABS.map((tab) => {
+                          if (tab.id === 'epc' && !isEntityAggregateRoot(entity)) {
+                            return null;
+                          }
+
                           const count = tab.id === 'data' 
                             ? entity.attributes.length
                             : tab.id === 'behavior'
                             ? relatedModels.stateMachines.length
                             : tab.id === 'rule'
                             ? relatedModels.rules.length
-                            : relatedModels.events.length;
+                            : tab.id === 'event'
+                            ? relatedModels.events.length
+                            : project.epcModel?.profiles.some((profile) => profile.aggregateId === entity.id)
+                            ? 1
+                            : 0;
                           
                           return (
                             <TabsTrigger key={tab.id} value={tab.id} className="gap-2 px-4">
@@ -994,6 +1011,10 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                           mode="entity-detail" 
                           entityId={selectedEntityId} 
                         />
+                      </TabsContent>
+
+                      <TabsContent value="epc" className="mt-0">
+                        {selectedEntityId ? <EpcTab entityId={selectedEntityId} /> : null}
                       </TabsContent>
                     </div>
                   </Tabs>

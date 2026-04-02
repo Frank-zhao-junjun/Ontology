@@ -33,7 +33,10 @@ describe('API Export Artifact', () => {
       expect(filePaths).toContain('data/state_machines.json');
       expect(filePaths).toContain('data/rules.json');
       expect(filePaths).toContain('data/events.json');
+      expect(filePaths).toContain('data/epc.json');
       expect(filePaths).toContain('data/seed_data.json');
+      expect(filePaths).toContain('epc/contract.md');
+      expect(filePaths).toContain('epc/contract.json');
     });
 
     it('导出包文件应为有效的 JSON', async () => {
@@ -66,6 +69,7 @@ describe('API Export Artifact', () => {
       expect(readme).toBeDefined();
       expect(readme!.content).toContain(project.name);
       expect(readme!.content).toContain(project.domain.name);
+      expect(readme!.content).toContain('EPC 文档');
     });
   });
 });

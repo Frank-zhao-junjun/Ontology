@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { createEmptyEpcModel, ensureEpcProfile as buildEpcProfile, mergeEpcProfile, regenerateEpcProfile as rebuildEpcProfile } from '@/lib/epc-generator';
 import { normalizeEntityRoleFields, normalizeOntologyProjectEntityRoles } from '@/lib/entity-role';
 import type { 
   OntologyProject, 
@@ -19,6 +20,8 @@ import type {
   Orchestration,
   EventDefinition,
   Subscription,
+  EpcModel,
+  EpcAggregateProfile,
   Metadata,
   MasterData,
   MasterDataRecord,
@@ -90,6 +93,12 @@ interface OntologyState {
   addSubscription: (subscription: Subscription) => void;
   updateSubscription: (subId: string, subscription: Subscription) => void;
   deleteSubscription: (subId: string) => void;
+
+  // EPC模型操作
+  setEpcModel: (model: EpcModel) => void;
+  ensureEpcProfile: (aggregateId: string) => EpcAggregateProfile;
+  updateEpcProfile: (aggregateId: string, updates: Partial<EpcAggregateProfile>) => void;
+  regenerateEpcDocument: (aggregateId: string) => void;
   
   // 元数据操作
   setMetadataList: (list: Metadata[]) => void;
@@ -158,6 +167,7 @@ export const useOntologyStore = create<OntologyState>()(
             ruleModel: null,
             processModel: null,
             eventModel: null,
+            epcModel: null,
             createdAt: now,
             updatedAt: now,
           },
@@ -709,6 +719,96 @@ export const useOntologyStore = create<OntologyState>()(
           };
         });
       },
+
+      setEpcModel: (model) => {
+        set((state) => ({
+          project: state.project ? { ...state.project, epcModel: model, updatedAt: new Date().toISOString() } : null,
+        }));
+      },
+
+      ensureEpcProfile: (aggregateId) => {
+        const state = get();
+        if (!state.project) {
+          throw new Error('没有活动项目');
+        }
+
+        const profile = buildEpcProfile(state.project, aggregateId);
+
+        set((currentState) => {
+          if (!currentState.project) return currentState;
+
+          const currentModel = currentState.project.epcModel || createEmptyEpcModel();
+          const exists = currentModel.profiles.some((item) => item.aggregateId === aggregateId);
+          const nextProfiles = exists
+            ? currentModel.profiles.map((item) => (item.aggregateId === aggregateId ? profile : item))
+            : [...currentModel.profiles, profile];
+
+          return {
+            project: {
+              ...currentState.project,
+              epcModel: {
+                ...currentModel,
+                profiles: nextProfiles,
+                updatedAt: new Date().toISOString(),
+                generatedAt: new Date().toISOString(),
+              },
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+
+        return profile;
+      },
+
+      updateEpcProfile: (aggregateId, updates) => {
+        set((state) => {
+          if (!state.project) return state;
+          const currentModel = state.project.epcModel || createEmptyEpcModel();
+          const currentProfile = currentModel.profiles.find((profile) => profile.aggregateId === aggregateId) || buildEpcProfile(state.project, aggregateId);
+          const nextProfile = rebuildEpcProfile(state.project, mergeEpcProfile(currentProfile, updates));
+          const nextProfiles = currentModel.profiles.some((profile) => profile.aggregateId === aggregateId)
+            ? currentModel.profiles.map((profile) => (profile.aggregateId === aggregateId ? nextProfile : profile))
+            : [...currentModel.profiles, nextProfile];
+
+          return {
+            project: {
+              ...state.project,
+              epcModel: {
+                ...currentModel,
+                profiles: nextProfiles,
+                updatedAt: new Date().toISOString(),
+              },
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+      },
+
+      regenerateEpcDocument: (aggregateId) => {
+        set((state) => {
+          if (!state.project) return state;
+
+          const currentModel = state.project.epcModel || createEmptyEpcModel();
+          const currentProfile = currentModel.profiles.find((profile) => profile.aggregateId === aggregateId) || buildEpcProfile(state.project, aggregateId);
+          const nextProfile = rebuildEpcProfile(state.project, currentProfile);
+          const exists = currentModel.profiles.some((profile) => profile.aggregateId === aggregateId);
+
+          return {
+            project: {
+              ...state.project,
+              epcModel: {
+                ...currentModel,
+                profiles: exists
+                  ? currentModel.profiles.map((profile) => (profile.aggregateId === aggregateId ? nextProfile : profile))
+                  : [...currentModel.profiles, nextProfile],
+                updatedAt: new Date().toISOString(),
+                generatedAt: new Date().toISOString(),
+              },
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+      },
       
       // 元数据操作
       setMetadataList: (list) => {
@@ -873,6 +973,7 @@ export const useOntologyStore = create<OntologyState>()(
             rules: state.project.ruleModel ? JSON.parse(JSON.stringify(state.project.ruleModel)) : null,
             process: state.project.processModel ? JSON.parse(JSON.stringify(state.project.processModel)) : null,
             events: state.project.eventModel ? JSON.parse(JSON.stringify(state.project.eventModel)) : null,
+            epc: state.project.epcModel ? JSON.parse(JSON.stringify(state.project.epcModel)) : null,
           },
           createdAt: new Date().toISOString(),
           status: 'draft',

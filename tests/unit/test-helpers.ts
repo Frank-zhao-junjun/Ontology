@@ -5,6 +5,7 @@
  */
 
 import type { OntologyProject, Entity, Domain, StateMachine, Rule, EventDefinition } from '@/types/ontology';
+import { createEmptyEpcModel, ensureEpcProfile, regenerateEpcProfile } from '@/lib/epc-generator';
 
 export const createMockDomain = (): Domain => ({
   id: 'domain-1',
@@ -131,7 +132,7 @@ export const createFrozenProject = (version: string): OntologyProject => {
     },
   ];
 
-  return {
+  const baseProject: OntologyProject = {
     id: projectId,
     name: '合同管理系统',
     description: '合同管理领域建模项目',
@@ -178,5 +179,38 @@ export const createFrozenProject = (version: string): OntologyProject => {
     },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+  };
+
+  const epcProfile = regenerateEpcProfile(baseProject, {
+    ...ensureEpcProfile(baseProject, 'contract-1'),
+    businessBackground: '合同从起草到审批生效的业务活动说明。',
+    organizationalUnits: [
+      {
+        id: 'org-1',
+        name: '合同专员',
+        type: 'role',
+        responsibilities: '发起与跟踪合同审批',
+        permissions: '创建合同并提交审批',
+      },
+    ],
+    systems: [
+      {
+        id: 'system-1',
+        name: '合同平台',
+        type: 'platform',
+        description: '承载合同审批与签署流程',
+      },
+    ],
+  });
+
+  return {
+    ...baseProject,
+    epcModel: {
+      ...createEmptyEpcModel(),
+      version,
+      profiles: [epcProfile],
+      generatedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
   };
 };

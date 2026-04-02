@@ -60,6 +60,17 @@ describe('Export Manifest', () => {
       expect(result.manifest.ruleCount).toBeGreaterThanOrEqual(0);
       expect(result.manifest.eventCount).toBeGreaterThanOrEqual(0);
     });
+
+    it('manifest 应包含 EPC 导出元数据', async () => {
+      const project = createFrozenProject('1.0.0');
+      const result = await exporter.export(project, { includeData: false });
+
+      expect(result.manifest).toHaveProperty('epcCount', 1);
+      expect(result.manifest).toHaveProperty('epcAggregates');
+      expect(Array.isArray(result.manifest.epcAggregates)).toBe(true);
+      expect(result.manifest).toHaveProperty('generatedEpcAt');
+      expect(typeof result.manifest.generatedEpcAt).toBe('string');
+    });
   });
 
   describe('UT-EXPORT-006: generatedAt 格式校验', () => {

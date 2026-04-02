@@ -62,6 +62,12 @@ describe('API Export', () => {
       expect(eventsFile).toBeDefined();
       const events = JSON.parse(eventsFile!.content);
       expect(events.events.length).toBeGreaterThan(0);
+
+      const epcFile = result.files.find(f => f.path === 'data/epc.json');
+      expect(epcFile).toBeDefined();
+      const epc = JSON.parse(epcFile!.content);
+      expect(Array.isArray(epc.profiles)).toBe(true);
+      expect(epc.profiles.length).toBeGreaterThan(0);
     });
   });
 });

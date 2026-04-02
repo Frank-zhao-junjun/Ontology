@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ConfigExporter, type ExportConfig } from './index';
 import type { OntologyProject, Entity, Domain } from '@/types/ontology';
+import { createEmptyEpcModel, ensureEpcProfile, regenerateEpcProfile } from '@/lib/epc-generator';
 
 // ========== 测试数据 ==========
 
@@ -231,6 +232,46 @@ describe('ConfigExporter', () => {
       expect(entity).toHaveProperty('tableName');
       expect(entity).toHaveProperty('attributes');
       expect(entity).toHaveProperty('relations');
+    });
+
+    it('当项目包含 EPC profile 时应导出 EPC 文档、JSON 与 manifest 扩展', async () => {
+      const baseProject = createMockProject();
+      const epcProfile = regenerateEpcProfile(baseProject, {
+        ...ensureEpcProfile(baseProject, 'entity-1'),
+        organizationalUnits: [
+          {
+            id: 'org-1',
+            name: '合同专员',
+            type: 'role',
+            responsibilities: '发起合同审批',
+            permissions: '提交审批',
+          },
+        ],
+        systems: [
+          {
+            id: 'system-1',
+            name: '合同平台',
+            type: 'platform',
+            description: '合同业务流程平台',
+          },
+        ],
+      });
+      const project = {
+        ...baseProject,
+        epcModel: {
+          ...createEmptyEpcModel(),
+          profiles: [epcProfile],
+          updatedAt: new Date().toISOString(),
+        },
+      };
+
+      const result = await exporter.export(project, { includeData: false });
+
+      expect(result.files.find((file) => file.path === 'data/epc.json')).toBeDefined();
+      expect(result.files.find((file) => file.path === 'epc/contract.md')?.content).toContain('EPC业务活动规格说明书');
+      expect(result.files.find((file) => file.path === 'epc/contract.json')).toBeDefined();
+      expect(result.manifest.epcCount).toBe(1);
+      expect(result.manifest.epcAggregates).toEqual(['contract']);
     });
   });
 });

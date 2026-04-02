@@ -10,6 +10,7 @@
  */
 
 import { normalizeEntityRoleFields, resolveEntityRole } from '@/lib/entity-role';
+import { regenerateEpcProfile } from '@/lib/epc-generator';
 import type { 
   OntologyProject, 
   DataModel, 
@@ -22,7 +23,8 @@ import type {
   StateMachine,
   Rule,
   EventDefinition,
-  Subscription
+  Subscription,
+  EpcAggregateProfile
 } from '@/types/ontology';
 
 // ========== 导出配置 ==========
@@ -46,6 +48,9 @@ export interface ConfigPackageManifest {
   stateMachineCount: number;
   ruleCount: number;
   eventCount: number;
+  epcCount?: number;
+  epcAggregates?: string[];
+  generatedEpcAt?: string;
 }
 
 export interface ConfigPackage {
@@ -99,6 +104,13 @@ export interface NormalizedRelation {
   foreignKey?: string;
 }
 
+interface ExportableEpcProfile {
+  aggregateId: string;
+  aggregateName: string;
+  fileBaseName: string;
+  profile: EpcAggregateProfile;
+}
+
 // ========== 导出器类 ==========
 
 export class ConfigExporter {
@@ -111,23 +123,29 @@ export class ConfigExporter {
 
     // 2. 标准化实体
     const entities = this.normalizeEntities(project);
+    const generatedAt = new Date().toISOString();
+    const epcProfiles = this.collectEpcProfiles(project, entities);
 
-    // 3. 生成文件
-    const files: ExportedFile[] = [
-      ...this.generateRootFiles(project, entities),
-      ...this.generateDataFiles(project, entities, config)
-    ];
-
-    // 4. 构建 manifest
+    // 3. 构建 manifest
     const manifest: ConfigPackageManifest = {
       projectId: project.id,
       version: '1.0.0',
-      generatedAt: new Date().toISOString(),
+      generatedAt,
       entityCount: entities.length,
       stateMachineCount: project.behaviorModel?.stateMachines.length || 0,
       ruleCount: project.ruleModel?.rules.length || 0,
       eventCount: project.eventModel?.events.length || 0,
+      epcCount: epcProfiles.length,
+      epcAggregates: epcProfiles.map((item) => item.fileBaseName),
+      generatedEpcAt: epcProfiles.length > 0 ? generatedAt : undefined,
     };
+
+    // 4. 生成文件
+    const files: ExportedFile[] = [
+      ...this.generateRootFiles(project, entities, manifest, epcProfiles),
+      ...this.generateDataFiles(project, entities, config, epcProfiles),
+      ...this.generateEpcFiles(epcProfiles),
+    ];
 
     return { files, manifest };
   }
@@ -195,6 +213,24 @@ export class ConfigExporter {
     });
   }
 
+  private collectEpcProfiles(project: OntologyProject, entities: NormalizedEntity[]): ExportableEpcProfile[] {
+    return (project.epcModel?.profiles || [])
+      .map((profile) => {
+        const aggregate = entities.find((entity) => entity.id === profile.aggregateId && entity.isAggregateRoot);
+        if (!aggregate) {
+          return null;
+        }
+
+        return {
+          aggregateId: profile.aggregateId,
+          aggregateName: aggregate.name,
+          fileBaseName: aggregate.fileName,
+          profile: regenerateEpcProfile(project, profile),
+        };
+      })
+      .filter((item): item is ExportableEpcProfile => item !== null);
+  }
+
   /**
    * 标准化属性
    */
@@ -236,9 +272,12 @@ export class ConfigExporter {
   /**
    * 生成根目录文件
    */
-  private generateRootFiles(project: OntologyProject, entities: NormalizedEntity[]): ExportedFile[] {
-    const now = new Date().toISOString();
-
+  private generateRootFiles(
+    project: OntologyProject,
+    entities: NormalizedEntity[],
+    manifest: ConfigPackageManifest,
+    epcProfiles: ExportableEpcProfile[],
+  ): ExportedFile[] {
     return [
       {
         path: 'config.json',
@@ -247,21 +286,17 @@ export class ConfigExporter {
           version: '1.0.0',
           description: project.description,
           domain: project.domain.name,
-          generatedAt: now,
+          generatedAt: manifest.generatedAt,
+          epcCount: manifest.epcCount || 0,
         }, null, 2)
       },
       {
         path: 'README.md',
-        content: this.generateReadme(project, entities)
+        content: this.generateReadme(project, entities, epcProfiles)
       },
       {
         path: 'manifest.json',
-        content: JSON.stringify({
-          projectId: project.id,
-          version: '1.0.0',
-          generatedAt: now,
-          entityCount: entities.length,
-        }, null, 2)
+        content: JSON.stringify(manifest, null, 2)
       }
     ];
   }
@@ -269,7 +304,12 @@ export class ConfigExporter {
   /**
    * 生成数据文件
    */
-  private generateDataFiles(project: OntologyProject, entities: NormalizedEntity[], config: ExportConfig): ExportedFile[] {
+  private generateDataFiles(
+    project: OntologyProject,
+    entities: NormalizedEntity[],
+    config: ExportConfig,
+    epcProfiles: ExportableEpcProfile[],
+  ): ExportedFile[] {
     const files: ExportedFile[] = [
       {
         path: 'data/entities.json',
@@ -289,6 +329,17 @@ export class ConfigExporter {
           events: project.eventModel?.events || [],
           subscriptions: project.eventModel?.subscriptions || [],
         }, null, 2)
+      },
+      {
+        path: 'data/epc.json',
+        content: JSON.stringify({
+          id: project.epcModel?.id || null,
+          name: project.epcModel?.name || 'EPC业务活动规格说明书',
+          version: project.epcModel?.version || '1.0.0',
+          generatedAt: project.epcModel?.generatedAt,
+          updatedAt: project.epcModel?.updatedAt,
+          profiles: epcProfiles.map((item) => item.profile),
+        }, null, 2)
       }
     ];
 
@@ -303,16 +354,38 @@ export class ConfigExporter {
     return files;
   }
 
+  private generateEpcFiles(epcProfiles: ExportableEpcProfile[]): ExportedFile[] {
+    return epcProfiles.flatMap((item) => ([
+      {
+        path: `epc/${item.fileBaseName}.json`,
+        content: JSON.stringify({
+          aggregateId: item.aggregateId,
+          aggregateName: item.aggregateName,
+          profile: item.profile,
+        }, null, 2)
+      },
+      {
+        path: `epc/${item.fileBaseName}.md`,
+        content: item.profile.generatedDocument || '',
+      },
+    ]));
+  }
+
   /**
    * 生成 README 内容
    */
-  private generateReadme(project: OntologyProject, entities: NormalizedEntity[]): string {
+  private generateReadme(project: OntologyProject, entities: NormalizedEntity[], epcProfiles: ExportableEpcProfile[]): string {
     return `# ${project.name}
 
 ## 项目信息
 - **领域**: ${project.domain.name}
 - **描述**: ${project.description || '暂无描述'}
 - **生成时间**: ${new Date().toISOString()}
+
+## EPC 文档
+
+- EPC 文档数量: ${epcProfiles.length}
+${epcProfiles.length > 0 ? epcProfiles.map((item) => `- ${item.aggregateName}: epc/${item.fileBaseName}.md`).join('\n') : '- 当前导出包未包含 EPC 业务活动规格说明书'}
 
 ## 实体列表
 
@@ -325,7 +398,13 @@ ${entities.map(e => `### ${e.name} (${e.nameEn})
 
 ## 使用说明
 
+  ├── epc.json         # EPC结构化快照
 1. 解压配置包
+
+${epcProfiles.length > 0 ? `└── epc/
+  ├── ${epcProfiles[0].fileBaseName}.md    # EPC规格说明书
+  └── ${epcProfiles[0].fileBaseName}.json  # EPC结构化结果
+` : ''}
 2. 在运行时系统中加载配置
 3. 开始使用
 
