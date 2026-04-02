@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from '@/components/ui/separator';
 import { Pencil, Trash2 } from 'lucide-react';
 import { getAggregateRootEntities, normalizeEntityRoleFields, resolveEntityRole } from '@/lib/entity-role';
-import type { Entity, Attribute, Relation, Metadata } from '@/types/ontology';
+import type { Entity, Attribute, Relation } from '@/types/ontology';
 
 interface DataModelEditorProps {
   mode?: 'full' | 'entity-detail' | 'button-only';
@@ -40,6 +40,17 @@ const RELATION_TYPES = [
 
 const generateId = () => Math.random().toString(36).substring(2, 10);
 
+function parseMasterDataFields(fieldNames?: string): string[] {
+  if (!fieldNames) {
+    return [];
+  }
+
+  return fieldNames
+    .split(/[，,、\n]/)
+    .map((field) => field.trim())
+    .filter(Boolean);
+}
+
 export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProps) {
   const { project, addEntity, updateEntity, deleteEntity, metadataList, masterDataList } = useOntologyStore();
   const [showEntityDialog, setShowEntityDialog] = useState(false);
@@ -52,15 +63,20 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
 
   const entities = project?.dataModel?.entities || [];
   const projects = project?.dataModel?.projects || [];
+  const businessScenarios = project?.dataModel?.businessScenarios || [];
   const selectedEntity = entityId ? entities.find(e => e.id === entityId) : null;
   const aggregateRootEntities = getAggregateRootEntities(entities);
   const editingEntityRole = resolveEntityRole(editingEntity);
-  const selectedMasterDataIds = editingAttribute.masterDataIds || (editingAttribute.masterDataId ? [editingAttribute.masterDataId] : []);
-  const editingReferenceTargetType = editingAttribute.referenceTargetType || (selectedMasterDataIds.length > 0 ? 'masterdata' : 'entity');
+  const editingDataType = editingAttribute.dataType || 'string';
+  const metadataLocked = Boolean(editingAttribute.metadataTemplateId);
+  const selectedMasterData = editingAttribute.masterDataType
+    ? masterDataList.find((item) => item.id === editingAttribute.masterDataType)
+    : undefined;
+  const selectableMasterDataFields = parseMasterDataFields(selectedMasterData?.fieldNames);
   
   // 根据元数据类型映射到属性类型
-  const mapMetadataTypeToAttributeType = (metadataType: string): Attribute['type'] => {
-    const typeMap: Record<string, Attribute['type']> = {
+  const mapMetadataTypeToAttributeType = (metadataType: string): Attribute['dataType'] => {
+    const typeMap: Record<string, Attribute['dataType']> = {
       '字符串': 'string',
       '文本': 'text',
       '整数': 'integer',
@@ -85,13 +101,19 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
   const handleMetadataSelect = (metadataId: string) => {
     const metadata = metadataList.find(m => m.id === metadataId);
     if (metadata) {
+      const dataType = mapMetadataTypeToAttributeType(metadata.type);
       setEditingAttribute({
         ...editingAttribute,
-        metadataId: metadata.id,
-        metadataName: metadata.name,
+        metadataTemplateId: metadata.id,
+        metadataTemplateName: metadata.name,
         name: editingAttribute.name || metadata.name,
         nameEn: editingAttribute.nameEn || metadata.nameEn,
-        type: editingAttribute.type || mapMetadataTypeToAttributeType(metadata.type),
+        dataType,
+        referenceKind: dataType === 'reference' ? editingAttribute.referenceKind || 'entity' : undefined,
+        referencedEntityId: dataType === 'reference' ? editingAttribute.referencedEntityId : undefined,
+        isMasterDataRef: dataType === 'reference' ? Boolean(editingAttribute.isMasterDataRef) : false,
+        masterDataType: dataType === 'reference' && editingAttribute.isMasterDataRef ? editingAttribute.masterDataType : undefined,
+        masterDataField: dataType === 'reference' && editingAttribute.isMasterDataRef ? editingAttribute.masterDataField : undefined,
         description: editingAttribute.description || metadata.description,
       });
     }
@@ -104,57 +126,44 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
     setShowAttributeDialog(true);
   };
 
-  const toggleMasterDataSelection = (masterDataId: string, checked: boolean) => {
-    const currentIds = editingAttribute.masterDataIds || (editingAttribute.masterDataId ? [editingAttribute.masterDataId] : []);
-    const nextIds = checked
-      ? Array.from(new Set([...currentIds, masterDataId]))
-      : currentIds.filter((id) => id !== masterDataId);
-
-    const selectedMasterData = masterDataList.filter((item) => nextIds.includes(item.id));
-    const selectedNames = selectedMasterData.map((item) => item.name);
-
-    setEditingAttribute({
-      ...editingAttribute,
-      referenceTargetType: 'masterdata',
-      refEntity: undefined,
-      masterDataIds: nextIds,
-      masterDataNames: selectedNames,
-      masterDataId: nextIds[0],
-      masterDataName: selectedNames.length > 0 ? selectedNames.join('、') : undefined,
-    });
-  };
-  
   // 保存属性（新建或更新）
   const handleSaveAttribute = () => {
     if (!entityId || !selectedEntity) return;
+
+    const dataType = editingAttribute.dataType || 'string';
+    const referenceKind = dataType === 'reference'
+      ? (editingAttribute.isMasterDataRef ? 'masterData' : (editingAttribute.referenceKind || 'entity'))
+      : undefined;
+    const isMasterDataRef = dataType === 'reference' && referenceKind === 'masterData';
+
+    if (isMasterDataRef && !editingAttribute.masterDataType) {
+      alert('关联主数据时必须选择主数据类型');
+      return;
+    }
+
+    if (dataType === 'reference' && !isMasterDataRef && !editingAttribute.referencedEntityId) {
+      alert('引用实体时必须选择目标实体');
+      return;
+    }
     
     const attrData: Attribute = {
       id: editingAttributeId || generateId(),
       name: editingAttribute.name || '新属性',
       nameEn: editingAttribute.nameEn,
-      type: editingAttribute.type || 'string',
+      dataType,
       required: editingAttribute.required || false,
       unique: editingAttribute.unique || false,
       description: editingAttribute.description,
       length: editingAttribute.length,
       precision: editingAttribute.precision,
       scale: editingAttribute.scale,
-      refEntity: editingAttribute.type === 'reference' && editingReferenceTargetType === 'entity' ? editingAttribute.refEntity : undefined,
-      referenceTargetType: editingAttribute.type === 'reference' ? editingReferenceTargetType : undefined,
-      metadataId: editingAttribute.metadataId,
-      metadataName: editingAttribute.metadataName,
-      masterDataId: editingAttribute.type === 'reference' && editingReferenceTargetType === 'masterdata'
-        ? selectedMasterDataIds[0]
-        : undefined,
-      masterDataName: editingAttribute.type === 'reference' && editingReferenceTargetType === 'masterdata'
-        ? (editingAttribute.masterDataNames?.join('、') || editingAttribute.masterDataName)
-        : undefined,
-      masterDataIds: editingAttribute.type === 'reference' && editingReferenceTargetType === 'masterdata'
-        ? selectedMasterDataIds
-        : undefined,
-      masterDataNames: editingAttribute.type === 'reference' && editingReferenceTargetType === 'masterdata'
-        ? (editingAttribute.masterDataNames || [])
-        : undefined,
+      referenceKind,
+      referencedEntityId: dataType === 'reference' && referenceKind === 'entity' ? editingAttribute.referencedEntityId : undefined,
+      isMasterDataRef,
+      masterDataType: isMasterDataRef ? editingAttribute.masterDataType : undefined,
+      masterDataField: isMasterDataRef ? editingAttribute.masterDataField : undefined,
+      metadataTemplateId: editingAttribute.metadataTemplateId,
+      metadataTemplateName: editingAttribute.metadataTemplateName,
     };
     
     let newAttributes: Attribute[];
@@ -233,6 +242,28 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                 </Select>
               </div>
               <div className="space-y-2">
+                <Label>所属业务场景 *</Label>
+                <Select
+                  value={editingEntity.businessScenarioId || ''}
+                  onValueChange={(value) => setEditingEntity({ ...editingEntity, businessScenarioId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="选择业务场景" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {businessScenarios.length === 0 ? (
+                      <SelectItem value="_empty" disabled>请先创建业务场景</SelectItem>
+                    ) : (
+                      businessScenarios.map((scenario) => (
+                        <SelectItem key={scenario.id} value={scenario.id}>
+                          {scenario.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label>实体角色</Label>
                 <Select
                   value={editingEntityRole}
@@ -293,6 +324,9 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                 if (!editingEntity.projectId) {
                   return;
                 }
+                if (!editingEntity.businessScenarioId) {
+                  return;
+                }
                 if (editingEntityRole === 'child_entity' && !editingEntity.parentAggregateId) {
                   return;
                 }
@@ -302,6 +336,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                   nameEn: editingEntity.nameEn || 'NewEntity',
                   description: editingEntity.description,
                   projectId: editingEntity.projectId,
+                  businessScenarioId: editingEntity.businessScenarioId,
                   entityRole: editingEntityRole,
                   parentAggregateId: editingEntityRole === 'child_entity' ? editingEntity.parentAggregateId : undefined,
                   attributes: [],
@@ -355,13 +390,13 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                     <div className="space-y-2">
                       <Label>关联元数据（可选）</Label>
                       <Select
-                        value={editingAttribute.metadataId || '_none'}
+                        value={editingAttribute.metadataTemplateId || '_none'}
                         onValueChange={(value) => {
                           if (value === '_none') {
                             setEditingAttribute({ 
                               ...editingAttribute, 
-                              metadataId: undefined, 
-                              metadataName: undefined 
+                              metadataTemplateId: undefined, 
+                              metadataTemplateName: undefined 
                             });
                           } else {
                             handleMetadataSelect(value);
@@ -380,9 +415,9 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                           ))}
                         </SelectContent>
                       </Select>
-                      {editingAttribute.metadataId && (
+                      {editingAttribute.metadataTemplateId && (
                         <p className="text-xs text-muted-foreground">
-                          已关联元数据，将自动填充名称、类型和描述
+                          已关联元数据模板，数据类型将按模板锁定。
                         </p>
                       )}
                     </div>
@@ -412,19 +447,19 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                     <div className="space-y-2">
                       <Label htmlFor="attribute-type">数据类型</Label>
                       <Select
-                        value={editingAttribute.type || 'string'}
+                        value={editingDataType}
+                        disabled={metadataLocked}
                         onValueChange={(v) => setEditingAttribute({
                           ...editingAttribute,
-                          type: v as Attribute['type'],
+                          dataType: v as Attribute['dataType'],
                           ...(v === 'reference'
-                            ? { referenceTargetType: editingAttribute.referenceTargetType || 'entity' }
+                            ? { referenceKind: editingAttribute.isMasterDataRef ? 'masterData' : 'entity' }
                             : {
-                                refEntity: undefined,
-                                referenceTargetType: undefined,
-                                masterDataId: undefined,
-                                masterDataName: undefined,
-                                masterDataIds: undefined,
-                                masterDataNames: undefined,
+                                referenceKind: undefined,
+                                referencedEntityId: undefined,
+                                isMasterDataRef: false,
+                                masterDataType: undefined,
+                                masterDataField: undefined,
                               }),
                         })}
                       >
@@ -439,8 +474,13 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                           ))}
                         </SelectContent>
                       </Select>
+                      {metadataLocked && (
+                        <p className="text-xs text-muted-foreground">
+                          模板绑定后，数据类型不可手工修改。
+                        </p>
+                      )}
                     </div>
-                    {editingAttribute.type === 'string' && (
+                    {editingDataType === 'string' && (
                       <div className="space-y-2">
                         <Label>最大长度</Label>
                         <Input
@@ -451,7 +491,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                         />
                       </div>
                     )}
-                    {editingAttribute.type === 'decimal' && (
+                    {editingDataType === 'decimal' && (
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>精度</Label>
@@ -473,45 +513,39 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                         </div>
                       </div>
                     )}
-                    {editingAttribute.type === 'reference' && (
+                    <div className="flex items-center gap-2 rounded-lg border p-3">
+                      <input
+                        type="checkbox"
+                        id="master-data-ref"
+                        checked={Boolean(editingAttribute.isMasterDataRef)}
+                        disabled={metadataLocked && editingDataType !== 'reference'}
+                        onChange={(event) => setEditingAttribute({
+                          ...editingAttribute,
+                          dataType: event.target.checked ? 'reference' : editingAttribute.dataType,
+                          referenceKind: event.target.checked ? 'masterData' : (editingDataType === 'reference' ? 'entity' : editingAttribute.referenceKind),
+                          isMasterDataRef: event.target.checked,
+                          referencedEntityId: event.target.checked ? undefined : editingAttribute.referencedEntityId,
+                          masterDataType: event.target.checked ? editingAttribute.masterDataType : undefined,
+                          masterDataField: event.target.checked ? editingAttribute.masterDataField : undefined,
+                        })}
+                        className="rounded"
+                      />
+                      <Label htmlFor="master-data-ref" className="text-sm font-normal">是否关联主数据</Label>
+                    </div>
+                    {editingDataType === 'reference' && (
                       <>
-                        <div className="space-y-2">
-                          <Label htmlFor="attribute-reference-source">引用来源</Label>
-                          <Select
-                            value={editingReferenceTargetType}
-                            onValueChange={(value) => setEditingAttribute({
-                              ...editingAttribute,
-                              referenceTargetType: value as 'entity' | 'masterdata',
-                              refEntity: value === 'entity' ? editingAttribute.refEntity : undefined,
-                              masterDataId: value === 'masterdata' ? editingAttribute.masterDataId : undefined,
-                              masterDataName: value === 'masterdata' ? editingAttribute.masterDataName : undefined,
-                              masterDataIds: value === 'masterdata' ? selectedMasterDataIds : undefined,
-                              masterDataNames: value === 'masterdata' ? (editingAttribute.masterDataNames || []) : undefined,
-                            })}
-                          >
-                            <SelectTrigger id="attribute-reference-source">
-                              <SelectValue placeholder="选择引用来源" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="entity">引用实体</SelectItem>
-                              <SelectItem value="masterdata">引用主数据（可多选）</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {editingReferenceTargetType === 'entity' ? (
+                        {!editingAttribute.isMasterDataRef ? (
                           <div className="space-y-2">
                             <Label htmlFor="attribute-ref-entity">引用实体</Label>
                             <Select
-                              value={editingAttribute.refEntity || '_none'}
+                              value={editingAttribute.referencedEntityId || '_none'}
                               onValueChange={(v) => setEditingAttribute({ 
                                 ...editingAttribute,
-                                referenceTargetType: 'entity',
-                                refEntity: v === '_none' ? undefined : v,
-                                masterDataId: undefined,
-                                masterDataName: undefined,
-                                masterDataIds: undefined,
-                                masterDataNames: undefined,
+                                referenceKind: 'entity',
+                                isMasterDataRef: false,
+                                referencedEntityId: v === '_none' ? undefined : v,
+                                masterDataType: undefined,
+                                masterDataField: undefined,
                               })}
                             >
                               <SelectTrigger id="attribute-ref-entity">
@@ -528,40 +562,57 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                             </Select>
                           </div>
                         ) : (
-                          <div className="space-y-2">
-                            <Label>关联主数据（可多选）</Label>
-                            <div className="rounded-lg border p-3 space-y-2 max-h-44 overflow-y-auto">
-                              {masterDataList.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">暂无可选主数据，请先维护主数据清单。</p>
-                              ) : (
-                                masterDataList.map((item) => {
-                                  const inputId = `masterdata-ref-${item.id}`;
-                                  return (
-                                    <div key={item.id} className="flex items-center justify-between gap-2">
-                                      <div className="flex items-center gap-2">
-                                        <input
-                                          id={inputId}
-                                          type="checkbox"
-                                          checked={selectedMasterDataIds.includes(item.id)}
-                                          onChange={(e) => toggleMasterDataSelection(item.id, e.target.checked)}
-                                          className="rounded"
-                                        />
-                                        <Label htmlFor={inputId} className="cursor-pointer text-sm font-normal">
-                                          {item.name}
-                                        </Label>
-                                      </div>
-                                      <span className="text-xs text-muted-foreground">{item.domain}</span>
-                                    </div>
-                                  );
-                                })
-                              )}
+                          <>
+                            <div className="space-y-2">
+                              <Label htmlFor="attribute-master-data-type">主数据类型</Label>
+                              <Select
+                                value={editingAttribute.masterDataType || '_none'}
+                                onValueChange={(value) => setEditingAttribute({
+                                  ...editingAttribute,
+                                  referenceKind: 'masterData',
+                                  isMasterDataRef: true,
+                                  masterDataType: value === '_none' ? undefined : value,
+                                  masterDataField: undefined,
+                                  referencedEntityId: undefined,
+                                })}
+                              >
+                                <SelectTrigger id="attribute-master-data-type">
+                                  <SelectValue placeholder="选择主数据类型" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="_none">选择主数据类型</SelectItem>
+                                  {masterDataList.map((item) => (
+                                    <SelectItem key={item.id} value={item.id}>
+                                      {item.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
-                            {selectedMasterDataIds.length > 0 && (
-                              <p className="text-xs text-muted-foreground">
-                                已选择：{(editingAttribute.masterDataNames || []).join('、')}
-                              </p>
-                            )}
-                          </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="attribute-master-data-field">主数据字段（可选）</Label>
+                              <Select
+                                value={editingAttribute.masterDataField || '_none'}
+                                onValueChange={(value) => setEditingAttribute({
+                                  ...editingAttribute,
+                                  masterDataField: value === '_none' ? undefined : value,
+                                })}
+                                disabled={!editingAttribute.masterDataType}
+                              >
+                                <SelectTrigger id="attribute-master-data-field">
+                                  <SelectValue placeholder={editingAttribute.masterDataType ? '选择主数据字段' : '请先选择主数据类型'} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="_none">不指定字段</SelectItem>
+                                  {selectableMasterDataFields.map((field) => (
+                                    <SelectItem key={field} value={field}>
+                                      {field}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </>
                         )}
                       </>
                     )}
@@ -628,23 +679,24 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                       </div>
                       <div className="flex flex-wrap gap-1">
                         <Badge variant="outline" className="text-xs">
-                          {ATTRIBUTE_TYPES.find(t => t.value === attr.type)?.label || attr.type}
+                          {ATTRIBUTE_TYPES.find(t => t.value === attr.dataType)?.label || attr.dataType}
                         </Badge>
                         {attr.required && <Badge variant="destructive" className="text-xs">必填</Badge>}
                         {attr.unique && <Badge variant="secondary" className="text-xs">唯一</Badge>}
-                        {attr.refEntity && (!attr.referenceTargetType || attr.referenceTargetType === 'entity') && (
+                        {attr.referencedEntityId && (!attr.referenceKind || attr.referenceKind === 'entity') && (
                           <Badge variant="outline" className="text-xs">
-                            → {entities.find(e => e.id === attr.refEntity)?.name}
+                            → {entities.find(e => e.id === attr.referencedEntityId)?.name}
                           </Badge>
                         )}
-                        {((attr.masterDataNames && attr.masterDataNames.length > 0) || attr.masterDataName) && (
+                        {attr.masterDataType && (
                           <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 border border-emerald-200">
-                            主数据: {attr.masterDataNames?.join('、') || attr.masterDataName}
+                            主数据: {masterDataList.find((item) => item.id === attr.masterDataType)?.name || attr.masterDataType}
+                            {attr.masterDataField ? ` / ${attr.masterDataField}` : ''}
                           </Badge>
                         )}
-                        {attr.metadataName && (
+                        {attr.metadataTemplateName && (
                           <Badge variant="default" className="text-xs bg-blue-500">
-                            元数据: {attr.metadataName}
+                            元数据: {attr.metadataTemplateName}
                           </Badge>
                         )}
                       </div>
@@ -900,6 +952,28 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                       </Select>
                     </div>
                     <div className="space-y-2">
+                      <Label>所属业务场景 *</Label>
+                      <Select
+                        value={editingEntity.businessScenarioId || ''}
+                        onValueChange={(value) => setEditingEntity({ ...editingEntity, businessScenarioId: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择业务场景" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {businessScenarios.length === 0 ? (
+                            <SelectItem value="_empty" disabled>请先创建业务场景</SelectItem>
+                          ) : (
+                            businessScenarios.map((scenario) => (
+                              <SelectItem key={scenario.id} value={scenario.id}>
+                                {scenario.name}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
                       <Label>实体角色</Label>
                       <Select
                         value={editingEntityRole}
@@ -960,6 +1034,9 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                       if (!editingEntity.projectId) {
                         return;
                       }
+                      if (!editingEntity.businessScenarioId) {
+                        return;
+                      }
                       if (editingEntityRole === 'child_entity' && !editingEntity.parentAggregateId) {
                         return;
                       }
@@ -969,6 +1046,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                         nameEn: editingEntity.nameEn || 'NewEntity',
                         description: editingEntity.description,
                         projectId: editingEntity.projectId,
+                        businessScenarioId: editingEntity.businessScenarioId,
                         entityRole: editingEntityRole,
                         parentAggregateId: editingEntityRole === 'child_entity' ? editingEntity.parentAggregateId : undefined,
                         attributes: [],

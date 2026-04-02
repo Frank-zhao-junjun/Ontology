@@ -1,6 +1,6 @@
 // 代码生成器类型定义
 
-import type { DataModel, BehaviorModel, RuleModel, ProcessModel, EventModel, Entity, PublishConfig } from '@/types/ontology';
+import type { DataModel, BehaviorModel, RuleModel, ProcessModel, EventModel, PublishConfig } from '@/types/ontology';
 
 export interface CodePackage {
   name: string;

@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ConfigExporter, type ExportConfig } from './index';
+import { ConfigExporter } from './index';
 import type { OntologyProject, Entity, Domain } from '@/types/ontology';
 import { createEmptyEpcModel, ensureEpcProfile, regenerateEpcProfile } from '@/lib/epc-generator';
 
@@ -23,6 +23,7 @@ const createMockEntity = (overrides: Partial<Entity> = {}): Entity => ({
   name: '合同',
   nameEn: 'Contract',
   projectId: 'project-1',
+  businessScenarioId: 'scenario-1',
   description: '合同实体',
   entityRole: 'aggregate_root',
   attributes: [
@@ -30,7 +31,7 @@ const createMockEntity = (overrides: Partial<Entity> = {}): Entity => ({
       id: 'attr-1',
       name: '合同编号',
       nameEn: 'contractNo',
-      type: 'string',
+      dataType: 'string',
       required: true,
       unique: true,
       length: 50,
@@ -39,7 +40,7 @@ const createMockEntity = (overrides: Partial<Entity> = {}): Entity => ({
       id: 'attr-2',
       name: '合同名称',
       nameEn: 'contractName',
-      type: 'string',
+      dataType: 'string',
       required: true,
       length: 200,
     },
@@ -47,7 +48,7 @@ const createMockEntity = (overrides: Partial<Entity> = {}): Entity => ({
       id: 'attr-3',
       name: '合同金额',
       nameEn: 'amount',
-      type: 'decimal',
+      dataType: 'decimal',
       required: true,
     },
   ],
@@ -66,7 +67,7 @@ const createMockProject = (overrides: Partial<OntologyProject> = {}): OntologyPr
     version: '1.0.0',
     domain: 'domain-1',
     projects: [],
-    businessScenarios: [],
+    businessScenarios: [{ id: 'scenario-1', name: '合同签订', nameEn: 'ContractSign', projectId: 'project-1' }],
     entities: [createMockEntity()],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

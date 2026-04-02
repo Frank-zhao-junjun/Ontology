@@ -92,8 +92,8 @@ export async function POST(request: NextRequest) {
       masterDataPrompt += `**使用规则**：
 1. 当实体需要引用核心业务数据时，可使用reference类型属性引用主数据
 2. 例如：合同实体可引用"客户主数据"或"供应商主数据"
-3. 引用主数据时，请设置 \`referenceTargetType = 'masterdata'\`，并优先输出 \`masterDataIds\` 与 \`masterDataNames\`（支持多选）
-4. 如需兼容旧字段，可同时补充首个 \`masterDataId\` / \`masterDataName\`
+    3. 引用主数据时，请设置 \`dataType = 'reference'\`、\`referenceKind = 'masterData'\`、\`isMasterDataRef = true\`
+    4. 主数据引用至少输出 \`masterDataType\`，如需细化到字段可补充 \`masterDataField\`
 `;
     }
 

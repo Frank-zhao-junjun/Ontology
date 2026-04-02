@@ -159,6 +159,9 @@ export class BasicQueryService {
     entity: string | undefined,
     filters: Record<string, unknown>
   ): Promise<unknown[]> {
+    void intent;
+    void entity;
+    void filters;
     // 默认实现返回空数组
     // 实际实现应该查询数据库
     return [];

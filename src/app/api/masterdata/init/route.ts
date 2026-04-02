@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FetchClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
 
-// 主数据Excel文件URL（如果有的话，暂时返回示例数据）
-const MASTERDATA_EXCEL_URL = '';
+// 主数据文件 URL 可通过环境变量覆盖，默认仍回落到示例数据。
+const MASTERDATA_EXCEL_URL = process.env.MASTERDATA_EXCEL_URL || '';
 
 const generateId = () => Math.random().toString(36).substring(2, 10);
 

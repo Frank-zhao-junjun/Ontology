@@ -13,17 +13,12 @@ import { normalizeEntityRoleFields, resolveEntityRole } from '@/lib/entity-role'
 import { regenerateEpcProfile } from '@/lib/epc-generator';
 import type { 
   OntologyProject, 
-  DataModel, 
-  BehaviorModel, 
-  RuleModel, 
-  EventModel,
   Entity,
   EntityRole,
   Attribute,
   StateMachine,
   Rule,
   EventDefinition,
-  Subscription,
   EpcAggregateProfile
 } from '@/types/ontology';
 
@@ -64,6 +59,7 @@ export interface NormalizedEntity {
   id: string;
   name: string;
   nameEn: string;
+  businessScenarioId: string;
   fileName: string;
   className: string;
   tableName: string;
@@ -81,18 +77,19 @@ export interface NormalizedAttribute {
   id: string;
   name: string;
   nameEn: string;
-  type: string;
+  dataType: string;
   required: boolean;
   unique: boolean;
   length?: number;
   description?: string;
   columnName: string;
-  refEntity?: string;
-  referenceTargetType?: 'entity' | 'masterdata';
-  masterDataId?: string;
-  masterDataName?: string;
-  masterDataIds?: string[];
-  masterDataNames?: string[];
+  referenceKind?: 'entity' | 'masterData';
+  referencedEntityId?: string;
+  isMasterDataRef?: boolean;
+  masterDataType?: string;
+  masterDataField?: string;
+  metadataTemplateId?: string;
+  metadataTemplateName?: string;
 }
 
 export interface NormalizedRelation {
@@ -198,6 +195,7 @@ export class ConfigExporter {
         id: entity.id,
         name: entity.name,
         nameEn: entity.nameEn,
+        businessScenarioId: entity.businessScenarioId,
         fileName: this.toFileName(entity.nameEn),
         className: this.toClassName(entity.nameEn),
         tableName: this.toTableName(entity.nameEn),
@@ -239,18 +237,19 @@ export class ConfigExporter {
       id: attr.id,
       name: attr.name,
       nameEn: attr.nameEn || '',
-      type: attr.type,
+      dataType: attr.dataType,
       required: attr.required || false,
       unique: attr.unique || false,
       length: attr.length,
       description: attr.description,
       columnName: this.toColumnName(attr.nameEn || attr.name),
-      refEntity: attr.refEntity,
-      referenceTargetType: attr.referenceTargetType,
-      masterDataId: attr.masterDataId,
-      masterDataName: attr.masterDataName,
-      masterDataIds: attr.masterDataIds,
-      masterDataNames: attr.masterDataNames,
+      referenceKind: attr.referenceKind,
+      referencedEntityId: attr.referencedEntityId,
+      isMasterDataRef: attr.isMasterDataRef,
+      masterDataType: attr.masterDataType,
+      masterDataField: attr.masterDataField,
+      metadataTemplateId: attr.metadataTemplateId,
+      metadataTemplateName: attr.metadataTemplateName,
     };
   }
 
@@ -434,7 +433,7 @@ ${epcProfiles.length > 0 ? `└── epc/
       seedData[entity.nameEn] = [{
         id: `sample-${entity.id}`,
         ...entity.attributes.reduce((obj, attr) => {
-          obj[attr.nameEn || attr.name] = this.getSampleValue(attr.type);
+          obj[attr.nameEn || attr.name] = this.getSampleValue(attr.dataType);
           return obj;
         }, {} as Record<string, unknown>)
       }];

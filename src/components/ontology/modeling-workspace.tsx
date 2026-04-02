@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useOntologyStore } from '@/store/ontology-store';
 import { useProjectSync } from '@/hooks/use-project-sync';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ import { MetadataManager } from './metadata-manager';
 import { MasterDataManager } from './masterdata-manager';
 import { PublishDialog } from './publish-dialog';
 import { updateProject, deleteProject } from '@/services/project-service';
-import type { OntologyProject, Entity, EntityProject, BusinessScenario } from '@/types/ontology';
+import type { OntologyProject, Entity, EntityProject } from '@/types/ontology';
 
 // Business Scenario Form Component
 function BusinessScenarioForm({ projectId, onSuccess }: { projectId: string; onSuccess: () => void }) {
@@ -34,7 +34,7 @@ function BusinessScenarioForm({ projectId, onSuccess }: { projectId: string; onS
   const [name, setName] = useState('');
   const [nameEn, setNameEn] = useState('');
   const [description, setDescription] = useState('');
-  const [color, setColor] = useState('#3b82f6');
+  const color = '#3b82f6';
 
   const handleSubmit = () => {
     if (!name.trim() || !projectId) return;
@@ -90,7 +90,7 @@ const MODEL_TABS = [
   { id: 'behavior' as ModelType, label: '行为模型', icon: '⚡' },
   { id: 'rule' as ModelType, label: '规则模型', icon: '📋' },
   { id: 'event' as ModelType, label: '事件模型', icon: '📨' },
-  { id: 'epc' as ModelType, label: 'EPC', icon: '🧭' },
+  { id: 'epc' as ModelType, label: 'EPC事件说明书', icon: '🧭' },
 ];
 
 const PROJECT_COLORS = [
@@ -114,7 +114,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   useProjectSync();
   const router = useRouter();
   
-  const { resetProject, exportProject, addEntityProject, updateEntityProject, deleteEntityProject, addEntity } = useOntologyStore();
+  const { resetProject, exportProject, addEntityProject, addEntity } = useOntologyStore();
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ModelType>('data');
@@ -131,11 +131,14 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   const [editingProject, setEditingProject] = useState<Partial<EntityProject>>({ color: '#3b82f6' });
   const [editingEntity, setEditingEntity] = useState<Partial<Entity>>({});
 
-  const allEntities = project.dataModel?.entities || [];
+  const allEntities = useMemo(() => project.dataModel?.entities || [], [project.dataModel?.entities]);
   const projects = project.dataModel?.projects || [];
   const businessScenarios = project.dataModel?.businessScenarios || [];
   const aggregateRootEntities = getAggregateRootEntities(allEntities);
   const editingEntityRole = resolveEntityRole(editingEntity);
+  const selectedScenario = selectedScenarioId
+    ? businessScenarios.find((scenario) => scenario.id === selectedScenarioId) || null
+    : null;
   
   // Filter entities by selected project and scenario
   const entities = (() => {
@@ -144,7 +147,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
       : allEntities.filter(e => e.projectId === selectedProjectId);
     
     if (selectedScenarioId) {
-      filtered = filtered.filter(e => e.scenarioId === selectedScenarioId);
+      filtered = filtered.filter(e => e.businessScenarioId === selectedScenarioId);
     }
     
     return filtered;
@@ -249,6 +252,11 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
       return;
     }
 
+    if (!selectedScenarioId) {
+      alert('请先选择业务场景，再创建实体');
+      return;
+    }
+
     if (entityRole === 'child_entity' && !editingEntity.parentAggregateId) {
       alert('聚合内子实体必须选择所属聚合根。');
       return;
@@ -260,6 +268,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
       nameEn: editingEntity.nameEn || 'NewEntity',
       description: editingEntity.description,
       projectId,
+      businessScenarioId: selectedScenarioId,
       entityRole,
       parentAggregateId: entityRole === 'child_entity' ? editingEntity.parentAggregateId : undefined,
       attributes: [],
@@ -690,7 +699,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                           <span className="font-medium text-sm">{scenario.name}</span>
                         </div>
                         <Badge variant="outline" className="text-xs">
-                          {allEntities.filter(e => e.scenarioId === scenario.id).length}
+                          {allEntities.filter(e => e.businessScenarioId === scenario.id).length}
                         </Badge>
                       </div>
                     ))
@@ -709,15 +718,20 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                     🗄️ 实体列表
                   </h2>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {selectedProjectId === 'all' ? '全部项目' : getProjectName(selectedProjectId)} · {entities.length} 个实体
+                    {selectedProjectId === 'all' ? '全部项目' : getProjectName(selectedProjectId)}
+                    {' · '}
+                    {selectedScenario ? `场景：${selectedScenario.name}` : '未选择业务场景'}
+                    {' · '}
+                    {entities.length} 个实体
                   </p>
                 </div>
                 <Dialog open={showEntityDialog} onOpenChange={setShowEntityDialog}>
                   <DialogTrigger asChild>
                     <Button size="sm" onClick={() => setEditingEntity({ 
                       projectId: selectedProjectId !== 'all' ? selectedProjectId : projects[0]?.id || '',
+                      businessScenarioId: selectedScenarioId || '',
                       entityRole: 'child_entity'
-                    })}>
+                    })} disabled={!selectedScenarioId}>
                       + 新建
                     </Button>
                   </DialogTrigger>
@@ -766,6 +780,13 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                             )}
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>所属业务场景 *</Label>
+                        <Input value={selectedScenario?.name || ''} readOnly placeholder="请先在左侧选择业务场景" />
+                        <p className="text-xs text-muted-foreground">
+                          实体创建后归属业务场景不可更改。
+                        </p>
                       </div>
                       <div className="space-y-2">
                         <Label>实体角色</Label>
@@ -835,8 +856,8 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                 {entities.length === 0 ? (
                   <div className="text-center text-muted-foreground py-8 px-4">
                     <div className="text-2xl mb-2">🗄️</div>
-                    <p className="text-sm">暂无实体</p>
-                    <p className="text-xs mt-1">点击上方按钮添加实体</p>
+                    <p className="text-sm">{selectedScenarioId ? '暂无实体' : '请先选择业务场景'}</p>
+                    <p className="text-xs mt-1">{selectedScenarioId ? '点击上方按钮添加实体' : '实体必须在业务场景下创建'}</p>
                   </div>
                 ) : (
                   entities.map((entity) => {

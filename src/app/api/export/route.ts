@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { configExporter, ExportConfig } from '@/lib/configexporter';
-import { useOntologyStore } from '@/store/ontology-store';
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,7 +38,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // 获取导出配置模板
     return NextResponse.json({

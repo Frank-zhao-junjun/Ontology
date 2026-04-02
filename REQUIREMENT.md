@@ -58,6 +58,25 @@ Implementation Roadmap v1.0
 | 元数据管理   | 57条标准字段+CRUD   | ✅ 保持 |
 | AI辅助生成  | 豆包大模型生成建议      | ✅ 保持 |
 | 手册导出    | Markdown格式     | ✅ 保持 |
+2.1.1 补充约束：业务场景归属
+- 实体创建必须绑定 `businessScenarioId`，形成“项目 → 业务场景 → 实体 → 四大元模型”的固定归属链路。
+- 实体一旦创建，不允许跨业务场景移动；编辑实体时仅允许展示归属业务场景，不允许修改。
+- 工作台实体列表必须按当前选中的业务场景过滤；未选业务场景时不得创建实体。
+- EPC 说明书中的“业务背景/场景说明”只能引用当前实体所属 `BusinessScenario.description`，不得由页面手工编辑或模型自行虚构。
+
+2.1.2 补充约束：EPC事件说明书
+- EPC 页签名称固定为“EPC事件说明书”，仅聚合根实体显示。
+- EPC 页签为只读生成视图，不提供“新建、编辑、保存补充信息、手工添加信息对象/组织单元/系统”等入口。
+- EPC 内容由数据模型、行为模型、规则模型、事件模型和业务场景说明联合生成；当模型变更后，用户可手动点击“重新生成”。
+- 页签导出与页面预览必须保持同源，支持 Markdown、JSON 和整包导出。
+
+2.1.3 补充约束：属性编辑与主数据关联
+- 属性主字段切换为：`dataType`、`metadataTemplateId`、`metadataTemplateName`、`referenceKind`、`referencedEntityId`、`isMasterDataRef`、`masterDataType`、`masterDataField`。
+- 当属性绑定元数据模板时，`dataType` 以模板解析结果为准，页面不得允许用户输入与模板冲突的类型。
+- 当 `dataType = 'reference'` 且引用实体时，必须填写 `referencedEntityId`。
+- 当 `isMasterDataRef = true` 时，系统必须同时满足：`dataType = 'reference'`、`referenceKind = 'masterData'`、`masterDataType` 必填，`masterDataField` 可选。
+- `referencedEntityId` 与 `masterDataType` 互斥，同一属性不允许同时有效绑定实体引用和主数据引用。
+
 2.2 新增功能：版本发布
 2.2.1 版本管理功能
 // 新增类型定义

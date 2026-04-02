@@ -6,7 +6,7 @@ import { useOntologyStore } from '@/store/ontology-store';
 
 const now = '2026-04-01T00:00:00.000Z';
 
-describe('IT-DATAMODEL-REFERENCE-001: Reference 属性支持多选主数据', () => {
+describe('IT-DATAMODEL-REFERENCE-001: Reference 属性支持主数据类型与字段绑定', () => {
   beforeEach(() => {
     useOntologyStore.setState({
       project: {
@@ -31,13 +31,21 @@ describe('IT-DATAMODEL-REFERENCE-001: Reference 属性支持多选主数据', ()
               nameEn: 'ContractCenter',
             },
           ],
-          businessScenarios: [],
+          businessScenarios: [
+            {
+              id: 'scenario-1',
+              name: '合同签订',
+              nameEn: 'ContractSign',
+              projectId: 'proj-1',
+            },
+          ],
           entities: [
             {
               id: 'entity-contract',
               name: '合同',
               nameEn: 'Contract',
               projectId: 'module-1',
+              businessScenarioId: 'scenario-1',
               entityRole: 'aggregate_root',
               attributes: [],
               relations: [],
@@ -47,6 +55,7 @@ describe('IT-DATAMODEL-REFERENCE-001: Reference 属性支持多选主数据', ()
               name: '订单',
               nameEn: 'Order',
               projectId: 'module-1',
+              businessScenarioId: 'scenario-1',
               entityRole: 'aggregate_root',
               attributes: [],
               relations: [],
@@ -114,7 +123,7 @@ describe('IT-DATAMODEL-REFERENCE-001: Reference 属性支持多选主数据', ()
     });
   });
 
-  it('应允许把引用类型属性关联到多个主数据项', async () => {
+  it('应允许把引用类型属性关联到单个主数据类型及字段', async () => {
     render(React.createElement(DataModelEditor, { mode: 'entity-detail', entityId: 'entity-contract' }));
 
     fireEvent.click(screen.getByRole('button', { name: /\+ 添加属性/i }));
@@ -125,18 +134,19 @@ describe('IT-DATAMODEL-REFERENCE-001: Reference 属性支持多选主数据', ()
     fireEvent.click(screen.getByRole('combobox', { name: '数据类型' }));
     fireEvent.click(await screen.findByText('引用 (Reference)'));
 
-    fireEvent.click(await screen.findByRole('combobox', { name: '引用来源' }));
-    fireEvent.click(await screen.findByText('引用主数据（可多选）'));
+    fireEvent.click(screen.getByLabelText('是否关联主数据'));
 
-    fireEvent.click(await screen.findByLabelText('供应商主数据'));
-    fireEvent.click(await screen.findByLabelText('客户主数据'));
-    fireEvent.click(await screen.findByLabelText('员工主数据'));
+    fireEvent.click(await screen.findByRole('combobox', { name: '主数据类型' }));
+    fireEvent.click(await screen.findByText('供应商主数据'));
+
+    fireEvent.click(await screen.findByRole('combobox', { name: '主数据字段（可选）' }));
+    fireEvent.click(await screen.findByText('供应商编码'));
 
     fireEvent.click(screen.getByRole('button', { name: /添加属性|保存修改/i }));
 
     await waitFor(() => {
       expect(screen.getByText('甲方主体')).toBeInTheDocument();
-      expect(screen.getByText(/主数据: 供应商主数据、客户主数据、员工主数据/)).toBeInTheDocument();
+      expect(screen.getByText(/主数据: 供应商主数据 \/ 供应商编码/)).toBeInTheDocument();
     });
 
     const savedAttribute = useOntologyStore
@@ -144,9 +154,10 @@ describe('IT-DATAMODEL-REFERENCE-001: Reference 属性支持多选主数据', ()
       .project?.dataModel?.entities.find((entity) => entity.id === 'entity-contract')
       ?.attributes.find((attribute) => attribute.name === '甲方主体');
 
-    expect(savedAttribute?.type).toBe('reference');
-    expect(savedAttribute?.referenceTargetType).toBe('masterdata');
-    expect(savedAttribute?.masterDataIds).toEqual(['md-supplier', 'md-customer', 'md-employee']);
-    expect(savedAttribute?.masterDataNames).toEqual(['供应商主数据', '客户主数据', '员工主数据']);
+    expect(savedAttribute?.dataType).toBe('reference');
+    expect(savedAttribute?.referenceKind).toBe('masterData');
+    expect(savedAttribute?.isMasterDataRef).toBe(true);
+    expect(savedAttribute?.masterDataType).toBe('md-supplier');
+    expect(savedAttribute?.masterDataField).toBe('供应商编码');
   });
 });

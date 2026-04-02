@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { RuntimeLoader, type ConfigPackage } from './test-helpers';
+import { RuntimeLoader } from './test-helpers';
 import { ConfigExporter } from '@/lib/configexporter';
 import { createFrozenProject } from '../unit/test-helpers';
 

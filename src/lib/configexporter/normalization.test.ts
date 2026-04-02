@@ -27,6 +27,7 @@ const createMockEntity = (
   name,
   nameEn,
   projectId: 'project-1',
+  businessScenarioId: 'scenario-1',
   description: `${name}实体`,
   // 注意：默认不显式设置 entityRole，让测试验证真实场景与兼容逻辑
   attributes: [
@@ -34,7 +35,7 @@ const createMockEntity = (
       id: `${id}-attr-1`,
       name: '名称',
       nameEn: 'name',
-      type: 'string',
+      dataType: 'string',
       required: true,
     },
   ],
@@ -53,7 +54,7 @@ const createMockProjectWithEntities = (entities: Entity[]): OntologyProject => (
     version: '1.0.0',
     domain: 'domain-1',
     projects: [],
-    businessScenarios: [],
+    businessScenarios: [{ id: 'scenario-1', name: '合同签订', nameEn: 'ContractSign', projectId: 'project-1' }],
     entities,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -257,7 +258,7 @@ describe('元模型标准化', () => {
               id: 'attr-1',
               name: '合同编号',
               nameEn: 'contractNo',
-              type: 'string',
+              dataType: 'string',
               required: true,
               unique: true,
               length: 50,
@@ -267,14 +268,14 @@ describe('元模型标准化', () => {
               id: 'attr-2',
               name: '合同金额',
               nameEn: 'amount',
-              type: 'decimal',
+              dataType: 'decimal',
               required: true,
             },
             {
               id: 'attr-3',
               name: '备注',
               nameEn: 'remark',
-              type: 'text',
+              dataType: 'text',
               required: false,
             },
           ],
@@ -295,7 +296,7 @@ describe('元模型标准化', () => {
       const contractNo = contract.attributes.find((a: { nameEn: string }) => a.nameEn === 'contractNo');
       expect(contractNo).toBeDefined();
       expect(contractNo.name).toBe('合同编号');
-      expect(contractNo.type).toBe('string');
+      expect(contractNo.dataType).toBe('string');
       expect(contractNo.required).toBe(true);
       expect(contractNo.unique).toBe(true);
       expect(contractNo.length).toBe(50);

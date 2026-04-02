@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useOntologyStore } from '@/store/ontology-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,14 +22,12 @@ const PRESET_DOMAINS: Domain[] = [
 ];
 
 export function ProjectSetup() {
-  const router = useRouter();
   const { createProject: setProject, importProject } = useOntologyStore();
   const [step, setStep] = useState<'domain' | 'details'>('domain');
   const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null);
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
   const [customDomainName, setCustomDomainName] = useState('');
-  const constomDomainNameEn = useState('');
   const [importJson, setImportJson] = useState('');
   const [showImport, setShowImport] = useState(false);
 

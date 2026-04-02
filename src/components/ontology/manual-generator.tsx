@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useOntologyStore } from '@/store/ontology-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import type { OntologyProject, Entity, Attribute, Relation, StateMachine, State, Transition, Rule, EventDefinition, Subscription } from '@/types/ontology';
+import type { Entity, Attribute, Relation, StateMachine, State, Transition, Rule, EventDefinition, Subscription } from '@/types/ontology';
 
 interface RelatedModels {
   entity?: Entity;
@@ -45,15 +45,14 @@ interface AISuggestions {
 const generateId = () => Math.random().toString(36).substring(2, 10);
 
 export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: ManualGeneratorProps) {
-  const { project, addEntity, updateEntity, addStateMachine, updateStateMachine, addRule, addEventDefinition, addSubscription, metadataList, masterDataList } = useOntologyStore();
-  const [activeSection, setActiveSection] = useState('overview');
+  const { project, updateEntity, addStateMachine, addRule, addEventDefinition, addSubscription, metadataList, masterDataList } = useOntologyStore();
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestions | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [appliedItems, setAppliedItems] = useState<Set<string>>(new Set());
 
   // 获取项目列表
-  const projects = project?.dataModel?.projects || [];
+  const projects = useMemo(() => project?.dataModel?.projects || [], [project?.dataModel?.projects]);
   
   // 获取实体所属项目名称
   const getProjectName = (projectId: string | undefined) => {
@@ -65,15 +64,8 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
   // 是否为实体模式（选中了具体实体）
   const isEntityMode = selectedEntityId && relatedModels?.entity;
 
-  // 自动生成AI建议（如果是实体模式）
-  useEffect(() => {
-    if (isEntityMode && !aiSuggestions && !isGenerating) {
-      handleGenerateAI();
-    }
-  }, [isEntityMode]);
-
   // 调用API生成AI建议
-  const handleGenerateAI = async () => {
+  const handleGenerateAI = useCallback(async () => {
     const entity = relatedModels?.entity;
     if (!entity || !project) return;
     
@@ -127,7 +119,14 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [masterDataList, metadataList, project, projects, relatedModels]);
+
+  // 自动生成AI建议（如果是实体模式）
+  useEffect(() => {
+    if (isEntityMode && !aiSuggestions && !isGenerating) {
+      void handleGenerateAI();
+    }
+  }, [aiSuggestions, handleGenerateAI, isEntityMode, isGenerating]);
 
   // 应用建议到模型 - 使用更宽松的类型
   interface SuggestionItem {
@@ -170,7 +169,7 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
             id: generateId(),
             name: item.name || '新属性',
             nameEn: item.nameEn || '',
-            type: (item.type as Attribute['type']) || 'string',
+            dataType: (item.type as Attribute['dataType']) || 'string',
             required: item.required || false,
             unique: item.unique || false,
             description: item.description || '',
@@ -333,7 +332,7 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
         md += `| 属性名 | 英文名 | 类型 | 必填 | 唯一 | 说明 |\n`;
         md += `| --- | --- | --- | --- | --- | --- |\n`;
         entity.attributes.forEach((attr) => {
-          md += `| ${attr.name} | ${attr.nameEn || '-'} | ${attr.type} | ${attr.required ? '✓' : ''} | ${attr.unique ? '✓' : ''} | ${attr.description || '-'} |\n`;
+          md += `| ${attr.name} | ${attr.nameEn || '-'} | ${attr.dataType} | ${attr.required ? '✓' : ''} | ${attr.unique ? '✓' : ''} | ${attr.description || '-'} |\n`;
         });
         md += `\n`;
       } else {
@@ -421,7 +420,7 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
             md += `| 属性名 | 类型 | 必填 |\n`;
             md += `| --- | --- | --- |\n`;
             entity.attributes.forEach((attr) => {
-              md += `| ${attr.name} | ${attr.type} | ${attr.required ? '✓' : ''} |\n`;
+              md += `| ${attr.name} | ${attr.dataType} | ${attr.required ? '✓' : ''} |\n`;
             });
             md += `\n`;
           }
@@ -511,7 +510,7 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
                           <div className="flex-1">
                             <div className="font-medium">{attr.name}</div>
                             <div className="text-sm text-muted-foreground">
-                              {attr.type} {attr.required && '• 必填'} {attr.description && `• ${attr.description}`}
+                              {attr.dataType} {attr.required && '• 必填'} {attr.description && `• ${attr.description}`}
                             </div>
                           </div>
                           <Button 
@@ -743,7 +742,7 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
                               {relatedModels.entity.attributes.map((attr) => (
                                 <div key={attr.id} className="p-2 bg-muted rounded-lg">
                                   <span className="font-medium">{attr.name}</span>
-                                  <span className="text-muted-foreground ml-2">({attr.type})</span>
+                                  <span className="text-muted-foreground ml-2">({attr.dataType})</span>
                                 </div>
                               ))}
                             </div>

@@ -1,16 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useOntologyStore } from '@/store/ontology-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Plus, Pencil, Trash2, Search, Table2 } from 'lucide-react';
 import type { MasterData, MasterDataRecord } from '@/types/ontology';
@@ -68,15 +67,8 @@ export function MasterDataManager({ onBack }: MasterDataManagerProps) {
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [recordError, setRecordError] = useState<string | null>(null);
 
-  // 初始化时加载主数据
-  useEffect(() => {
-    if (masterDataList.length === 0) {
-      handleInitFromExcel();
-    }
-  }, []);
-
   // 从Excel初始化主数据
-  const handleInitFromExcel = async () => {
+  const handleInitFromExcel = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch('/api/masterdata/init');
@@ -101,7 +93,14 @@ export function MasterDataManager({ onBack }: MasterDataManagerProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [setMasterDataList, setMasterDataRecords]);
+
+  // 初始化时加载主数据
+  useEffect(() => {
+    if (masterDataList.length === 0) {
+      void handleInitFromExcel();
+    }
+  }, [handleInitFromExcel, masterDataList.length]);
 
   // 过滤主数据
   const filteredData = masterDataList.filter(m => {

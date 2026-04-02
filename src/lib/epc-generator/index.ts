@@ -2,12 +2,8 @@ import { isEntityAggregateRoot } from '@/lib/entity-role';
 import type {
   EpcAggregateProfile,
   EpcActivityDefinition,
-  EpcComplianceDefinition,
-  EpcConnectorDefinition,
   EpcExceptionDefinition,
   EpcInformationObject,
-  EpcIntegrationDefinition,
-  EpcKpiDefinition,
   EpcModel,
   EpcOrganizationalUnit,
   EpcSystemActor,
@@ -104,6 +100,15 @@ function getSystemTypeLabel(type?: EpcSystemActor['type']): string {
 
 function getAggregateStateMachine(project: OntologyProject, aggregateId: string) {
   return project.behaviorModel?.stateMachines.find((machine) => machine.entity === aggregateId);
+}
+
+function getBusinessScenarioDescription(project: OntologyProject, aggregateId: string): string {
+  const aggregate = project.dataModel?.entities.find((entity) => entity.id === aggregateId);
+  if (!aggregate?.businessScenarioId) {
+    return '';
+  }
+
+  return project.dataModel?.businessScenarios.find((scenario) => scenario.id === aggregate.businessScenarioId)?.description || '';
 }
 
 function resolveStateName(project: OntologyProject, aggregateId: string, stateId?: string): string | undefined {
@@ -562,9 +567,8 @@ function deriveInformationObjects(project: OntologyProject, aggregateId: string)
   const childEntities = project.dataModel?.entities.filter((entity) => entity.parentAggregateId === aggregateId) || [];
   const masterDataMap = new Map((project.dataModel?.entities || [])
     .flatMap((entity) => entity.attributes)
-    .flatMap((attribute) => (attribute.masterDataIds || []).map((id, index) => ({ id, name: attribute.masterDataNames?.[index] })))
-    .filter((item) => item.id)
-    .map((item) => [item.id!, item.name]));
+    .filter((attribute) => attribute.isMasterDataRef && attribute.masterDataType)
+    .map((attribute) => [attribute.masterDataType!, attribute.masterDataType!]));
 
   const aggregateInfo = aggregate ? [{
     id: `info-${aggregate.id}`,
@@ -597,10 +601,9 @@ function deriveInformationObjects(project: OntologyProject, aggregateId: string)
 }
 
 function syncInformationObjects(derivedObjects: EpcInformationObject[], existingObjects: EpcInformationObject[] = []): EpcInformationObject[] {
-  const manualObjects = existingObjects.filter((info) => info.sourceType === 'manual');
   const existingDerivedMap = new Map(existingObjects.filter(isDerivedInformationObject).map((info) => [buildInformationObjectKey(info), info]));
 
-  const syncedDerived = derivedObjects.map((info) => {
+  return derivedObjects.map((info) => {
     const existing = existingDerivedMap.get(buildInformationObjectKey(info));
     return existing
       ? {
@@ -609,8 +612,6 @@ function syncInformationObjects(derivedObjects: EpcInformationObject[], existing
         }
       : info;
   });
-
-  return [...syncedDerived, ...manualObjects];
 }
 
 function validateInformationObjects(profile: EpcAggregateProfile, issues: EpcValidationIssue[]): void {
@@ -834,7 +835,7 @@ export function ensureEpcProfile(project: OntologyProject, aggregateId: string):
     purpose: `${aggregate.name}业务活动规格说明书`,
     scopeStart: '待补充',
     scopeEnd: '待补充',
-    businessBackground: aggregate.description,
+    businessBackground: getBusinessScenarioDescription(project, aggregateId),
     organizationalUnits: [],
     systems: [],
     informationObjects: syncInformationObjects(deriveInformationObjects(project, aggregateId)),
@@ -876,10 +877,12 @@ export function regenerateEpcProfile(project: OntologyProject, profile: EpcAggre
   }
 
   const regenerated = mergeEpcProfile(profile, {
-    businessName: profile.businessName || aggregate.name,
+    businessName: aggregate.name,
+    businessCode: aggregate.nameEn?.toUpperCase(),
+    businessBackground: getBusinessScenarioDescription(project, profile.aggregateId),
     informationObjects: syncInformationObjects(deriveInformationObjects(project, profile.aggregateId), profile.informationObjects),
-    activities: profile.activities.length > 0 ? profile.activities : deriveActivities(project, profile.aggregateId),
-    exceptions: profile.exceptions.length > 0 ? profile.exceptions : deriveExceptions(project, profile.aggregateId),
+    activities: deriveActivities(project, profile.aggregateId),
+    exceptions: deriveExceptions(project, profile.aggregateId),
     status: 'generated',
   });
 
@@ -892,7 +895,6 @@ export function regenerateEpcProfile(project: OntologyProject, profile: EpcAggre
 
 export function generateEpcMarkdown(project: OntologyProject, profile: EpcAggregateProfile): string {
   const aggregate = project.dataModel?.entities.find((entity) => entity.id === profile.aggregateId);
-  const stateMachine = getAggregateStateMachine(project, profile.aggregateId);
   const rules = project.ruleModel?.rules.filter((rule) => rule.entity === profile.aggregateId) || [];
   const artifacts = buildFlowArtifacts(project, profile);
   const selfCheckRows = buildSelfCheckRows(project, profile, artifacts);

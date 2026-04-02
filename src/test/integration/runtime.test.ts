@@ -5,8 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ConfigExporter, type ConfigPackage } from '@/lib/configexporter';
-import type { OntologyProject } from '@/types/ontology';
+import type { ConfigPackage } from '@/lib/configexporter';
 
 // ========== 运行时加载器模拟 ==========
 
@@ -112,7 +111,7 @@ const createMockConfig = (version: string, entityCount: number = 1): ConfigPacka
       tableName: `t_entity_${i}`,
       entityRole: 'aggregate_root',
       attributes: [
-        { id: 'a1', name: '名称', nameEn: 'name', type: 'string', required: true, columnName: 'name' },
+        { id: 'a1', name: '名称', nameEn: 'name', dataType: 'string', required: true, columnName: 'name' },
       ],
       relations: [],
       rules: [],

@@ -24,13 +24,14 @@ export const createMockEntity = (
   name,
   nameEn,
   projectId: 'project-1',
+  businessScenarioId: 'scenario-1',
   description: `${name}实体`,
   attributes: [
     {
       id: `${id}-attr-1`,
       name: '名称',
       nameEn: 'name',
-      type: 'string',
+      dataType: 'string',
       required: true,
     },
   ],
@@ -66,12 +67,13 @@ export const createMockProject = (overrides: Partial<OntologyProject> = {}): Ont
 export const createContractEntity = (overrides: Partial<Entity> = {}): Entity =>
   createMockEntity('contract-1', '合同', 'Contract', {
     isAggregateRoot: true,
+    businessScenarioId: 'scenario-1',
     attributes: [
-      { id: 'a1', name: '合同编号', nameEn: 'contractNo', type: 'string', required: true, unique: true },
-      { id: 'a2', name: '合同名称', nameEn: 'contractName', type: 'string', required: true },
-      { id: 'a3', name: '合同金额', nameEn: 'amount', type: 'decimal', required: true },
-      { id: 'a4', name: '签订日期', nameEn: 'signDate', type: 'date' },
-      { id: 'a5', name: '合同状态', nameEn: 'status', type: 'enum' },
+      { id: 'a1', name: '合同编号', nameEn: 'contractNo', dataType: 'string', required: true, unique: true },
+      { id: 'a2', name: '合同名称', nameEn: 'contractName', dataType: 'string', required: true },
+      { id: 'a3', name: '合同金额', nameEn: 'amount', dataType: 'decimal', required: true },
+      { id: 'a4', name: '签订日期', nameEn: 'signDate', dataType: 'date' },
+      { id: 'a5', name: '合同状态', nameEn: 'status', dataType: 'enum' },
     ],
     ...overrides,
   });
@@ -79,9 +81,10 @@ export const createContractEntity = (overrides: Partial<Entity> = {}): Entity =>
 export const createContractClauseEntity = (): Entity =>
   createMockEntity('clause-1', '合同条款', 'ContractClause', {
     isAggregateRoot: false,
+    businessScenarioId: 'scenario-1',
     attributes: [
-      { id: 'c1', name: '条款编号', nameEn: 'clauseNo', type: 'string', required: true },
-      { id: 'c2', name: '条款内容', nameEn: 'content', type: 'text', required: true },
+      { id: 'c1', name: '条款编号', nameEn: 'clauseNo', dataType: 'string', required: true },
+      { id: 'c2', name: '条款内容', nameEn: 'content', dataType: 'text', required: true },
     ],
   });
 

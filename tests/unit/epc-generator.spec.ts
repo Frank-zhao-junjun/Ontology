@@ -21,17 +21,18 @@ function createProject(): OntologyProject {
       version: '1.0.0',
       domain: 'domain-1',
       projects: [],
-      businessScenarios: [],
+      businessScenarios: [{ id: 'scenario-1', name: '合同签订', nameEn: 'ContractSign', description: '合同审批与签署流程说明', projectId: 'proj-1' }],
       entities: [
         {
           id: 'entity-contract',
           name: '合同',
           nameEn: 'Contract',
           projectId: 'module-1',
+          businessScenarioId: 'scenario-1',
           entityRole: 'aggregate_root',
           attributes: [
-            { id: 'attr-1', name: '合同编号', nameEn: 'contractNo', type: 'string' },
-            { id: 'attr-2', name: '甲方主体', nameEn: 'firstParty', type: 'reference', referenceTargetType: 'masterdata', masterDataIds: ['md-customer'], masterDataNames: ['客户主数据'] },
+            { id: 'attr-1', name: '合同编号', nameEn: 'contractNo', dataType: 'string' },
+            { id: 'attr-2', name: '甲方主体', nameEn: 'firstParty', dataType: 'reference', referenceKind: 'masterData', isMasterDataRef: true, masterDataType: '客户主数据' },
           ],
           relations: [],
         },
@@ -40,9 +41,10 @@ function createProject(): OntologyProject {
           name: '合同明细',
           nameEn: 'ContractLine',
           projectId: 'module-1',
+          businessScenarioId: 'scenario-1',
           entityRole: 'child_entity',
           parentAggregateId: 'entity-contract',
-          attributes: [{ id: 'line-1', name: '金额', nameEn: 'amount', type: 'decimal' }],
+          attributes: [{ id: 'line-1', name: '金额', nameEn: 'amount', dataType: 'decimal' }],
           relations: [],
         },
       ],
@@ -129,12 +131,12 @@ describe('UT-EPC-001: EPC generator skeleton', () => {
     expect(profile.generatedDocument).toContain('合同');
   });
 
-  it('重新生成时应保留已补充的业务背景并刷新文档', () => {
+  it('重新生成时应以业务场景描述刷新业务背景', () => {
     const project = createProject();
     const profile = ensureEpcProfile(project, 'entity-contract');
     const regenerated = regenerateEpcProfile(project, {
       ...profile,
-      businessBackground: '合同审批与签署流程说明',
+      businessBackground: '旧背景',
     });
 
     expect(regenerated.businessBackground).toBe('合同审批与签署流程说明');
@@ -186,7 +188,7 @@ describe('UT-EPC-001: EPC generator skeleton', () => {
     expect(regenerated.validationSummary?.issues.some((issue) => issue.code === 'EPC_SYSTEM_MISSING')).toBe(false);
   });
 
-  it('重新生成时应保留手工信息对象并刷新派生信息对象', () => {
+  it('重新生成时应刷新派生信息对象并丢弃手工补充对象', () => {
     const project = createProject();
     const profile = ensureEpcProfile(project, 'entity-contract');
     const regenerated = regenerateEpcProfile(project, {
@@ -207,7 +209,7 @@ describe('UT-EPC-001: EPC generator skeleton', () => {
       ],
     });
 
-    expect(regenerated.informationObjects.some((item) => item.name === '预算校验结果' && item.sourceType === 'manual')).toBe(true);
+    expect(regenerated.informationObjects.some((item) => item.name === '预算校验结果' && item.sourceType === 'manual')).toBe(false);
     expect(regenerated.informationObjects.find((item) => item.sourceType === 'aggregate')?.description).toBe('流程中作为主单据流转');
   });
 });

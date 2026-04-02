@@ -31,15 +31,24 @@ describe('IT-EPC-001: 聚合根 EPC 页签骨架', () => {
           version: '1.0.0',
           domain: 'domain-1',
           projects: [],
-          businessScenarios: [],
+          businessScenarios: [
+            {
+              id: 'scenario-1',
+              name: '合同签订',
+              nameEn: 'ContractSign',
+              description: '合同审批与签署流程说明',
+              projectId: 'proj-1',
+            },
+          ],
           entities: [
             {
               id: 'entity-contract',
               name: '合同',
               nameEn: 'Contract',
               projectId: 'module-1',
+              businessScenarioId: 'scenario-1',
               entityRole: 'aggregate_root',
-              attributes: [{ id: 'attr-1', name: '合同编号', nameEn: 'contractNo', type: 'string' }],
+              attributes: [{ id: 'attr-1', name: '合同编号', nameEn: 'contractNo', dataType: 'string' }],
               relations: [],
             },
           ],
@@ -77,81 +86,21 @@ describe('IT-EPC-001: 聚合根 EPC 页签骨架', () => {
     });
   });
 
-  it('应为聚合根显示EPC预览并允许保存补充信息', async () => {
+  it('应为聚合根显示只读 EPC 预览和业务场景来源', async () => {
     render(React.createElement(EpcTab, { entityId: 'entity-contract' }));
 
-    await screen.findByText('EPC概览');
+    await screen.findByText('EPC事件说明书');
 
     await waitFor(() => {
-      expect(screen.getByText(/EPC业务活动规格说明书/)).toBeInTheDocument();
-      expect(screen.getByText(/4\.2 流程说明/)).toBeInTheDocument();
-      expect(screen.getByText(/5\. EPC流程矩阵/)).toBeInTheDocument();
-      expect(screen.getByText(/6\. EPC元素连接关系/)).toBeInTheDocument();
-      expect(screen.getByText(/7\. 角色和权限矩阵/)).toBeInTheDocument();
-      expect(screen.getByText(/12\. EPC完整性自检/)).toBeInTheDocument();
+      expect(screen.getByText(/生成依据/)).toBeInTheDocument();
+      expect(screen.getByText(/业务场景说明/)).toBeInTheDocument();
+      expect(screen.getByText('合同签订')).toBeInTheDocument();
+      expect(screen.getByText('合同审批与签署流程说明')).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText('文档目的'), { target: { value: '规范合同审批与签署业务流程' } });
-    fireEvent.click(screen.getByRole('button', { name: '保存补充信息' }));
-
-    await waitFor(() => {
-      const profile = useOntologyStore.getState().project?.epcModel?.profiles.find((item) => item.aggregateId === 'entity-contract');
-      expect(profile?.purpose).toBe('规范合同审批与签署业务流程');
-    });
-  });
-
-  it('应允许新增手工信息对象，且派生对象结构字段只读', async () => {
-    render(React.createElement(EpcTab, { entityId: 'entity-contract' }));
-
-    await screen.findByRole('button', { name: '+ 添加手工对象' });
-
-    const derivedNameInput = await screen.findByLabelText('对象名称');
-    expect(derivedNameInput).toBeDisabled();
-
-    fireEvent.click(screen.getByRole('button', { name: '+ 添加手工对象' }));
-
-    const nameInputs = screen.getAllByLabelText('对象名称');
-    const manualNameInput = nameInputs[nameInputs.length - 1];
-    fireEvent.change(manualNameInput, { target: { value: '预算校验结果' } });
-
-    const attributeInputs = screen.getAllByLabelText('属性摘要');
-    fireEvent.change(attributeInputs[attributeInputs.length - 1], { target: { value: '预算额度、校验结果' } });
-
-    const descriptionInputs = screen.getAllByLabelText('流程说明');
-    fireEvent.change(descriptionInputs[descriptionInputs.length - 1], { target: { value: '外部预算系统返回对象' } });
-
-    fireEvent.click(screen.getByRole('button', { name: '保存信息对象规则' }));
-
-    await waitFor(() => {
-      const profile = useOntologyStore.getState().project?.epcModel?.profiles.find((item) => item.aggregateId === 'entity-contract');
-      expect(profile?.informationObjects.some((item) => item.name === '预算校验结果' && item.sourceType === 'manual')).toBe(true);
-      expect(profile?.generatedDocument).toContain('预算校验结果');
-    });
-  });
-
-  it('应允许维护组织单元与执行系统并刷新 EPC 预览', async () => {
-    render(React.createElement(EpcTab, { entityId: 'entity-contract' }));
-
-    await screen.findByRole('button', { name: '+ 添加组织单元' });
-
-    fireEvent.click(screen.getByRole('button', { name: '+ 添加组织单元' }));
-    fireEvent.change(screen.getByLabelText('组织单元名称'), { target: { value: '采购专员' } });
-    fireEvent.change(screen.getByLabelText('职责说明'), { target: { value: '负责发起采购申请并跟踪审批' } });
-    fireEvent.change(screen.getByLabelText('权限说明'), { target: { value: '可提交采购申请' } });
-    fireEvent.click(screen.getByRole('button', { name: '保存组织单元' }));
-
-    fireEvent.click(screen.getByRole('button', { name: '+ 添加系统' }));
-    fireEvent.change(screen.getByLabelText('系统名称'), { target: { value: 'SRM平台' } });
-    fireEvent.change(screen.getByLabelText('系统说明'), { target: { value: '承载采购申请与采购订单流转' } });
-    fireEvent.click(screen.getByRole('button', { name: '保存执行系统' }));
-
-    await waitFor(() => {
-      const profile = useOntologyStore.getState().project?.epcModel?.profiles.find((item) => item.aggregateId === 'entity-contract');
-      expect(profile?.organizationalUnits.some((item) => item.name === '采购专员')).toBe(true);
-      expect(profile?.systems.some((item) => item.name === 'SRM平台')).toBe(true);
-      expect(profile?.generatedDocument).toContain('采购专员');
-      expect(profile?.generatedDocument).toContain('SRM平台');
-    });
+    expect(screen.queryByText('保存补充信息')).not.toBeInTheDocument();
+    expect(screen.queryByText('+ 添加手工对象')).not.toBeInTheDocument();
+    expect(screen.queryByText('+ 添加组织单元')).not.toBeInTheDocument();
   });
 
   it('应允许从 EPC 页签直接导出 Markdown 与 JSON', async () => {

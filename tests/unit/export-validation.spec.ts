@@ -7,8 +7,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ConfigExporter, type ExportConfig } from '@/lib/configexporter';
-import { createMockProject, createMockDomain } from './test-helpers';
+import { ConfigExporter } from '@/lib/configexporter';
+import { createMockProject } from './test-helpers';
 
 describe('Export Validation', () => {
   let exporter: ConfigExporter;

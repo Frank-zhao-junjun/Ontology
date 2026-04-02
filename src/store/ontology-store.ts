@@ -2,8 +2,8 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { createEmptyEpcModel, ensureEpcProfile as buildEpcProfile, mergeEpcProfile, regenerateEpcProfile as rebuildEpcProfile } from '@/lib/epc-generator';
-import { normalizeEntityRoleFields, normalizeOntologyProjectEntityRoles } from '@/lib/entity-role';
+import { createEmptyEpcModel, ensureEpcProfile as buildEpcProfile, regenerateEpcProfile as rebuildEpcProfile } from '@/lib/epc-generator';
+import { normalizeEntity, normalizeOntologyProject } from '@/lib/ontology-normalizer';
 import type { 
   OntologyProject, 
   Domain, 
@@ -97,7 +97,6 @@ interface OntologyState {
   // EPC模型操作
   setEpcModel: (model: EpcModel) => void;
   ensureEpcProfile: (aggregateId: string) => EpcAggregateProfile;
-  updateEpcProfile: (aggregateId: string, updates: Partial<EpcAggregateProfile>) => void;
   regenerateEpcDocument: (aggregateId: string) => void;
   
   // 元数据操作
@@ -143,6 +142,17 @@ interface OntologyState {
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 15);
+
+function ensureEntityScenario(entity: Entity, stateProject: OntologyProject | null): Entity {
+  const scenarios = stateProject?.dataModel?.businessScenarios || [];
+  const normalizedEntity = normalizeEntity(entity, scenarios);
+
+  if (!normalizedEntity.businessScenarioId) {
+    throw new Error('实体必须归属一个业务场景');
+  }
+
+  return normalizedEntity;
+}
 
 export const useOntologyStore = create<OntologyState>()(
   persist(
@@ -197,7 +207,7 @@ export const useOntologyStore = create<OntologyState>()(
       addEntity: (entity) => {
         set((state) => {
           if (!state.project) return state;
-          const normalizedEntity = normalizeEntityRoleFields(entity);
+          const normalizedEntity = ensureEntityScenario(entity, state.project);
           const currentModel = state.project.dataModel || {
             id: generateId(),
             name: `${state.project.domain.name}数据模型`,
@@ -226,7 +236,16 @@ export const useOntologyStore = create<OntologyState>()(
       updateEntity: (entityId, entity) => {
         set((state) => {
           if (!state.project?.dataModel) return state;
-          const normalizedEntity = normalizeEntityRoleFields(entity);
+          const existingEntity = state.project.dataModel.entities.find((item) => item.id === entityId);
+          if (!existingEntity) {
+            return state;
+          }
+
+          const normalizedEntity = ensureEntityScenario({
+            ...entity,
+            businessScenarioId: existingEntity.businessScenarioId,
+          }, state.project);
+
           return {
             project: {
               ...state.project,
@@ -760,30 +779,6 @@ export const useOntologyStore = create<OntologyState>()(
         return profile;
       },
 
-      updateEpcProfile: (aggregateId, updates) => {
-        set((state) => {
-          if (!state.project) return state;
-          const currentModel = state.project.epcModel || createEmptyEpcModel();
-          const currentProfile = currentModel.profiles.find((profile) => profile.aggregateId === aggregateId) || buildEpcProfile(state.project, aggregateId);
-          const nextProfile = rebuildEpcProfile(state.project, mergeEpcProfile(currentProfile, updates));
-          const nextProfiles = currentModel.profiles.some((profile) => profile.aggregateId === aggregateId)
-            ? currentModel.profiles.map((profile) => (profile.aggregateId === aggregateId ? nextProfile : profile))
-            : [...currentModel.profiles, nextProfile];
-
-          return {
-            project: {
-              ...state.project,
-              epcModel: {
-                ...currentModel,
-                profiles: nextProfiles,
-                updatedAt: new Date().toISOString(),
-              },
-              updatedAt: new Date().toISOString(),
-            },
-          };
-        });
-      },
-
       regenerateEpcDocument: (aggregateId) => {
         set((state) => {
           if (!state.project) return state;
@@ -947,7 +942,7 @@ export const useOntologyStore = create<OntologyState>()(
       
       importProject: (json) => {
         try {
-          const project = normalizeOntologyProjectEntityRoles(JSON.parse(json) as OntologyProject);
+          const project = normalizeOntologyProject(JSON.parse(json) as OntologyProject);
           set({ project, activeModelType: 'data' });
         } catch (error) {
           console.error('导入项目失败:', error);
@@ -1054,6 +1049,15 @@ export const useOntologyStore = create<OntologyState>()(
     }),
     {
       name: 'ontology-storage',
+      merge: (persistedState, currentState) => {
+        const typedState = persistedState as Partial<OntologyState> | undefined;
+
+        return {
+          ...currentState,
+          ...typedState,
+          project: typedState?.project ? normalizeOntologyProject(typedState.project) : currentState.project,
+        };
+      },
     }
   )
 );

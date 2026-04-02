@@ -4,7 +4,7 @@
  * 测试用例：UT-AI-001 ~ UT-AI-004
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { BasicQueryService, type QueryRequest } from './query-service';
 
 // ========== 测试用例 ==========

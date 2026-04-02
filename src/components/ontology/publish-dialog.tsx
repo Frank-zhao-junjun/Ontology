@@ -6,10 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -110,14 +108,6 @@ export function PublishDialog({ onPublished }: PublishDialogProps) {
         // 将代码包转换为文件结构并打包下载
         const codePackage = result.package;
         const files = codePackage.files || [];
-        
-        // 创建一个简单的目录结构说明
-        let readme = `# ${project.name} v${version.version}\n\n`;
-        readme += `生成时间: ${new Date().toLocaleString()}\n\n`;
-        readme += `## 文件列表\n\n`;
-        files.forEach((f: { path: string }) => {
-          readme += `- ${f.path}\n`;
-        });
         
         // 下载完整代码包
         const blob = new Blob([JSON.stringify(codePackage, null, 2)], { type: 'application/json' });

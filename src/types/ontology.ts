@@ -88,11 +88,14 @@ export interface BusinessScenario {
 }
 
 // ========== 数据模型 ==========
+export type AttributeDataType = 'string' | 'integer' | 'decimal' | 'boolean' | 'date' | 'datetime' | 'enum' | 'reference' | 'text';
+export type AttributeReferenceKind = 'entity' | 'masterData';
+
 export interface Attribute {
   id: string;
   name: string;
   nameEn?: string;
-  type: 'string' | 'integer' | 'decimal' | 'boolean' | 'date' | 'datetime' | 'enum' | 'reference' | 'text';
+  dataType: AttributeDataType;
   length?: number;
   precision?: number;
   scale?: number;
@@ -100,17 +103,16 @@ export interface Attribute {
   unique?: boolean;
   default?: string;
   enumRef?: string;
-  refEntity?: string;
-  referenceTargetType?: 'entity' | 'masterdata';
-  refDisplayField?: string;
+  referenceKind?: AttributeReferenceKind;
+  referencedEntityId?: string;
+  referenceDisplayField?: string;
+  isMasterDataRef?: boolean;
+  masterDataType?: string;
+  masterDataField?: string;
   autoFill?: string;
   description?: string;
-  metadataId?: string;  // 关联的元数据ID
-  metadataName?: string;  // 关联的元数据名称（用于显示）
-  masterDataId?: string;  // 兼容旧数据：首个关联主数据ID
-  masterDataName?: string;  // 兼容旧数据：关联主数据名称（用于显示）
-  masterDataIds?: string[];  // 多选关联的主数据ID列表
-  masterDataNames?: string[];  // 多选关联的主数据名称列表
+  metadataTemplateId?: string;
+  metadataTemplateName?: string;
 }
 
 export interface Relation {
@@ -131,7 +133,7 @@ export interface Entity {
   name: string;
   nameEn: string;
   projectId: string;  // 所属项目
-  scenarioId?: string;  // 所属业务场景
+  businessScenarioId: string;  // 所属业务场景
   description?: string;
   entityRole?: EntityRole;     // DDD角色：聚合根 / 聚合内子实体
   parentAggregateId?: string;  // 当 entityRole=child_entity 时，指向所属聚合根

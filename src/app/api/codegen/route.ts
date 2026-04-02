@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateCodePackage } from '@/lib/code-generator';
-import { useOntologyStore } from '@/store/ontology-store';
 import type { ProjectVersion, PublishConfig } from '@/types/ontology';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { versionId, config, projectName } = body as {
-      versionId: string;
+    const { config, projectName } = body as {
       config: PublishConfig;
       projectName: string;
     };
@@ -43,7 +41,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   // 返回生成器信息
   return NextResponse.json({
     name: 'Ontology Code Generator',

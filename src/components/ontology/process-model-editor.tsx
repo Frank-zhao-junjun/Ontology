@@ -43,9 +43,6 @@ export function ProcessModelEditor({ mode = 'full', entityId }: ProcessModelEdit
   const orchestrations = project?.processModel?.orchestrations || [];
   const entities = project?.dataModel?.entities || [];
   const selectedEntity = entityId ? entities.find(e => e.id === entityId) : null;
-  const selectedOrchestration = selectedOrchestrationId 
-    ? orchestrations.find(o => o.id === selectedOrchestrationId) 
-    : null;
 
   // Filter orchestrations that reference this entity
   const filteredOrchestrations = mode === 'entity-detail' && entityId
