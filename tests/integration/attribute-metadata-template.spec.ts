@@ -158,8 +158,7 @@ describe('IT-ATTR-META: metadata template + attribute (strict binding)', () => {
       fireEvent.change(screen.getByLabelText('中文名称'), { target: { value: '关联对象' } });
       fireEvent.change(screen.getByLabelText('英文名称'), { target: { value: 'linkedTarget' } });
 
-      fireEvent.click(screen.getByRole('combobox', { name: '数据类型' }));
-      fireEvent.click(await screen.findByText('引用 (Reference)'));
+      fireEvent.click(screen.getByLabelText('维护实体引用'));
 
       fireEvent.click(screen.getByRole('combobox', { name: '引用实体' }));
       fireEvent.click(await screen.findByText('订单 (Order)'));
@@ -193,9 +192,7 @@ describe('IT-ATTR-META: metadata template + attribute (strict binding)', () => {
       fireEvent.change(screen.getByLabelText('中文名称'), { target: { value: '来源信息' } });
       fireEvent.change(screen.getByLabelText('英文名称'), { target: { value: 'sourceInfo' } });
 
-      fireEvent.click(screen.getByRole('combobox', { name: '数据类型' }));
-      fireEvent.click(await screen.findByText('引用 (Reference)'));
-      fireEvent.click(screen.getByLabelText('是否关联主数据'));
+      fireEvent.click(screen.getByLabelText('维护主数据引用'));
 
       fireEvent.click(await screen.findByRole('combobox', { name: '主数据类型' }));
       fireEvent.click(await screen.findByText('供应商主数据'));

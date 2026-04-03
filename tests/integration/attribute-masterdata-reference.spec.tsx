@@ -131,10 +131,7 @@ describe('IT-DATAMODEL-REFERENCE-001: Reference 属性支持主数据类型与�
     fireEvent.change(screen.getByLabelText('中文名称'), { target: { value: '甲方主体' } });
     fireEvent.change(screen.getByLabelText('英文名称'), { target: { value: 'firstParty' } });
 
-    fireEvent.click(screen.getByRole('combobox', { name: '数据类型' }));
-    fireEvent.click(await screen.findByText('引用 (Reference)'));
-
-    fireEvent.click(screen.getByLabelText('是否关联主数据'));
+    fireEvent.click(screen.getByLabelText('维护主数据引用'));
 
     fireEvent.click(await screen.findByRole('combobox', { name: '主数据类型' }));
     fireEvent.click(await screen.findByText('供应商主数据'));

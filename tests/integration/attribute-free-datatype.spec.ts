@@ -118,6 +118,9 @@ describe('IT-ATTR-META: free modeling (no metadata template)', () => {
       render(React.createElement(DataModelEditor, { mode: 'entity-detail', entityId: 'entity-contract' }));
 
       openAttributeDialog();
+      expect(screen.getByLabelText('直接维护字段')).toBeInTheDocument();
+      expect(screen.getByLabelText('维护实体引用')).toBeInTheDocument();
+      expect(screen.getByLabelText('维护主数据引用')).toBeInTheDocument();
       fillAttributeNames('合同标题', 'contractTitle');
       fireEvent.click(screen.getByRole('button', { name: /添加属性|保存修改/i }));
 
@@ -137,8 +140,7 @@ describe('IT-ATTR-META: free modeling (no metadata template)', () => {
 
       openAttributeDialog();
       fillAttributeNames('来源订单', 'sourceOrder');
-      fireEvent.click(screen.getByRole('combobox', { name: '数据类型' }));
-      fireEvent.click(await screen.findByText('引用 (Reference)'));
+  fireEvent.click(screen.getByLabelText('维护实体引用'));
       fireEvent.click(screen.getByRole('combobox', { name: '引用实体' }));
       fireEvent.click(await screen.findByText('订单 (Order)'));
       fireEvent.click(screen.getByRole('button', { name: /添加属性|保存修改/i }));
@@ -184,9 +186,7 @@ describe('IT-ATTR-META: free modeling (no metadata template)', () => {
       openAttributeDialog();
 
       fillAttributeNames('签约主体', 'signingParty');
-      fireEvent.click(screen.getByRole('combobox', { name: '数据类型' }));
-      fireEvent.click(await screen.findByText('引用 (Reference)'));
-      fireEvent.click(screen.getByLabelText('是否关联主数据'));
+      fireEvent.click(screen.getByLabelText('维护主数据引用'));
 
       fireEvent.click(await screen.findByRole('combobox', { name: '主数据类型' }));
       fireEvent.click(await screen.findByText('供应商主数据'));

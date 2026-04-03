@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
@@ -31,6 +32,8 @@ const ATTRIBUTE_TYPES = [
   { value: 'enum', label: '枚举 (Enum)' },
   { value: 'reference', label: '引用 (Reference)' },
 ];
+
+const DIRECT_ATTRIBUTE_TYPES = ATTRIBUTE_TYPES.filter((type) => type.value !== 'reference');
 
 const RELATION_TYPES = [
   { value: 'one_to_one', label: '一对一 (1:1)' },
@@ -68,6 +71,9 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
   const aggregateRootEntities = getAggregateRootEntities(entities);
   const editingEntityRole = resolveEntityRole(editingEntity);
   const editingDataType = editingAttribute.dataType || 'string';
+  const attributeMode: 'primitive' | 'entityRef' | 'masterDataRef' = editingDataType === 'reference'
+    ? (editingAttribute.isMasterDataRef ? 'masterDataRef' : 'entityRef')
+    : 'primitive';
   const metadataLocked = Boolean(editingAttribute.metadataTemplateId);
   const selectedMasterData = editingAttribute.masterDataType
     ? masterDataList.find((item) => item.id === editingAttribute.masterDataType)
@@ -444,40 +450,124 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="attribute-type">数据类型</Label>
-                      <Select
-                        value={editingDataType}
+                    <div className="space-y-3">
+                      <Label>属性维护方式</Label>
+                      <RadioGroup
+                        value={attributeMode}
                         disabled={metadataLocked}
-                        onValueChange={(v) => setEditingAttribute({
-                          ...editingAttribute,
-                          dataType: v as Attribute['dataType'],
-                          ...(v === 'reference'
-                            ? { referenceKind: editingAttribute.isMasterDataRef ? 'masterData' : 'entity' }
-                            : {
-                                referenceKind: undefined,
-                                referencedEntityId: undefined,
-                                isMasterDataRef: false,
-                                masterDataType: undefined,
-                                masterDataField: undefined,
-                              }),
-                        })}
+                        onValueChange={(value) => {
+                          if (value === 'primitive') {
+                            setEditingAttribute({
+                              ...editingAttribute,
+                              dataType: editingAttribute.dataType === 'reference' ? 'string' : (editingAttribute.dataType || 'string'),
+                              referenceKind: undefined,
+                              referencedEntityId: undefined,
+                              isMasterDataRef: false,
+                              masterDataType: undefined,
+                              masterDataField: undefined,
+                            });
+                            return;
+                          }
+
+                          if (value === 'entityRef') {
+                            setEditingAttribute({
+                              ...editingAttribute,
+                              dataType: 'reference',
+                              referenceKind: 'entity',
+                              referencedEntityId: editingAttribute.referencedEntityId,
+                              isMasterDataRef: false,
+                              masterDataType: undefined,
+                              masterDataField: undefined,
+                            });
+                            return;
+                          }
+
+                          setEditingAttribute({
+                            ...editingAttribute,
+                            dataType: 'reference',
+                            referenceKind: 'masterData',
+                            referencedEntityId: undefined,
+                            isMasterDataRef: true,
+                            masterDataType: editingAttribute.masterDataType,
+                            masterDataField: editingAttribute.masterDataField,
+                          });
+                        }}
+                        className="gap-2"
                       >
-                        <SelectTrigger id="attribute-type">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ATTRIBUTE_TYPES.map((t) => (
-                            <SelectItem key={t.value} value={t.value}>
-                              {t.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <div className="rounded-lg border p-3">
+                          <div className="flex items-start gap-3">
+                            <RadioGroupItem value="primitive" id="attribute-mode-primitive" />
+                            <div className="space-y-1">
+                              <Label htmlFor="attribute-mode-primitive">直接维护字段</Label>
+                              <p className="text-xs text-muted-foreground">手工维护字符、数字、日期等基础数据字段。</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="rounded-lg border p-3">
+                          <div className="flex items-start gap-3">
+                            <RadioGroupItem value="entityRef" id="attribute-mode-entity-ref" />
+                            <div className="space-y-1">
+                              <Label htmlFor="attribute-mode-entity-ref">维护实体引用</Label>
+                              <p className="text-xs text-muted-foreground">当前属性直接指向另一个业务实体。</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="rounded-lg border p-3">
+                          <div className="flex items-start gap-3">
+                            <RadioGroupItem value="masterDataRef" id="attribute-mode-masterdata-ref" />
+                            <div className="space-y-1">
+                              <Label htmlFor="attribute-mode-masterdata-ref">维护主数据引用</Label>
+                              <p className="text-xs text-muted-foreground">当前属性关联主数据类型，可进一步指定字段。</p>
+                            </div>
+                          </div>
+                        </div>
+                      </RadioGroup>
                       {metadataLocked && (
                         <p className="text-xs text-muted-foreground">
-                          模板绑定后，数据类型不可手工修改。
+                          模板绑定后，属性维护方式会随模板一起锁定。
                         </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="attribute-type">数据类型</Label>
+                      {attributeMode === 'primitive' ? (
+                        <>
+                          <Select
+                            value={editingDataType}
+                            disabled={metadataLocked}
+                            onValueChange={(v) => setEditingAttribute({
+                              ...editingAttribute,
+                              dataType: v as Attribute['dataType'],
+                              referenceKind: undefined,
+                              referencedEntityId: undefined,
+                              isMasterDataRef: false,
+                              masterDataType: undefined,
+                              masterDataField: undefined,
+                            })}
+                          >
+                            <SelectTrigger id="attribute-type">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {DIRECT_ATTRIBUTE_TYPES.map((t) => (
+                                <SelectItem key={t.value} value={t.value}>
+                                  {t.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {metadataLocked && (
+                            <p className="text-xs text-muted-foreground">
+                              模板绑定后，数据类型不可手工修改。
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <div className="rounded-lg border border-dashed bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                          {attributeMode === 'entityRef'
+                            ? '当前属性将保存为实体引用。'
+                            : '当前属性将保存为主数据引用。'}
+                        </div>
                       )}
                     </div>
                     {editingDataType === 'string' && (
@@ -513,25 +603,6 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                         </div>
                       </div>
                     )}
-                    <div className="flex items-center gap-2 rounded-lg border p-3">
-                      <input
-                        type="checkbox"
-                        id="master-data-ref"
-                        checked={Boolean(editingAttribute.isMasterDataRef)}
-                        disabled={metadataLocked && editingDataType !== 'reference'}
-                        onChange={(event) => setEditingAttribute({
-                          ...editingAttribute,
-                          dataType: event.target.checked ? 'reference' : editingAttribute.dataType,
-                          referenceKind: event.target.checked ? 'masterData' : (editingDataType === 'reference' ? 'entity' : editingAttribute.referenceKind),
-                          isMasterDataRef: event.target.checked,
-                          referencedEntityId: event.target.checked ? undefined : editingAttribute.referencedEntityId,
-                          masterDataType: event.target.checked ? editingAttribute.masterDataType : undefined,
-                          masterDataField: event.target.checked ? editingAttribute.masterDataField : undefined,
-                        })}
-                        className="rounded"
-                      />
-                      <Label htmlFor="master-data-ref" className="text-sm font-normal">是否关联主数据</Label>
-                    </div>
                     {editingDataType === 'reference' && (
                       <>
                         {!editingAttribute.isMasterDataRef ? (
