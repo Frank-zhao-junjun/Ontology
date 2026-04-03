@@ -385,4 +385,23 @@ describe('Ontology Store State Transitions', () => {
     expect(state.project?.dataModel?.projects).toEqual([]);
     expect(state.project?.dataModel?.businessScenarios).toEqual([]);
   });
+
+  it('clearAllModels 应保留项目与分类并清空建模数据', () => {
+    const project = createFrozenProject('1.0.0');
+    useOntologyStore.setState({ project, versions: [], activeModelType: 'event' });
+
+    useOntologyStore.getState().clearAllModels();
+
+    const state = useOntologyStore.getState();
+    expect(state.project?.name).toBe(project.name);
+    expect(state.project?.dataModel?.projects).toEqual(project.dataModel?.projects || []);
+    expect(state.project?.dataModel?.businessScenarios).toEqual(project.dataModel?.businessScenarios || []);
+    expect(state.project?.dataModel?.entities).toEqual([]);
+    expect(state.project?.behaviorModel).toBeNull();
+    expect(state.project?.ruleModel).toBeNull();
+    expect(state.project?.processModel).toBeNull();
+    expect(state.project?.eventModel).toBeNull();
+    expect(state.project?.epcModel).toBeNull();
+    expect(state.activeModelType).toBeNull();
+  });
 });

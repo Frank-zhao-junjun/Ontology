@@ -114,7 +114,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   useProjectSync();
   const router = useRouter();
   
-  const { resetProject, exportProject, addEntityProject, addEntity } = useOntologyStore();
+  const { resetProject, exportProject, addEntityProject, addEntity, clearAllModels } = useOntologyStore();
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ModelType>('data');
@@ -178,6 +178,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   };
 
   const stats = getModelStats();
+  const hasModelData = stats.entities > 0 || stats.stateMachines > 0 || stats.rules > 0 || stats.events > 0 || stats.subscriptions > 0;
 
   const handleExport = () => {
     const json = exportProject();
@@ -490,22 +491,40 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
       {/* Stats Bar */}
       <div className="border-b bg-muted/30">
         <div className="container mx-auto px-4 py-2">
-          <div className="flex items-center gap-4 text-sm">
-            <Badge variant="secondary" className="gap-1">
-              🗄️ 实体: {stats.entities}
-            </Badge>
-            <Badge variant="secondary" className="gap-1">
-              ⚡ 状态机: {stats.stateMachines}
-            </Badge>
-            <Badge variant="secondary" className="gap-1">
-              📋 规则: {stats.rules}
-            </Badge>
-            <Badge variant="secondary" className="gap-1">
-               事件: {stats.events}
-            </Badge>
-            <Badge variant="secondary" className="gap-1">
-              🔔 订阅: {stats.subscriptions}
-            </Badge>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 text-sm">
+              <Badge variant="secondary" className="gap-1">
+                🗄️ 实体: {stats.entities}
+              </Badge>
+              <Badge variant="secondary" className="gap-1">
+                ⚡ 状态机: {stats.stateMachines}
+              </Badge>
+              <Badge variant="secondary" className="gap-1">
+                📋 规则: {stats.rules}
+              </Badge>
+              <Badge variant="secondary" className="gap-1">
+                 事件: {stats.events}
+              </Badge>
+              <Badge variant="secondary" className="gap-1">
+                🔔 订阅: {stats.subscriptions}
+              </Badge>
+            </div>
+            {hasModelData && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                onClick={() => {
+                  if (confirm('确定要清空所有建模数据吗？此操作不可恢复，但会保留项目和分类。')) {
+                    clearAllModels();
+                    setSelectedEntityId(null);
+                    setActiveTab('data');
+                  }
+                }}
+              >
+                🗑️ 清空数据
+              </Button>
+            )}
           </div>
         </div>
       </div>

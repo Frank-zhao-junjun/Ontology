@@ -132,6 +132,7 @@ interface OntologyState {
   
   // 重置
   resetProject: () => void;
+  clearAllModels: () => void;
   
   // 导入导出
   exportProject: () => string;
@@ -932,6 +933,32 @@ export const useOntologyStore = create<OntologyState>()(
       // 重置
       resetProject: () => {
         set({ project: null, activeModelType: null });
+      },
+
+      clearAllModels: () => {
+        set((state) => {
+          if (!state.project) return state;
+
+          const now = new Date().toISOString();
+
+          return {
+            project: {
+              ...state.project,
+              dataModel: state.project.dataModel ? {
+                ...state.project.dataModel,
+                entities: [],
+                updatedAt: now,
+              } : null,
+              behaviorModel: null,
+              ruleModel: null,
+              processModel: null,
+              eventModel: null,
+              epcModel: null,
+              updatedAt: now,
+            },
+            activeModelType: null,
+          };
+        });
       },
       
       // 导入导出
