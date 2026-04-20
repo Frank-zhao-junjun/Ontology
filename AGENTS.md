@@ -253,3 +253,49 @@ coze start
 - `assets/Ontology.txt` - 完整需求规格说明书
 - `assets/系统架构设计文档.md` - 系统架构设计
 - `assets/2100测试通过.md` - 功能验收清单
+
+---
+
+## 开发规范 (Development Standards)
+
+### 提交前必查
+
+每次提交代码前，**必须**执行完整 CI 检查：
+
+```bash
+pnpm run ci:check
+```
+
+包含：lint、ts-check、unit tests、integration tests、e2e smoke tests。
+
+### 分支策略
+
+- **main**：受保护分支，禁止直接推送
+- **feature/***：功能开发分支
+- **fix/***：缺陷修复分支
+- **docs/***：文档更新分支
+
+### 提交规范
+
+遵循 Conventional Commits：
+- `feat:` 新功能
+- `fix:` 缺陷修复
+- `docs:` 文档更新
+- `refactor:` 重构
+- `test:` 测试相关
+
+### 进度外置
+
+- 每次迭代结束更新 `docs/progress.md`
+- PR 必须填写 Checklist 并提供验证证据
+- 详细规范见 [CONTRIBUTING.md](CONTRIBUTING.md)
+
+### 质量门禁
+
+| 检查项 | 命令 | 状态 |
+|--------|------|------|
+| 代码风格 | `pnpm lint` | 必须 0 error |
+| 类型检查 | `pnpm ts-check` | 必须 0 error |
+| 单元测试 | `pnpm test:unit` | 必须 100% pass |
+| 集成测试 | `pnpm test:integration` | 必须 100% pass |
+| E2E 冒烟 | `pnpm test:e2e:smoke` | 必须 100% pass |
