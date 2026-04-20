@@ -87,6 +87,11 @@ pnpm run ci:check
 
 `pnpm run ci:check` 当前执行顺序为：lint -> ts-check -> unit -> integration -> e2e smoke。
 
+## 开发前必查
+
+- 开发、评审、交接前请先过一遍检查清单：`docs/agentic-engineering-checklist.md`
+- 发起 PR 时请按模板补齐证据（测试输出、手工验证、风险说明）
+
 ## 关键目录
 
 ```text
