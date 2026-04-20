@@ -124,7 +124,9 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
   // 自动生成AI建议（如果是实体模式）
   useEffect(() => {
     if (isEntityMode && !aiSuggestions && !isGenerating) {
-      void handleGenerateAI();
+      queueMicrotask(() => {
+        void handleGenerateAI();
+      });
     }
   }, [aiSuggestions, handleGenerateAI, isEntityMode, isGenerating]);
 

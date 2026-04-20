@@ -98,7 +98,9 @@ export function MasterDataManager({ onBack }: MasterDataManagerProps) {
   // 初始化时加载主数据
   useEffect(() => {
     if (masterDataList.length === 0) {
-      void handleInitFromExcel();
+      queueMicrotask(() => {
+        void handleInitFromExcel();
+      });
     }
   }, [handleInitFromExcel, masterDataList.length]);
 
@@ -132,12 +134,12 @@ export function MasterDataManager({ onBack }: MasterDataManagerProps) {
 
   useEffect(() => {
     if (filteredData.length === 0) {
-      setSelectedDefinitionId(null);
+      queueMicrotask(() => setSelectedDefinitionId(null));
       return;
     }
 
     if (!selectedDefinitionId || !filteredData.some((item) => item.id === selectedDefinitionId)) {
-      setSelectedDefinitionId(filteredData[0].id);
+      queueMicrotask(() => setSelectedDefinitionId(filteredData[0].id));
     }
   }, [filteredData, selectedDefinitionId]);
 

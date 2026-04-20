@@ -1,7 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { superpowersManager } from '@/lib/superpowers/skills';
-import { gstackManager } from '@/lib/gstack/workflows';
-import { ralphLoopManager, UserStory } from '@/lib/ralph-loop/agent-loop';
+import { superpowersManager, type SkillCategory } from '@/lib/superpowers/skills';
+import { gstackManager, type GstackRole } from '@/lib/gstack/workflows';
+import { ralphLoopManager } from '@/lib/ralph-loop/agent-loop';
+
+const SKILL_CATEGORIES: readonly SkillCategory[] = [
+  'planning',
+  'coding',
+  'testing',
+  'review',
+  'deployment',
+  'documentation',
+] as const;
+
+function parseSkillCategory(value: string | null): SkillCategory | null {
+  if (!value) return null;
+  return (SKILL_CATEGORIES as readonly string[]).includes(value) ? (value as SkillCategory) : null;
+}
+
+const GSTACK_ROLES: readonly GstackRole[] = [
+  'ceo',
+  'designer',
+  'eng_manager',
+  'release_manager',
+  'doc_engineer',
+  'qa',
+] as const;
+
+function parseGstackRole(value: string | null): GstackRole | null {
+  if (!value) return null;
+  return (GSTACK_ROLES as readonly string[]).includes(value) ? (value as GstackRole) : null;
+}
 
 /**
  * GET /api/agent/skills
@@ -19,7 +47,14 @@ export async function GET(request: NextRequest) {
     switch (type) {
       case 'superpowers':
         if (category) {
-          result = superpowersManager.getSkillsByCategory(category as any);
+          const skillCategory = parseSkillCategory(category);
+          if (!skillCategory) {
+            return NextResponse.json(
+              { success: false, error: '无效的技能分类' },
+              { status: 400 }
+            );
+          }
+          result = superpowersManager.getSkillsByCategory(skillCategory);
         } else {
           result = superpowersManager.getAvailableSkills();
         }
@@ -27,7 +62,14 @@ export async function GET(request: NextRequest) {
 
       case 'gstack':
         if (role) {
-          result = gstackManager.getWorkflowsByRole(role as any);
+          const gstackRole = parseGstackRole(role);
+          if (!gstackRole) {
+            return NextResponse.json(
+              { success: false, error: '无效的角色' },
+              { status: 400 }
+            );
+          }
+          result = gstackManager.getWorkflowsByRole(gstackRole);
         } else {
           result = gstackManager.getAvailableWorkflows();
         }

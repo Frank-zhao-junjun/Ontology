@@ -59,7 +59,9 @@ export function MetadataManager() {
   useEffect(() => {
     // 如果没有数据，或者数据中没有domain字段（旧数据），则重新加载
     if (metadataList.length === 0 || !metadataList[0]?.domain) {
-      void handleInitFromExcel();
+      queueMicrotask(() => {
+        void handleInitFromExcel();
+      });
     }
   }, [handleInitFromExcel, metadataList]);
 

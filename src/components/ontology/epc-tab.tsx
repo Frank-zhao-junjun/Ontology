@@ -45,13 +45,10 @@ export function EpcTab({ entityId }: EpcTabProps) {
   const [isPackageExporting, setIsPackageExporting] = useState(false);
   const [packageExportError, setPackageExportError] = useState<string | null>(null);
 
-  const businessScenario = useMemo(() => {
-    if (!project?.dataModel || !entity?.businessScenarioId) {
-      return null;
-    }
-
-    return project.dataModel.businessScenarios.find((scenario) => scenario.id === entity.businessScenarioId) || null;
-  }, [entity?.businessScenarioId, project?.dataModel]);
+  const businessScenario =
+    project?.dataModel && entity?.businessScenarioId
+      ? project.dataModel.businessScenarios.find((scenario) => scenario.id === entity.businessScenarioId) ?? null
+      : null;
 
   useEffect(() => {
     if (project && entity && isAggregate && !profile) {

@@ -5,7 +5,7 @@
 
 import { superpowersManager, AgentSkill } from './superpowers/skills';
 import { gstackManager, GstackWorkflow } from './gstack/workflows';
-import { ralphLoopManager, UserStory } from './ralph-loop/agent-loop';
+import { ralphLoopManager } from './ralph-loop/agent-loop';
 
 export interface AgentIntegrationConfig {
   superpowers: {
@@ -102,22 +102,28 @@ export class AgentIntegrationManager {
     // 根据场景关键词匹配技能
     const keywords = scenario.toLowerCase();
     
-    const matchedSuperpowers = superpowersSkills.filter(skill => {
-      const skillKeywords = `${skill.name} ${skill.description}`.toLowerCase();
-      return keywords.includes('实体') && skill.category === 'planning' ||
-             keywords.includes('状态') && skill.id === 'state-machine-design' ||
-             keywords.includes('规则') && skill.id === 'rule-design' ||
-             keywords.includes('事件') && skill.id === 'event-design' ||
-             keywords.includes('代码') && skill.category === 'coding' ||
-             keywords.includes('测试') && skill.category === 'testing';
+    const matchedSuperpowers = superpowersSkills.filter((skill) => {
+      const skillText = `${skill.name} ${skill.description}`.toLowerCase();
+      return (
+        (keywords.includes('实体') && skill.category === 'planning') ||
+        (keywords.includes('状态') && skill.id === 'state-machine-design') ||
+        (keywords.includes('规则') && skill.id === 'rule-design') ||
+        (keywords.includes('事件') && skill.id === 'event-design') ||
+        (keywords.includes('代码') && skill.category === 'coding') ||
+        (keywords.includes('测试') && skill.category === 'testing') ||
+        skillText.split(/\s+/).some((token) => token.length > 1 && keywords.includes(token))
+      );
     });
 
-    const matchedGstack = gstackWorkflows.filter(workflow => {
-      const workflowKeywords = `${workflow.name} ${workflow.description}`.toLowerCase();
-      return keywords.includes('评审') && workflow.id.includes('review') ||
-             keywords.includes('部署') && workflow.id.includes('ship') ||
-             keywords.includes('文档') && workflow.id.includes('doc') ||
-             keywords.includes('测试') && workflow.id.includes('browser');
+    const matchedGstack = gstackWorkflows.filter((workflow) => {
+      const workflowText = `${workflow.name} ${workflow.description}`.toLowerCase();
+      return (
+        (keywords.includes('评审') && workflow.id.includes('review')) ||
+        (keywords.includes('部署') && workflow.id.includes('ship')) ||
+        (keywords.includes('文档') && workflow.id.includes('doc')) ||
+        (keywords.includes('测试') && workflow.id.includes('browser')) ||
+        workflowText.split(/\s+/).some((token) => token.length > 1 && keywords.includes(token))
+      );
     });
 
     return {

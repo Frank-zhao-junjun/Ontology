@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,11 +35,7 @@ export function ProjectList() {
   const [editDescription, setEditDescription] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadProjects();
-  }, []);
-
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       const data = await fetchProjects();
       setProjects(data);
@@ -48,7 +44,13 @@ export function ProjectList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      void loadProjects();
+    });
+  }, [loadProjects]);
 
   const handleOpenProject = async (projectId: string) => {
     try {

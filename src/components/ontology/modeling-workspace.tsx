@@ -220,7 +220,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   useEffect(() => {
     const selectedEntity = selectedEntityId ? allEntities.find((entity) => entity.id === selectedEntityId) : null;
     if (activeTab === 'epc' && selectedEntity && !isEntityAggregateRoot(selectedEntity)) {
-      setActiveTab('data');
+      queueMicrotask(() => setActiveTab('data'));
     }
   }, [activeTab, allEntities, selectedEntityId]);
 
