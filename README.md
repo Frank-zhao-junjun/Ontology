@@ -215,6 +215,8 @@ pnpm run ci:check
 - `assets/ontology-ai-driven-system-specification-v2.0.md`
 - `assets/系统架构设计文档.md`
 - `TEST_CASES.md`
+- `docs/agentic-engineering-checklist.md`
+- `CONTRIBUTING.md`
 
 ## 约束
 
