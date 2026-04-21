@@ -75,7 +75,7 @@ describe('US-3.5 / DataModelEditor relation CRUD and constraints', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '+ 添加关系' }));
     fireEvent.change(screen.getByPlaceholderText('如：关联发票'), { target: { value: '关联订单' } });
-    let comboboxes = screen.getAllByRole('combobox');
+    const comboboxes = screen.getAllByRole('combobox');
     fireEvent.click(comboboxes[2]);
     fireEvent.click(await screen.findByText('订单 (Order)'));
     fireEvent.click(screen.getByRole('button', { name: '添加关系' }));
