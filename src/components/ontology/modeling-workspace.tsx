@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Pencil, Trash2 } from 'lucide-react';
+import { MAX_BUSINESS_SCENARIOS_PER_PROJECT } from '@/lib/business-scenario';
 import { getAggregateRootEntities, getEntityRoleLabel, isEntityAggregateRoot, normalizeEntityRoleFields, resolveEntityRole } from '@/lib/entity-role';
 import { useRouter } from 'next/navigation';
 import { DataModelEditor } from './data-model-editor';
@@ -26,34 +27,38 @@ import { MetadataManager } from './metadata-manager';
 import { MasterDataManager } from './masterdata-manager';
 import { PublishDialog } from './publish-dialog';
 import { updateProject, deleteProject } from '@/services/project-service';
-import type { OntologyProject, Entity, EntityProject } from '@/types/ontology';
+import type { OntologyProject, Entity, EntityProject, BusinessScenario } from '@/types/ontology';
 
 // Business Scenario Form Component
-function BusinessScenarioForm({ projectId, onSuccess }: { projectId: string; onSuccess: () => void }) {
-  const { addBusinessScenario } = useOntologyStore();
-  const [name, setName] = useState('');
-  const [nameEn, setNameEn] = useState('');
-  const [description, setDescription] = useState('');
-  const color = '#3b82f6';
+function BusinessScenarioForm({
+  projectId,
+  initialScenario,
+  submitLabel,
+  onSubmit,
+}: {
+  projectId: string;
+  initialScenario?: Partial<BusinessScenario> | null;
+  submitLabel: string;
+  onSubmit: (scenario: BusinessScenario) => void;
+}) {
+  const [name, setName] = useState(() => initialScenario?.name || '');
+  const [nameEn, setNameEn] = useState(() => initialScenario?.nameEn || '');
+  const [description, setDescription] = useState(() => initialScenario?.description || '');
+  const [color, setColor] = useState(() => initialScenario?.color || '#3b82f6');
 
   const handleSubmit = () => {
     if (!name.trim() || !projectId) return;
-    
-    addBusinessScenario({
-      id: Math.random().toString(36).substring(2, 10),
+
+    onSubmit({
+      id: initialScenario?.id || Math.random().toString(36).substring(2, 10),
       name: name.trim(),
       nameEn: nameEn.trim() || name.trim(),
       description,
-      projectId,
+      projectId: initialScenario?.projectId || projectId,
       color,
-      createdAt: new Date().toISOString(),
+      createdAt: initialScenario?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
-    
-    setName('');
-    setNameEn('');
-    setDescription('');
-    onSuccess();
   };
 
   return (
@@ -72,8 +77,25 @@ function BusinessScenarioForm({ projectId, onSuccess }: { projectId: string; onS
         <Label>描述</Label>
         <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="场景描述" />
       </div>
+      <div className="space-y-2">
+        <Label>场景颜色</Label>
+        <div className="flex gap-2">
+          {PROJECT_COLORS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              aria-label={`选择颜色 ${option.label}`}
+              className={`w-8 h-8 rounded-full border-2 transition-all ${
+                color === option.value ? 'border-foreground scale-110' : 'border-transparent'
+              }`}
+              style={{ backgroundColor: option.value }}
+              onClick={() => setColor(option.value)}
+            />
+          ))}
+        </div>
+      </div>
       <div className="flex justify-end gap-2">
-        <Button onClick={handleSubmit}>创建</Button>
+        <Button onClick={handleSubmit}>{submitLabel}</Button>
       </div>
     </div>
   );
@@ -123,32 +145,62 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   const [showProjectDialog, setShowProjectDialog] = useState(false);
   const [showEntityDialog, setShowEntityDialog] = useState(false);
   const [showEditProjectDialog, setShowEditProjectDialog] = useState(false);
+  const [showScenarioDialog, setShowScenarioDialog] = useState(false);
   const [editProjectName, setEditProjectName] = useState('');
   const [editProjectDescription, setEditProjectDescription] = useState('');
   const [savingProject, setSavingProject] = useState(false);
   const [showMasterData, setShowMasterData] = useState(false);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
+  const [scenarioSearchQuery, setScenarioSearchQuery] = useState('');
   const [editingProject, setEditingProject] = useState<Partial<EntityProject>>({ color: '#3b82f6' });
+  const [editingScenario, setEditingScenario] = useState<Partial<BusinessScenario> | null>(null);
   const [editingEntity, setEditingEntity] = useState<Partial<Entity>>({});
 
   const allEntities = useMemo(() => project.dataModel?.entities || [], [project.dataModel?.entities]);
-  const projects = project.dataModel?.projects || [];
-  const businessScenarios = project.dataModel?.businessScenarios || [];
+  const projects = useMemo(() => project.dataModel?.projects || [], [project.dataModel?.projects]);
+  const businessScenarios = useMemo(() => project.dataModel?.businessScenarios || [], [project.dataModel?.businessScenarios]);
   const aggregateRootEntities = getAggregateRootEntities(allEntities);
   const editingEntityRole = resolveEntityRole(editingEntity);
+  const selectedProjectScenarioCount = selectedProjectId === 'all'
+    ? 0
+    : businessScenarios.filter((scenario) => scenario.projectId === selectedProjectId).length;
+  const canCreateBusinessScenario = selectedProjectId !== 'all'
+    && selectedProjectScenarioCount < MAX_BUSINESS_SCENARIOS_PER_PROJECT;
   const selectedScenario = selectedScenarioId
     ? businessScenarios.find((scenario) => scenario.id === selectedScenarioId) || null
     : null;
+  const projectBusinessScenarios = useMemo(() => {
+    if (selectedProjectId === 'all') {
+      return businessScenarios;
+    }
+
+    return businessScenarios.filter((scenario) => scenario.projectId === selectedProjectId);
+  }, [businessScenarios, selectedProjectId]);
+  const filteredBusinessScenarios = useMemo(() => {
+    const normalizedQuery = scenarioSearchQuery.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return projectBusinessScenarios;
+    }
+
+    return projectBusinessScenarios.filter((scenario) => {
+      return [scenario.name, scenario.nameEn, scenario.description]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(normalizedQuery));
+    });
+  }, [projectBusinessScenarios, scenarioSearchQuery]);
   
   // Filter entities by selected project and scenario
   const entities = (() => {
     let filtered = selectedProjectId === 'all' 
       ? allEntities 
       : allEntities.filter(e => e.projectId === selectedProjectId);
-    
-    if (selectedScenarioId) {
-      filtered = filtered.filter(e => e.businessScenarioId === selectedScenarioId);
+
+    if (!selectedScenarioId) {
+      return [];
     }
+    
+    filtered = filtered.filter(e => e.businessScenarioId === selectedScenarioId);
     
     return filtered;
   })();
@@ -223,6 +275,17 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
       queueMicrotask(() => setActiveTab('data'));
     }
   }, [activeTab, allEntities, selectedEntityId]);
+
+  useEffect(() => {
+    if (selectedProjectId === 'all' || !selectedScenarioId) {
+      return;
+    }
+
+    if (!projectBusinessScenarios.some((scenario) => scenario.id === selectedScenarioId)) {
+      setSelectedScenarioId(null);
+      setSelectedEntityId(null);
+    }
+  }, [projectBusinessScenarios, selectedProjectId, selectedScenarioId]);
 
   // Handle create project
   const handleCreateProject = () => {
@@ -329,6 +392,42 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
     } catch (error) {
       console.error('删除项目分类失败:', error);
       alert('删除项目分类失败');
+    }
+  };
+
+  const handleSaveBusinessScenario = (scenario: BusinessScenario) => {
+    const store = useOntologyStore.getState();
+
+    if (editingScenario?.id) {
+      store.updateBusinessScenario(editingScenario.id, scenario);
+    } else {
+      store.addBusinessScenario(scenario);
+    }
+
+    setSelectedProjectId(scenario.projectId);
+    setSelectedScenarioId(scenario.id);
+    setSelectedEntityId(null);
+    setEditingScenario(null);
+    setShowScenarioDialog(false);
+  };
+
+  const handleDeleteBusinessScenario = (scenario: BusinessScenario) => {
+    const entityCount = allEntities.filter((entity) => entity.businessScenarioId === scenario.id).length;
+
+    if (entityCount > 0) {
+      alert(`该业务场景下有 ${entityCount} 个实体，请先删除或移动这些实体后再删除业务场景`);
+      return;
+    }
+
+    if (!confirm(`确定要删除业务场景 "${scenario.name}" 吗？`)) {
+      return;
+    }
+
+    const store = useOntologyStore.getState();
+    store.deleteBusinessScenario(scenario.id);
+
+    if (selectedScenarioId === scenario.id) {
+      setSelectedScenarioId(null);
     }
   };
 
@@ -628,6 +727,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                 {projects.map((proj) => (
                   <div
                     key={proj.id}
+                    data-testid={`entity-project-${proj.id}`}
                     className={`p-2 rounded-lg cursor-pointer transition-all mb-1 flex items-center justify-between group ${
                       selectedProjectId === proj.id
                         ? 'bg-primary/20 border border-primary'
@@ -654,6 +754,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                       <Button
                         variant="ghost"
                         size="sm"
+                        aria-label={`删除项目分类 ${proj.name}`}
                         className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -675,31 +776,67 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                   <h2 className="font-semibold flex items-center gap-2">
                     📋 业务场景
                   </h2>
-                  <Dialog>
+                  <Dialog
+                    open={showScenarioDialog}
+                    onOpenChange={(open) => {
+                      setShowScenarioDialog(open);
+                      if (!open) {
+                        setEditingScenario(null);
+                      }
+                    }}
+                  >
                     <DialogTrigger asChild>
-                      <Button size="sm" variant="ghost">+ 新建</Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={!canCreateBusinessScenario}
+                        onClick={() => setEditingScenario(null)}
+                      >
+                        + 新建
+                      </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>创建业务场景</DialogTitle>
-                        <DialogDescription>定义一个业务场景用于实体分类管理</DialogDescription>
+                        <DialogTitle>{editingScenario?.id ? '编辑业务场景' : '创建业务场景'}</DialogTitle>
+                        <DialogDescription>
+                          {editingScenario?.id ? '修改业务场景信息' : '定义一个业务场景用于实体分类管理'}
+                        </DialogDescription>
                       </DialogHeader>
-                      <BusinessScenarioForm 
-                        projectId={selectedProjectId !== 'all' ? selectedProjectId : projects[0]?.id || ''} 
-                        onSuccess={() => {}} 
+                      <BusinessScenarioForm
+                        key={editingScenario?.id || `new-${selectedProjectId}`}
+                        projectId={editingScenario?.projectId || (selectedProjectId !== 'all' ? selectedProjectId : '')}
+                        initialScenario={editingScenario}
+                        submitLabel={editingScenario?.id ? '保存' : '创建'}
+                        onSubmit={handleSaveBusinessScenario}
                       />
                     </DialogContent>
                   </Dialog>
                 </div>
+                <Input
+                  className="mt-3"
+                  value={scenarioSearchQuery}
+                  onChange={(e) => setScenarioSearchQuery(e.target.value)}
+                  placeholder="搜索业务场景（名称、英文名、描述）..."
+                  aria-label="搜索业务场景"
+                />
+                {selectedProjectId === 'all' && (
+                  <p className="mt-2 text-xs text-muted-foreground">请先选择具体项目，再创建业务场景。</p>
+                )}
+                {selectedProjectId !== 'all' && selectedProjectScenarioCount >= MAX_BUSINESS_SCENARIOS_PER_PROJECT && (
+                  <p className="mt-2 text-xs text-muted-foreground">{`每个项目最多创建 ${MAX_BUSINESS_SCENARIOS_PER_PROJECT} 个业务场景。`}</p>
+                )}
               </div>
               <ScrollArea className="max-h-32">
                 <div className="p-2">
-                  {businessScenarios.length === 0 ? (
+                  {projectBusinessScenarios.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-2">暂无业务场景</p>
+                  ) : filteredBusinessScenarios.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-2">未找到匹配的业务场景</p>
                   ) : (
-                    businessScenarios.map((scenario) => (
+                    filteredBusinessScenarios.map((scenario) => (
                       <div
                         key={scenario.id}
+                        data-testid={`business-scenario-${scenario.id}`}
                         className={`p-2 rounded-lg cursor-pointer transition-all mb-1 flex items-center justify-between group ${
                           selectedScenarioId === scenario.id
                             ? 'bg-primary/20 border border-primary'
@@ -717,9 +854,36 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                           />
                           <span className="font-medium text-sm">{scenario.name}</span>
                         </div>
-                        <Badge variant="outline" className="text-xs">
-                          {allEntities.filter(e => e.businessScenarioId === scenario.id).length}
-                        </Badge>
+                        <div className="flex items-center gap-1">
+                          <Badge variant="outline" className="text-xs" data-testid={`business-scenario-count-${scenario.id}`}>
+                            {allEntities.filter(e => e.businessScenarioId === scenario.id).length}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`编辑业务场景 ${scenario.name}`}
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingScenario(scenario);
+                              setShowScenarioDialog(true);
+                            }}
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`删除业务场景 ${scenario.name}`}
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteBusinessScenario(scenario);
+                            }}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
                     ))
                   )}

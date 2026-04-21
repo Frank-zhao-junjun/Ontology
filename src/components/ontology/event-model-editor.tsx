@@ -36,6 +36,38 @@ const SUBSCRIPTION_ACTIONS: { value: Subscription['action']; label: string }[] =
   { value: 'script', label: '执行脚本' },
 ];
 
+function getDefaultEventName(entityName: string, trigger: EventDefinition['trigger']): string {
+  switch (trigger) {
+    case 'update':
+      return `${entityName}已更新`;
+    case 'delete':
+      return `${entityName}已删除`;
+    case 'state_change':
+      return `${entityName}已变更`;
+    case 'custom':
+      return `${entityName}已触发`;
+    case 'create':
+    default:
+      return `${entityName}已创建`;
+  }
+}
+
+function getDefaultEventNameEn(entityNameEn: string, trigger: EventDefinition['trigger']): string {
+  switch (trigger) {
+    case 'update':
+      return `${entityNameEn}Updated`;
+    case 'delete':
+      return `${entityNameEn}Deleted`;
+    case 'state_change':
+      return `${entityNameEn}Changed`;
+    case 'custom':
+      return `${entityNameEn}Occurred`;
+    case 'create':
+    default:
+      return `${entityNameEn}Created`;
+  }
+}
+
 export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorProps) {
   const { project, addEventDefinition, deleteEventDefinition, addSubscription, deleteSubscription } = useOntologyStore();
   const [showEventDialog, setShowEventDialog] = useState(false);
@@ -70,36 +102,72 @@ export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorPr
       alert('只有 `entityRole = aggregate_root` 的实体才能定义领域事件。请先在数据模型中将其设置为聚合根。');
       return;
     }
+
+    const trigger = editingEvent.trigger || 'create';
+    const fallbackEntityName = entity?.name || '实体';
+    const fallbackEntityNameEn = entity?.nameEn || 'Entity';
     
     const newEvent: EventDefinition = {
       id: generateId(),
-      name: editingEvent.name || '新事件',
-      nameEn: editingEvent.nameEn,
+      name: editingEvent.name?.trim() || getDefaultEventName(fallbackEntityName, trigger),
+      nameEn: editingEvent.nameEn?.trim() || getDefaultEventNameEn(fallbackEntityNameEn, trigger),
       entity: entityId,
-      trigger: editingEvent.trigger || 'create',
-      condition: editingEvent.condition,
-      payload: editingEvent.payload || [],
+      trigger,
+      condition: editingEvent.condition?.trim(),
+      payload: editingEvent.payload?.length ? editingEvent.payload : [{ field: 'id' }],
       description: editingEvent.description,
       entityRole: 'aggregate_root',
       entityIsAggregateRoot: true,  // 兼容旧结构
     };
-    addEventDefinition(newEvent);
+
+    try {
+      addEventDefinition(newEvent);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : '保存事件失败');
+      return;
+    }
+
     setEditingEvent({});
     setShowEventDialog(false);
   };
 
   const handleAddSubscription = () => {
+    const hasRetryConfig = !!editingSubscription.retryPolicy && (
+      editingSubscription.retryPolicy.maxRetries !== undefined
+      || editingSubscription.retryPolicy.interval !== undefined
+      || editingSubscription.retryPolicy.backoff !== undefined
+    );
+
+    const retryPolicy = editingSubscription.handler === 'async'
+      ? hasRetryConfig
+        ? {
+          maxRetries: Number(editingSubscription.retryPolicy?.maxRetries || 0),
+          backoff: editingSubscription.retryPolicy?.backoff || 'fixed',
+          interval: Number(editingSubscription.retryPolicy?.interval || 0),
+        }
+        : undefined
+      : undefined;
+
     const newSubscription: Subscription = {
       id: generateId(),
-      name: editingSubscription.name || '新订阅',
+      name: editingSubscription.name?.trim() || '新订阅',
       eventId: editingSubscription.eventId || '',
       handler: editingSubscription.handler || 'sync',
       action: editingSubscription.action || 'notification',
-      actionRef: editingSubscription.actionRef || '',
-      retryPolicy: editingSubscription.retryPolicy,
-      description: editingSubscription.description,
+      actionRef: editingSubscription.actionRef?.trim() || '',
+      retryPolicy,
+      description: editingSubscription.description?.trim(),
+      handlerId: editingSubscription.handlerId?.trim(),
+      idempotencyKeyPattern: editingSubscription.idempotencyKeyPattern?.trim(),
     };
-    addSubscription(newSubscription);
+
+    try {
+      addSubscription(newSubscription);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : '保存订阅失败');
+      return;
+    }
+
     setEditingSubscription({});
     setShowSubscriptionDialog(false);
   };
@@ -292,6 +360,7 @@ export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorPr
                         <div className="space-y-2">
                           <Label>订阅名称</Label>
                           <Input
+                            aria-label="订阅名称"
                             value={editingSubscription.name || ''}
                             onChange={(e) => setEditingSubscription({ ...editingSubscription, name: e.target.value })}
                             placeholder="如：发送通知"
@@ -303,7 +372,7 @@ export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorPr
                             value={editingSubscription.eventId || ''}
                             onValueChange={(v) => setEditingSubscription({ ...editingSubscription, eventId: v })}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger aria-label="订阅事件">
                               <SelectValue placeholder="选择事件" />
                             </SelectTrigger>
                             <SelectContent>
@@ -322,7 +391,7 @@ export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorPr
                               value={editingSubscription.handler || 'sync'}
                               onValueChange={(v) => setEditingSubscription({ ...editingSubscription, handler: v as Subscription['handler'] })}
                             >
-                              <SelectTrigger>
+                              <SelectTrigger aria-label="处理方式">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -337,7 +406,7 @@ export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorPr
                               value={editingSubscription.action || 'notification'}
                               onValueChange={(v) => setEditingSubscription({ ...editingSubscription, action: v as Subscription['action'] })}
                             >
-                              <SelectTrigger>
+                              <SelectTrigger aria-label="动作类型">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -353,11 +422,97 @@ export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorPr
                         <div className="space-y-2">
                           <Label>动作引用</Label>
                           <Input
+                            aria-label="动作引用"
                             value={editingSubscription.actionRef || ''}
                             onChange={(e) => setEditingSubscription({ ...editingSubscription, actionRef: e.target.value })}
                             placeholder="技能名/Webhook URL/模板名"
                           />
                         </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>处理器标识</Label>
+                            <Input
+                              aria-label="处理器标识"
+                              value={editingSubscription.handlerId || ''}
+                              onChange={(e) => setEditingSubscription({ ...editingSubscription, handlerId: e.target.value })}
+                              placeholder="如：contract-indexer"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>幂等键模式</Label>
+                            <Input
+                              aria-label="幂等键模式"
+                              value={editingSubscription.idempotencyKeyPattern || ''}
+                              onChange={(e) => setEditingSubscription({ ...editingSubscription, idempotencyKeyPattern: e.target.value })}
+                              placeholder="默认：{event_id}:{handler_id}"
+                            />
+                          </div>
+                        </div>
+                        {editingSubscription.handler === 'async' && (
+                          <div className="space-y-4 rounded-lg border border-dashed p-4">
+                            <div className="text-sm font-medium">重试策略</div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>最大重试次数</Label>
+                                <Input
+                                  aria-label="最大重试次数"
+                                  type="number"
+                                  min={1}
+                                  value={editingSubscription.retryPolicy?.maxRetries?.toString() || ''}
+                                  onChange={(e) => setEditingSubscription({
+                                    ...editingSubscription,
+                                    retryPolicy: {
+                                      maxRetries: Number(e.target.value || 0),
+                                      backoff: editingSubscription.retryPolicy?.backoff || 'fixed',
+                                      interval: editingSubscription.retryPolicy?.interval || 0,
+                                    },
+                                  })}
+                                  placeholder="如：5"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>退避策略</Label>
+                                <Select
+                                  value={editingSubscription.retryPolicy?.backoff || 'fixed'}
+                                  onValueChange={(value) => setEditingSubscription({
+                                    ...editingSubscription,
+                                    retryPolicy: {
+                                      maxRetries: editingSubscription.retryPolicy?.maxRetries || 0,
+                                      backoff: value as NonNullable<Subscription['retryPolicy']>['backoff'],
+                                      interval: editingSubscription.retryPolicy?.interval || 0,
+                                    },
+                                  })}
+                                >
+                                  <SelectTrigger aria-label="退避策略">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="fixed">固定间隔</SelectItem>
+                                    <SelectItem value="exponential">指数退避</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>重试间隔（秒）</Label>
+                              <Input
+                                aria-label="重试间隔（秒）"
+                                type="number"
+                                min={1}
+                                value={editingSubscription.retryPolicy?.interval?.toString() || ''}
+                                onChange={(e) => setEditingSubscription({
+                                  ...editingSubscription,
+                                  retryPolicy: {
+                                    maxRetries: editingSubscription.retryPolicy?.maxRetries || 0,
+                                    backoff: editingSubscription.retryPolicy?.backoff || 'fixed',
+                                    interval: Number(e.target.value || 0),
+                                  },
+                                })}
+                                placeholder="如：30"
+                              />
+                            </div>
+                          </div>
+                        )}
                         <Button onClick={handleAddSubscription} className="w-full">添加订阅</Button>
                       </div>
                     </DialogContent>
@@ -394,6 +549,7 @@ export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorPr
                           <Button
                             variant="ghost"
                             size="sm"
+                            aria-label={`删除订阅 ${sub.name}`}
                             className="text-destructive"
                             onClick={() => handleDeleteSubscription(sub.id)}
                           >

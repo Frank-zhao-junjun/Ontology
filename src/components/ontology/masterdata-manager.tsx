@@ -32,6 +32,24 @@ const STATUS_OPTIONS = [
   { value: '99', label: '失效' },
 ];
 
+const MASTERDATA_FIELD_TEMPLATES = [
+  {
+    id: 'basic-party',
+    label: '基础主体模板',
+    fields: '编码,名称,状态',
+  },
+  {
+    id: 'material',
+    label: '物料模板',
+    fields: '物料编码,物料名称,规格,单位,状态',
+  },
+  {
+    id: 'organization',
+    label: '组织模板',
+    fields: '组织编码,组织名称,上级组织,状态',
+  },
+];
+
 const generateId = () => Math.random().toString(36).substring(2, 10);
 
 interface MasterDataManagerProps {
@@ -402,6 +420,7 @@ export function MasterDataManager({ onBack }: MasterDataManagerProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                aria-label={`编辑主数据-${item.name}`}
                                 onClick={() => handleEdit(item)}
                               >
                                 <Pencil className="w-4 h-4" />
@@ -409,6 +428,7 @@ export function MasterDataManager({ onBack }: MasterDataManagerProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                aria-label={`切换状态-${item.name}`}
                                 onClick={() => handleToggleStatus(item)}
                               >
                                 {item.status === '00' ? '禁用' : '启用'}
@@ -417,6 +437,7 @@ export function MasterDataManager({ onBack }: MasterDataManagerProps) {
                                 variant="ghost"
                                 size="sm"
                                 className="text-destructive"
+                                aria-label={`删除主数据-${item.name}`}
                                 onClick={() => {
                                   setDeleteId(item.id);
                                   setShowDeleteDialog(true);
@@ -581,6 +602,25 @@ export function MasterDataManager({ onBack }: MasterDataManagerProps) {
             </div>
             <div className="col-span-2 space-y-2">
               <Label>字段名</Label>
+              <Select
+                value=""
+                onValueChange={(templateId) => {
+                  const template = MASTERDATA_FIELD_TEMPLATES.find((item) => item.id === templateId);
+                  if (!template) return;
+                  setEditingData({ ...editingData, fieldNames: template.fields });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="选择字段模板（可选）" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MASTERDATA_FIELD_TEMPLATES.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Input
                 value={editingData.fieldNames || ''}
                 onChange={(e) => setEditingData({ ...editingData, fieldNames: e.target.value })}

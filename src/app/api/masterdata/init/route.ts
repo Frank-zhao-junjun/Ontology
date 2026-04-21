@@ -355,7 +355,7 @@ function parseMarkdownTable(content: string): MasterDataRow[] {
           code: row['编码'] || row['主数据编码'] || '',
           description: row['备注'] || row['说明'] || row['描述'] || '',
           coreData: row['核心主数据'] || '否',
-          fieldNames: row['字段名'] || '',
+          fieldNames: row['字段名'] || row['字段清单'] || row['字段列表'] || '',
           sourceSystem: row['来源系统'] || '',
           apiUrl: row['API URL'] || '',
           status: '00' as const,

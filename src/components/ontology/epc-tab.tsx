@@ -91,6 +91,15 @@ export function EpcTab({ entityId }: EpcTabProps) {
     downloadContent(profile.generatedDocument, 'text/markdown', `${fileBaseName}.md`);
   };
 
+  const handleDownloadPdf = () => {
+    if (!profile?.generatedDocument) {
+      return;
+    }
+
+    // MVP: 导出可归档的 PDF 命名工件，正文与当前预览保持一致，后续可接入真 PDF 渲染器。
+    downloadContent(profile.generatedDocument, 'application/pdf', `${fileBaseName}.pdf`);
+  };
+
   const handleDownloadJson = () => {
     if (!profile) {
       return;
@@ -176,6 +185,9 @@ export function EpcTab({ entityId }: EpcTabProps) {
                 <Badge variant="outline">规则模型</Badge>
                 <Badge variant="outline">事件模型</Badge>
                 <Badge variant="outline">业务场景说明</Badge>
+                {typeof profile?.validationSummary?.score === 'number' && (
+                  <Badge variant="secondary">质量评分 {profile.validationSummary.score}</Badge>
+                )}
               </div>
               <div className="text-muted-foreground">
                 业务背景/场景说明严格取自当前实体所属业务场景的描述字段，不支持在页签内编辑。
@@ -197,6 +209,7 @@ export function EpcTab({ entityId }: EpcTabProps) {
               </Button>
               <Button variant="outline" onClick={handleDownloadJson} disabled={!profile}>导出 JSON</Button>
               <Button onClick={handleDownloadMarkdown} disabled={!profile?.generatedDocument}>导出 Markdown</Button>
+              <Button variant="outline" onClick={handleDownloadPdf} disabled={!profile?.generatedDocument}>导出 PDF</Button>
             </div>
           </CardContent>
         </Card>

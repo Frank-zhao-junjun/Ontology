@@ -2,6 +2,13 @@ import nextTs from 'eslint-config-next/typescript';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
+const ROOT_HELPER_SCRIPTS = [
+  'add-methods.js',
+  'fix-store.js',
+  'fix-store2.js',
+  'fix-store4.js',
+];
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -18,6 +25,8 @@ const eslintConfig = defineConfig([
     'coverage/**',
     // Script files (CommonJS):
     'scripts/**/*.js',
+    // Temporary root helper scripts used during local refactors.
+    ...ROOT_HELPER_SCRIPTS,
   ]),
 ]);
 

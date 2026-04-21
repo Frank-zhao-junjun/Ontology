@@ -188,6 +188,33 @@ describe('UT-EPC-001: EPC generator skeleton', () => {
     expect(regenerated.validationSummary?.issues.some((issue) => issue.code === 'EPC_SYSTEM_MISSING')).toBe(false);
   });
 
+  it('应输出 EPC 校验问题清单与质量评分', () => {
+    const project = createProject();
+    const profile = ensureEpcProfile(project, 'entity-contract');
+
+    expect(profile.validationSummary).toBeDefined();
+    expect(profile.validationSummary?.issues.length).toBeGreaterThan(0);
+    expect(profile.validationSummary?.issues.some((issue) => issue.code === 'EPC_ORG_MISSING')).toBe(true);
+    expect(typeof profile.validationSummary?.score).toBe('number');
+
+    const regenerated = regenerateEpcProfile(project, {
+      ...profile,
+      organizationalUnits: [
+        { id: 'org-1', name: '合同专员', type: 'role', responsibilities: '发起审批', permissions: '提交审批' },
+      ],
+      systems: [
+        { id: 'sys-1', name: '合同平台', type: 'platform', description: '审批平台' },
+      ],
+      activities: profile.activities.map((activity) => ({
+        ...activity,
+        ownerOrgUnitId: 'org-1',
+      })),
+    });
+
+    expect((regenerated.validationSummary?.score || 0)).toBeGreaterThan(profile.validationSummary?.score || 0);
+    expect(regenerated.validationSummary?.issues.some((issue) => issue.code === 'EPC_ORG_MISSING')).toBe(false);
+  });
+
   it('重新生成时应刷新派生信息对象并丢弃手工补充对象', () => {
     const project = createProject();
     const profile = ensureEpcProfile(project, 'entity-contract');

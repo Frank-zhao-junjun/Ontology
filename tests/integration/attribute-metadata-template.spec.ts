@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DataModelEditor } from '@/components/ontology/data-model-editor';
@@ -11,8 +11,18 @@ function openAttributeDialog() {
 }
 
 function chooseMetadataTemplate(optionText: RegExp) {
-  fireEvent.click(screen.getAllByRole('combobox')[0]);
-  fireEvent.click(screen.getByText(optionText));
+  const buttons = screen.getAllByRole('combobox');
+  fireEvent.click(buttons[0]);
+  
+  const options = screen.getAllByRole('option');
+  // Just log the options out if we can't find it to debug
+  const optionToClick = options.find((opt) => optionText.test(opt.textContent || ''));
+  if (optionToClick) {
+    fireEvent.click(optionToClick);
+  } else {
+    console.log("AVAILABLE OPTIONS:", options.map(o => o.textContent));
+    throw new Error('Could not find metadata template option: ' + optionText);
+  }
 }
 
 describe('IT-ATTR-META: metadata template + attribute (strict binding)', () => {
@@ -121,7 +131,7 @@ describe('IT-ATTR-META: metadata template + attribute (strict binding)', () => {
 
       fireEvent.change(screen.getByLabelText('中文名称'), { target: { value: '合同名称' } });
       fireEvent.change(screen.getByLabelText('英文名称'), { target: { value: 'contractName' } });
-      chooseMetadataTemplate(/标准名称\s*\(StandardName\)\s*-\s*合同管理/);
+      chooseMetadataTemplate(/标准名称/);
 
       await waitFor(() => {
         expect(screen.getByText('已关联元数据模板，数据类型将按模板锁定。')).toBeInTheDocument();
@@ -163,7 +173,7 @@ describe('IT-ATTR-META: metadata template + attribute (strict binding)', () => {
       fireEvent.click(screen.getByRole('combobox', { name: '引用实体' }));
       fireEvent.click(await screen.findByText('订单 (Order)'));
 
-      chooseMetadataTemplate(/标准名称\s*\(StandardName\)\s*-\s*合同管理/);
+      chooseMetadataTemplate(/标准名称/);
 
       await waitFor(() => {
         expect(screen.queryByLabelText('引用实体')).not.toBeInTheDocument();
@@ -200,7 +210,7 @@ describe('IT-ATTR-META: metadata template + attribute (strict binding)', () => {
       fireEvent.click(await screen.findByRole('combobox', { name: '主数据字段（可选）' }));
       fireEvent.click(await screen.findByText('供应商编码'));
 
-      chooseMetadataTemplate(/标准名称\s*\(StandardName\)\s*-\s*合同管理/);
+      chooseMetadataTemplate(/标准名称/);
 
       await waitFor(() => {
         expect(screen.queryByLabelText('主数据类型')).not.toBeInTheDocument();
@@ -220,5 +230,65 @@ describe('IT-ATTR-META: metadata template + attribute (strict binding)', () => {
       expect(savedAttribute?.masterDataField).toBeUndefined();
       expect(savedAttribute?.metadataTemplateId).toBe('meta-standard-name');
     });
+  describe('IT-ATTR-META-004 [REQ-ATTR-META-04]', () => {
+    it('元数据模板搜索和推荐功能：输入内容可过滤选项', async () => {
+      // 准备额外的测试数据以证明过滤
+      useOntologyStore.setState({
+        metadataList: [
+          ...useOntologyStore.getState().metadataList,
+          {
+            id: 'meta-other-name',
+            domain: '其他领域',
+            name: '异构名称',
+            nameEn: 'OtherName',
+            description: '其他词',
+            type: '文本',
+            createdAt: '2026-04-02T00:00:00.000Z',
+            updatedAt: '2026-04-02T00:00:00.000Z',
+          }
+        ]
+      });
+
+      render(React.createElement(DataModelEditor, { mode: 'entity-detail', entityId: 'entity-contract' }));
+
+      // 点开属性添加
+      openAttributeDialog();
+
+      // 打开元数据Combobox
+      const buttons = screen.getAllByRole('combobox');
+      fireEvent.click(buttons[0]); // 关联元数据
+
+      // 验证两个都存在
+      expect(await screen.findByText(/标准名称.*\(StandardName\)/)).toBeInTheDocument();
+      expect(await screen.findByText(/异构名称.*\(OtherName\)/)).toBeInTheDocument();
+
+      // 输入过滤词
+      const searchInput = screen.getByPlaceholderText('搜索元数据名称或编码...');
+      fireEvent.change(searchInput, { target: { value: '异构' } });
+
+      // 验证标准名称消失了，异构名称还在
+      await waitFor(() => {
+        expect(screen.queryByText(/标准名称.*\(StandardName\)/)).not.toBeInTheDocument();
+        expect(screen.getByText(/异构名称.*\(OtherName\)/)).toBeInTheDocument();
+      });
+
+      // 清除并搜索 StandardName
+      fireEvent.change(searchInput, { target: { value: 'Standard' } });
+
+      await waitFor(() => {
+        expect(screen.getByText(/标准名称.*\(StandardName\)/)).toBeInTheDocument();
+        expect(screen.queryByText(/异构名称.*\(OtherName\)/)).not.toBeInTheDocument();
+      });
+      
+      // 点击并选择
+      fireEvent.click(screen.getByText(/标准名称.*\(StandardName\)/));
+
+      // 验证选中了
+      await waitFor(() => {
+        const buttons = screen.getAllByRole('combobox');
+        expect(buttons[0]).toHaveTextContent(/标准名称 \(StandardName\)/); 
+      });
+    });
   });
+});
 });

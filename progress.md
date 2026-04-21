@@ -17,3 +17,73 @@
 - 完成第二阶段 option 2：将 EPC 接入配置导出链路，新增 EPC Markdown/JSON 导出、manifest 扩展与导出相关测试，并通过全量 `pnpm ts-check`、`pnpm test:run`、`pnpm exec next build`。
 - 完成第二阶段 option 3：在 EPC 页签预览区新增 Markdown / JSON 下载按钮，直接导出当前聚合根 EPC 文档与结构化结果。
 - 完成第二阶段 option 4：在 EPC 页签预览区新增整包配置包下载按钮，直接调用 `/api/export` 下载当前项目完整 config package。
+
+## 2026-04-21
+
+- 读取 `US.md`、`tests/*/cases.md`、现有 `tests/**` 与 `src/**` 测试文件，重建“全部 US -> 仓库证据”基线。
+- 新增 `docs/us-tdd-validation-2026-04-21.md`，按 Ralph Loop 顺序重新整理所有 US，并标记 `核心已验证 / 部分验证 / 未验证`。
+- 识别出当前最适合先补的缺口是 US-2.2 / US-2.3：都属于基础依赖链，且已有实现可直接补证据。
+- 为 US-2.3 新增集成测试 `tests/integration/modeling-workspace-scenario-filter.spec.tsx`，首次跑测暴露出真实偏差：未选场景时实体列表仍显示全部实体。
+- 修正 `src/components/ontology/modeling-workspace.tsx` 的过滤逻辑，使未选业务场景时实体列表为空，并重新跑绿 US-2.3 测试。
+- 为 US-2.2 新增单元测试 `tests/unit/entity-business-scenario.spec.ts`，验证“创建必须绑定业务场景”和“创建后不可跨场景迁移”两个核心验收，测试通过。
+- 为 US-1.2 新增单元测试 `tests/unit/business-scenario-management.spec.ts`，先锁定“业务场景基础字段 CRUD”和“有关联实体时禁止删除场景”两条核心验收。
+- US-1.2 首次跑测失败，暴露 `deleteBusinessScenario` 会无条件删除场景的缺陷；随后在 store 中补充关联实体保护逻辑，并将新测试跑绿。
+- 为 US-1.1 新增单元测试 `tests/unit/entity-project-management.spec.ts`，锁定“项目分组基础字段 CRUD”和“有关联实体时禁止删除项目分组”两条核心验收。
+- US-1.1 首次跑测失败，暴露 `deleteEntityProject` 会无条件删除项目分组的缺陷；随后在 store 中补充关联实体保护逻辑，并将新测试跑绿。
+- 清理回归测试 `tests/unit/ontology-store.spec.ts` 的陈旧断言，使其与新的删除保护语义一致；随后联跑 `ontology-store`、US-1.1、US-1.2、US-2.2 四组基础 store 测试全部通过。
+- 为 US-1.2 新增集成测试 `tests/integration/business-scenario-project-boundary.spec.tsx`，锁定“未选具体项目时不允许创建业务场景”这条 UI 边界。
+- US-1.2 新增 UI 测试首次跑测失败，暴露 `modeling-workspace` 会在“全部项目”视角下允许创建业务场景，并隐式回退到首个项目的缺陷；随后将创建入口绑定到显式项目选择后跑绿。
+- 为 US-1.2 补强 API 侧直接证据：`src/app/api/projects/[id]/route.test.ts` 新增 PUT 场景快照断言，确认 `businessScenarios` 会进入 `project_data` 持久化。
+- 已确认 US-1.2 的“场景数量限制”为“每项目最多 10 个业务场景”，并新增 store + UI 双层 TDD 证据：达到 10 个后拒绝新增第 11 个。
+- 在 `src/store/ontology-store.ts` 中补充项目维度场景上限保护，在 `src/components/ontology/modeling-workspace.tsx` 中补充创建入口禁用与上限提示；相关单测与集成测试均已跑绿。
+- 为 US-1.2 继续补齐工作台 CRUD 直接证据：`tests/integration/business-scenario-project-boundary.spec.tsx` 现已覆盖场景编辑和删除路径。
+- 在 `src/components/ontology/modeling-workspace.tsx` 中新增业务场景编辑/删除入口、编辑对话框与删除前关联检查；UI 现在与 store 约束保持一致。
+- 为 US-2.1 新增单元测试 `tests/unit/entity-aggregate-boundary.spec.ts`，先锁定三类聚合角色边界错误和一条聚合根级联删除路径。
+- US-2.1 首次跑测暴露出两个真实缺陷：store 未拦截非法 `entityRole + parentAggregateId` 组合，且删除聚合根时不会级联删除子实体；随后已在 `src/store/ontology-store.ts` 中修复并跑绿。
+- 为 US-2.1 新增集成测试 `tests/integration/event-model-editor-aggregate-guard.spec.tsx`，直接锁定“只有聚合根才能定义领域事件”这条验收。
+- 事件编辑器现有实现已通过新测试：`child_entity` 会被 UI 直接拦截并提示，`aggregate_root` 可正常写入 `eventModel.events`。
+- 已联跑 `tests/unit/entity-aggregate-boundary.spec.ts` 与 `tests/integration/event-model-editor-aggregate-guard.spec.tsx`，并重新执行 `npx tsc --noEmit`；当前 US-2.1 已覆盖聚合边界、删根级联、事件发布守卫，剩余缺口收敛到“聚合根变更处理”和“嵌套深度限制”。
+- 为 US-2.1 继续补强 `tests/unit/entity-aggregate-boundary.spec.ts`：新增“仍有子实体归属时禁止聚合根降级”和“子实体清空 `parentAggregateId` 后可升级为聚合根”两条变更处理证据。
+- 新失败用例暴露出 `updateEntity` 允许仍被子实体引用的聚合根直接降级；随后已在 `src/store/ontology-store.ts` 中补充降级保护并跑绿。
+- 为 US-2.1 继续补强 `tests/unit/entity-aggregate-boundary.spec.ts`：新增“child 不允许挂 child”的直接测试，明确当前嵌套深度限制为“聚合根 + 一层子实体”。
+- 已联跑 `tests/unit/entity-aggregate-boundary.spec.ts`、`tests/integration/event-model-editor-aggregate-guard.spec.tsx`、`tests/unit/ontology-store.spec.ts`、`tests/unit/entity-business-scenario.spec.ts`，并再次执行 `npx tsc --noEmit`；US-2.1 的显式验收项现已全部有直接证据，可上调为“核心已验证”。
+- 为 US-1.3 新增集成测试 `tests/integration/business-scenario-list.spec.tsx`，直接锁定“按项目过滤场景列表”“显示实体数量”“支持搜索”三条核心验收。
+- 在 `src/components/ontology/modeling-workspace.tsx` 中补充 `filteredBusinessScenarios` 逻辑和“搜索业务场景”输入框；业务场景列表现已先按项目过滤，再按名称/英文名/描述搜索。
+- 已联跑 `tests/integration/business-scenario-list.spec.tsx`、`tests/integration/business-scenario-project-boundary.spec.tsx`、`tests/integration/modeling-workspace-scenario-filter.spec.tsx`，并再次执行 `npx tsc --noEmit`；US-1.3 现已具备直接测试证据，可上调为“核心已验证”。
+- 为 US-4.1 新增单元测试 `tests/unit/state-definition-rules.spec.ts`，先锁定“新增中间态成功”“状态编码唯一”“单一初始态”“删除被转换引用的状态失败”四条直接证据。
+- US-4.1 首次跑测暴露出真实缺口：store 未校验状态编码重复、未限制多个初始态，也未阻止“删状态时顺手删转换”的非法捷径；随后已在 `src/store/ontology-store.ts` 中补齐统一状态机规则。
+- 在 `src/components/ontology/behavior-model-editor.tsx` 中同步收口交互语义：新增状态时若违反 store 规则会直接提示，删除状态时若仍被转换引用会明确拒绝，而不是静默级联删除转换。
+- 已联跑 `tests/unit/state-definition-rules.spec.ts` 并检查 `src/store/ontology-store.ts`、`src/components/ontology/behavior-model-editor.tsx` 无错误；US-4.1 当前可上调为“部分验证”，剩余缺口收敛到 UI 集成证据与“状态数量限制”阈值澄清。
+- 为 US-4.1 新增集成测试 `tests/integration/behavior-model-editor-state-rules.spec.tsx`，把 store 约束扩展到真实编辑器交互，现已覆盖“新增普通中间态成功”“重复状态编码失败”“第二个初始态失败”“删除被转换引用的状态失败”。
+- 已联跑 `tests/integration/behavior-model-editor-state-rules.spec.tsx` 与 `tests/unit/state-definition-rules.spec.ts`，当前 US-4.1 的 store + UI 针对性测试共 8 条，全部通过。
+- 用户已确认 US-4.1 的“状态数量限制”为“每个状态机最多 10 个状态”。
+- 为 US-4.1 继续补强 `tests/unit/state-definition-rules.spec.ts` 与 `tests/integration/behavior-model-editor-state-rules.spec.tsx`，新增“超过 10 个状态应失败”的 store + UI 直接证据。
+- 在 `src/store/ontology-store.ts` 中补充状态数量上限保护，当前第 11 个状态会被统一拒绝；相关 10 条针对性测试现已全部通过，US-4.1 可上调为“核心已验证”。
+- 已完成一轮更宽的行为模型相关回归：`tests/unit/ontology-store.spec.ts`、`tests/unit/epc-generator.spec.ts`、`tests/unit/export-manifest.spec.ts`、`tests/integration/epc-tab.spec.tsx`、`tests/integration/api-export*.spec.ts`、`src/test/integration/export.test.ts` 联同 US-4.1 新增测试共 51 条，全部通过，当前未见对 EPC 生成或导出链路的回归影响。
+- 为恢复 `ci:check` 绿色状态，已在 `eslint.config.mjs` 中排除根目录临时 CommonJS 辅助脚本，并清理 `modeling-workspace.tsx` 中 `BusinessScenarioForm` 的 effect 内同步 setState 与测试文件无用导入告警。
+- 已重跑 `pnpm run lint`、`pnpm vitest run tests/integration/business-scenario-project-boundary.spec.tsx tests/integration/business-scenario-list.spec.tsx` 与整条 `pnpm run ci:check`；当前 lint、ts-check、unit、integration、e2e smoke 已全部通过，仓库重新回到全绿状态。
+- 为 US-6.1 新增单元测试 `tests/unit/domain-event-definition-rules.spec.ts`，直接锁定“仅聚合根可定义领域事件”“事件名称必须为过去式”“状态变更事件必须带触发条件”“默认事务阶段与最小 payload 自动补齐”四条核心验收。
+- 为 US-6.1 新增集成测试 `tests/integration/event-model-editor-domain-rules.spec.tsx`，把事件规则从 store 扩展到真实编辑器交互，现已覆盖默认创建、过去式校验与状态变更条件校验。
+- 在 `src/store/ontology-store.ts` 中新增 `ensureEventDefinitionRules`，将聚合根约束、过去式命名、`state_change` 条件与 `AFTER_COMMIT` 默认事务边界统一下沉到状态层。
+- 在 `src/components/ontology/event-model-editor.tsx` 中补充默认事件命名与错误提示语义：默认事件名现按触发类型生成 `已创建 / 已更新 / 已删除 / 已变更`，且无 payload 时自动补 `id`。
+- 已对齐 `tests/unit/ontology-store.spec.ts` 与 `tests/integration/event-model-editor-aggregate-guard.spec.tsx` 的既有夹具，使旧回归用例与新的领域事件约束保持一致。
+- 已重跑整条 `pnpm run ci:check`；当前 lint、ts-check、21 个 unit 文件、21 个 integration 文件与 4 个 e2e smoke 文件全部通过，US-6.1 收口后仓库仍保持全绿。
+- 为 US-4.2 新增单元测试 `tests/unit/state-transition-rules.spec.ts`，直接锁定“有效转换可保存前置条件/后置动作”“无效状态引用失败”“自动/定时转换缺少条件表达式失败”三条核心验收。
+- 为 US-4.2 新增集成测试 `tests/integration/behavior-model-editor-transition-rules.spec.tsx`，把转换规则扩展到真实编辑器交互，现已覆盖有效转换创建、空状态拦截与自动转换条件拦截。
+- 在 `src/store/ontology-store.ts` 中扩展 `ensureStateMachineRules`：除状态规则外，现已统一校验转换起止状态完整性，并要求自动/定时转换必须提供 `preConditions`。
+- 在 `src/components/ontology/behavior-model-editor.tsx` 中补充转换级输入与反馈：新增“条件表达式”“后置动作”输入区，并在保存转换前对空状态和缺少条件的自动转换做显式提示。
+- 已联跑 `tests/unit/state-definition-rules.spec.ts`、`tests/unit/state-transition-rules.spec.ts`、`tests/integration/behavior-model-editor-state-rules.spec.tsx`、`tests/integration/behavior-model-editor-transition-rules.spec.tsx`，随后重跑整条 `pnpm run ci:check`；当前 22 个 unit 文件、22 个 integration 文件与 4 个 e2e smoke 文件全部通过。
+- 在 `src/components/ontology/behavior-model-editor.tsx` 中继续复用现有转换对话框，补齐独立的“编辑转换 / 删除转换”入口，当前转换列表已不再只有新增路径。
+- `tests/integration/behavior-model-editor-transition-rules.spec.tsx` 现已扩展到 5 条直接交互证据，新增覆盖“编辑已有转换并保存新的条件/动作配置”“删除已有转换”两条剩余 CRUD 验收。
+- 已再次重跑整条 `pnpm run ci:check`；当前 lint、ts-check、22 个 unit 文件、22 个 integration 文件与 4 个 e2e smoke 文件全部通过，US-4.2 可正式上调为“核心已验证”。
+- 为 US-1.1 新增集成测试 `tests/integration/entity-project-list.spec.tsx`，直接锁定“项目列表实体计数”“按项目过滤业务场景与实体”“删除当前选中空项目后回退到全部项目”“有关联实体时拒绝删除项目分组”四条工作台验收。
+- 为 US-1.1 补强 `src/app/api/projects/[id]/route.test.ts`，新增 DELETE 失败路径，确认数据库删除失败时会返回 500 并保留明确错误语义。
+- 在 `src/components/ontology/modeling-workspace.tsx` 中补充最小可测试性标记：项目行 `data-testid` 与“删除项目分类”按钮 `aria-label`，避免工作台项目分组交互继续依赖脆弱选择器。
+- 已重跑 `pnpm vitest run tests/integration/entity-project-list.spec.tsx`、`pnpm vitest run src/app/api/projects/[id]/route.test.ts` 与整条 `pnpm run ci:check`；当前 lint、ts-check、22 个 unit 文件、23 个 integration 文件与 4 个 e2e smoke 文件全部通过，US-1.1 可上调为“核心已验证”。
+- 为 US-6.2 新增单元测试 `tests/unit/event-subscription-rules.spec.ts` 与集成测试 `tests/integration/event-model-editor-subscription-rules.spec.tsx`，直接锁定事件订阅的同步/异步处理方式、重试策略必填、事件引用有效性与默认幂等配置。
+- 在 `src/store/ontology-store.ts` 中新增 `ensureSubscriptionRules`，统一校验订阅名称、事件引用、动作引用、异步重试策略，并为同步/异步订阅规范化 `handlerId` 与 `idempotencyKeyPattern`。
+- 在 `src/components/ontology/event-model-editor.tsx` 中补齐订阅表单：新增处理方式、动作类型、处理器标识、幂等键模式和异步重试配置输入；保存失败时直接反馈 store 级错误。
+- 全量回归期间暴露 `src/components/ontology/metadata-manager.tsx` 的表单标签未显式关联控件，导致 `metadata-manager-crud` 集成测试失败；随后补齐 `htmlFor` / `id` / `aria-labelledby` 后恢复通过。
+- 已再次重跑整条 `pnpm run ci:check`；当前 lint、ts-check、24 个 unit 文件、25 个 integration 文件与 4 个 e2e smoke 文件全部通过，US-6.2 收口后仓库保持全绿。
+- 用户已确认 `ci:check` 本身只包含 lint、ts-check、unit、integration、e2e smoke，不存在交互步骤；后续验证改为按阶段拆跑，避免把终端输出噪音误判为卡住。
+- 已补跑 `pnpm run lint`、`pnpm run ts-check`、`pnpm run test:unit`、`pnpm run test:integration`、`pnpm run test:e2e:smoke`；当前 28 个 unit 文件、29 个 integration 文件与 4 个 e2e smoke 文件全部通过，US-4.3 收口后仓库仍保持全绿。

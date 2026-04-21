@@ -165,6 +165,50 @@ describe('Project Detail Route', () => {
     }));
   });
 
+  it('PUT 应保留业务场景快照到 project_data', async () => {
+    const project = createMockProject();
+    project.dataModel!.businessScenarios = [
+      {
+        id: 'scenario-2',
+        name: '到货登记',
+        nameEn: 'GoodsReceipt',
+        description: '到货登记业务场景',
+        projectId: 'project-1',
+        color: '#22c55e',
+      },
+    ];
+    supabaseState.updateResult = {
+      data: { id: project.id, updated: true },
+      error: null,
+    };
+
+    const response = await PUT(new NextRequest('http://localhost/api/projects/project-1', {
+      method: 'PUT',
+      body: JSON.stringify({ project }),
+      headers: { 'content-type': 'application/json' },
+    }), {
+      params: Promise.resolve({ id: 'project-1' }),
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.success).toBe(true);
+    expect(supabaseState.lastUpdatePayload).toEqual(expect.objectContaining({
+      project_data: expect.objectContaining({
+        dataModel: expect.objectContaining({
+          businessScenarios: [
+            expect.objectContaining({
+              id: 'scenario-2',
+              name: '到货登记',
+              projectId: 'project-1',
+              color: '#22c55e',
+            }),
+          ],
+        }),
+      }),
+    }));
+  });
+
   it('PUT 更新未命中时应回退为插入', async () => {
     const project = createMockProject();
     supabaseState.updateResult = {
@@ -206,5 +250,22 @@ describe('Project Detail Route', () => {
     expect(response.status).toBe(200);
     expect(payload).toEqual({ success: true });
     expect(supabaseState.lastEq).toEqual({ column: 'id', value: 'project-1' });
+  });
+
+  it('DELETE 数据库删除失败时应返回 500', async () => {
+    supabaseState.deleteResult = {
+      error: { message: 'foreign key violation' },
+    };
+
+    const response = await DELETE(new NextRequest('http://localhost/api/projects/project-1', {
+      method: 'DELETE',
+    }), {
+      params: Promise.resolve({ id: 'project-1' }),
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(payload.success).toBe(false);
+    expect(payload.error).toContain('删除项目失败: foreign key violation');
   });
 });

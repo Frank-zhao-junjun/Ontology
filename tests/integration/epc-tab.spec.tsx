@@ -96,11 +96,22 @@ describe('IT-EPC-001: 聚合根 EPC 页签骨架', () => {
       expect(screen.getByText(/业务场景说明/)).toBeInTheDocument();
       expect(screen.getByText('合同签订')).toBeInTheDocument();
       expect(screen.getByText('合同审批与签署流程说明')).toBeInTheDocument();
+      expect(screen.getByText(/质量评分/)).toBeInTheDocument();
     });
 
     expect(screen.queryByText('保存补充信息')).not.toBeInTheDocument();
     expect(screen.queryByText('+ 添加手工对象')).not.toBeInTheDocument();
     expect(screen.queryByText('+ 添加组织单元')).not.toBeInTheDocument();
+  });
+
+  it('应显示 EPC 完整性问题列表代码', async () => {
+    render(React.createElement(EpcTab, { entityId: 'entity-contract' }));
+    await screen.findByText('EPC事件说明书');
+
+    await waitFor(() => {
+      expect(screen.getByText('EPC_ORG_MISSING')).toBeInTheDocument();
+      expect(screen.getByText('EPC_SYSTEM_MISSING')).toBeInTheDocument();
+    });
   });
 
   it('应允许从 EPC 页签直接导出 Markdown 与 JSON', async () => {
@@ -129,6 +140,45 @@ describe('IT-EPC-001: 聚合根 EPC 页签骨架', () => {
     expect(clickSpy).toHaveBeenCalledTimes(2);
     expect(createdAnchors[0]?.download).toBe('contract.json');
     expect(createdAnchors[1]?.download).toBe('contract.md');
+  });
+
+  it('导出内容应与当前预览一致，并支持 PDF 命名格式', async () => {
+    const createdAnchors: HTMLAnchorElement[] = [];
+    const objectUrlPayloads: Blob[] = [];
+    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation(((tagName: string, options?: ElementCreationOptions) => {
+      const element = originalCreateElement(tagName, options);
+      if (tagName.toLowerCase() === 'a') {
+        createdAnchors.push(element as HTMLAnchorElement);
+      }
+      return element;
+    }) as typeof document.createElement);
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((blob: Blob) => {
+      objectUrlPayloads.push(blob);
+      return `blob:epc-${objectUrlPayloads.length}`;
+    });
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+    render(React.createElement(EpcTab, { entityId: 'entity-contract' }));
+
+    const preview = await screen.findByText((content) => content.includes('# EPC业务活动规格说明书'));
+    expect(preview).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '导出 Markdown' }));
+    fireEvent.click(screen.getByRole('button', { name: '导出 PDF' }));
+
+    expect(createElementSpy).toHaveBeenCalled();
+    expect(createdAnchors.at(-2)?.download).toBe('contract.md');
+    expect(createdAnchors.at(-1)?.download).toBe('contract.pdf');
+
+    const markdownBlob = objectUrlPayloads[0];
+    const markdownContent = await markdownBlob.text();
+    expect(markdownContent).toContain('# EPC业务活动规格说明书');
+
+    const pdfBlob = objectUrlPayloads[1];
+    expect(pdfBlob.type).toBe('application/pdf');
+    const pdfContent = await pdfBlob.text();
+    expect(pdfContent).toContain('# EPC业务活动规格说明书');
   });
 
   it('应允许从 EPC 页签导出整包配置包', async () => {
