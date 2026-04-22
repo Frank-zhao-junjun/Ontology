@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOntologyStore } from '@/store/ontology-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,6 +50,7 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestions | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [appliedItems, setAppliedItems] = useState<Set<string>>(new Set());
+  const rollbackHandlersRef = useRef(new Map<string, () => void>());
 
   // 获取项目列表
   const projects = useMemo(() => project?.dataModel?.projects || [], [project?.dataModel?.projects]);
@@ -72,6 +73,7 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
     setIsGenerating(true);
     setGenerateError(null);
     setAppliedItems(new Set());
+    rollbackHandlersRef.current = new Map();
 
     try {
       const entityProject = projects.find(p => p.id === entity.projectId);
@@ -180,6 +182,14 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
             ...entity,
             attributes: [...entity.attributes, newAttr],
           });
+          rollbackHandlersRef.current.set(itemKey, () => {
+            const currentEntity = useOntologyStore.getState().project?.dataModel?.entities.find((e) => e.id === entity.id);
+            if (!currentEntity) return;
+            updateEntity(entity.id, {
+              ...currentEntity,
+              attributes: currentEntity.attributes.filter((attr) => attr.id !== newAttr.id),
+            });
+          });
           break;
         }
 
@@ -194,6 +204,14 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
           updateEntity(entity.id, {
             ...entity,
             relations: [...entity.relations, newRel],
+          });
+          rollbackHandlersRef.current.set(itemKey, () => {
+            const currentEntity = useOntologyStore.getState().project?.dataModel?.entities.find((e) => e.id === entity.id);
+            if (!currentEntity) return;
+            updateEntity(entity.id, {
+              ...currentEntity,
+              relations: currentEntity.relations.filter((rel) => rel.id !== newRel.id),
+            });
           });
           break;
         }
@@ -227,6 +245,9 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
             transitions,
           };
           addStateMachine(newSM);
+          rollbackHandlersRef.current.set(itemKey, () => {
+            useOntologyStore.getState().deleteStateMachine(newSM.id);
+          });
           break;
         }
 
@@ -243,6 +264,9 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
             description: item.description || '',
           };
           addRule(newRule);
+          rollbackHandlersRef.current.set(itemKey, () => {
+            useOntologyStore.getState().deleteRule(newRule.id);
+          });
           break;
         }
 
@@ -258,6 +282,9 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
             description: item.description || '',
           };
           addEventDefinition(newEvent);
+          rollbackHandlersRef.current.set(itemKey, () => {
+            useOntologyStore.getState().deleteEventDefinition(newEvent.id);
+          });
           break;
         }
 
@@ -283,6 +310,9 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
             description: item.description || '',
           };
           addSubscription(newSubscription);
+          rollbackHandlersRef.current.set(itemKey, () => {
+            useOntologyStore.getState().deleteSubscription(newSubscription.id);
+          });
           break;
         }
       }
@@ -291,6 +321,21 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
     } catch (error) {
       console.error('Apply suggestion error:', error);
     }
+  };
+
+  const handleRollbackSuggestion = (itemKey: string) => {
+    const rollback = rollbackHandlersRef.current.get(itemKey);
+    if (!rollback) {
+      return;
+    }
+
+    rollback();
+    rollbackHandlersRef.current.delete(itemKey);
+    setAppliedItems((prev) => {
+      const next = new Set(prev);
+      next.delete(itemKey);
+      return next;
+    });
   };
 
   if (!project) {
@@ -517,11 +562,14 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
                           </div>
                           <Button 
                             size="sm" 
-                            variant={appliedItems.has(`attribute-${idx}`) ? "secondary" : "default"}
-                            onClick={() => handleApplySuggestion('attribute', attr, idx)}
-                            disabled={appliedItems.has(`attribute-${idx}`)}
+                            variant={appliedItems.has(`attribute-${idx}`) ? "outline" : "default"}
+                            onClick={() => (
+                              appliedItems.has(`attribute-${idx}`)
+                                ? handleRollbackSuggestion(`attribute-${idx}`)
+                                : handleApplySuggestion('attribute', attr, idx)
+                            )}
                           >
-                            {appliedItems.has(`attribute-${idx}`) ? '已应用' : '应用'}
+                            {appliedItems.has(`attribute-${idx}`) ? '回滚' : '应用'}
                           </Button>
                         </div>
                       ))}
@@ -547,11 +595,14 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
                           </div>
                           <Button 
                             size="sm"
-                            variant={appliedItems.has(`relation-${idx}`) ? "secondary" : "default"}
-                            onClick={() => handleApplySuggestion('relation', rel, idx)}
-                            disabled={appliedItems.has(`relation-${idx}`)}
+                            variant={appliedItems.has(`relation-${idx}`) ? "outline" : "default"}
+                            onClick={() => (
+                              appliedItems.has(`relation-${idx}`)
+                                ? handleRollbackSuggestion(`relation-${idx}`)
+                                : handleApplySuggestion('relation', rel, idx)
+                            )}
                           >
-                            {appliedItems.has(`relation-${idx}`) ? '已应用' : '应用'}
+                            {appliedItems.has(`relation-${idx}`) ? '回滚' : '应用'}
                           </Button>
                         </div>
                       ))}
@@ -583,14 +634,17 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
                       </div>
                       <Button 
                         size="sm"
-                        variant={appliedItems.has(`stateMachine-0`) ? "secondary" : "default"}
-                        onClick={() => handleApplySuggestion('stateMachine', {
-                          states: aiSuggestions.behaviorModel?.suggestedStates,
-                          transitions: aiSuggestions.behaviorModel?.suggestedTransitions
-                        }, 0)}
-                        disabled={appliedItems.has(`stateMachine-0`)}
+                        variant={appliedItems.has(`stateMachine-0`) ? "outline" : "default"}
+                        onClick={() => (
+                          appliedItems.has(`stateMachine-0`)
+                            ? handleRollbackSuggestion('stateMachine-0')
+                            : handleApplySuggestion('stateMachine', {
+                              states: aiSuggestions.behaviorModel?.suggestedStates,
+                              transitions: aiSuggestions.behaviorModel?.suggestedTransitions
+                            }, 0)
+                        )}
                       >
-                        {appliedItems.has(`stateMachine-0`) ? '已应用' : '应用'}
+                        {appliedItems.has(`stateMachine-0`) ? '回滚' : '应用'}
                       </Button>
                     </div>
                   </div>
@@ -614,11 +668,14 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
                           </div>
                           <Button 
                             size="sm"
-                            variant={appliedItems.has(`rule-${idx}`) ? "secondary" : "default"}
-                            onClick={() => handleApplySuggestion('rule', rule, idx)}
-                            disabled={appliedItems.has(`rule-${idx}`)}
+                            variant={appliedItems.has(`rule-${idx}`) ? "outline" : "default"}
+                            onClick={() => (
+                              appliedItems.has(`rule-${idx}`)
+                                ? handleRollbackSuggestion(`rule-${idx}`)
+                                : handleApplySuggestion('rule', rule, idx)
+                            )}
                           >
-                            {appliedItems.has(`rule-${idx}`) ? '已应用' : '应用'}
+                            {appliedItems.has(`rule-${idx}`) ? '回滚' : '应用'}
                           </Button>
                         </div>
                       ))}
@@ -644,11 +701,14 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
                           </div>
                           <Button 
                             size="sm"
-                            variant={appliedItems.has(`event-${idx}`) ? "secondary" : "default"}
-                            onClick={() => handleApplySuggestion('event', event, idx)}
-                            disabled={appliedItems.has(`event-${idx}`)}
+                            variant={appliedItems.has(`event-${idx}`) ? "outline" : "default"}
+                            onClick={() => (
+                              appliedItems.has(`event-${idx}`)
+                                ? handleRollbackSuggestion(`event-${idx}`)
+                                : handleApplySuggestion('event', event, idx)
+                            )}
                           >
-                            {appliedItems.has(`event-${idx}`) ? '已应用' : '应用'}
+                            {appliedItems.has(`event-${idx}`) ? '回滚' : '应用'}
                           </Button>
                         </div>
                       ))}

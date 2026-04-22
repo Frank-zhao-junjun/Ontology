@@ -256,24 +256,27 @@ export function MetadataManager() {
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>领域</Label>
+                <Label htmlFor="metadata-domain">领域</Label>
                 <Input
+                  id="metadata-domain"
                   value={editingMetadata.domain || ''}
                   onChange={(e) => setEditingMetadata({ ...editingMetadata, domain: e.target.value })}
                   placeholder="如：财务、物料"
                 />
               </div>
               <div className="space-y-2">
-                <Label>中文名称 *</Label>
+                <Label htmlFor="metadata-name">中文名称 *</Label>
                 <Input
+                  id="metadata-name"
                   value={editingMetadata.name || ''}
                   onChange={(e) => setEditingMetadata({ ...editingMetadata, name: e.target.value })}
                   placeholder="如：物料编码"
                 />
               </div>
               <div className="space-y-2">
-                <Label>英文名称 *</Label>
+                <Label htmlFor="metadata-name-en">英文名称 *</Label>
                 <Input
+                  id="metadata-name-en"
                   value={editingMetadata.nameEn || ''}
                   onChange={(e) => setEditingMetadata({ ...editingMetadata, nameEn: e.target.value })}
                   placeholder="如：MATERIAL_ID"
@@ -281,12 +284,12 @@ export function MetadataManager() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>字段类型</Label>
+              <Label id="metadata-type-label">字段类型</Label>
               <Select
                 value={editingMetadata.type || 'string'}
                 onValueChange={(value) => setEditingMetadata({ ...editingMetadata, type: value })}
               >
-                <SelectTrigger>
+                <SelectTrigger aria-labelledby="metadata-type-label">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -299,16 +302,18 @@ export function MetadataManager() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>业务含义</Label>
+              <Label htmlFor="metadata-description">业务含义</Label>
               <Textarea
+                id="metadata-description"
                 value={editingMetadata.description || ''}
                 onChange={(e) => setEditingMetadata({ ...editingMetadata, description: e.target.value })}
                 placeholder="字段的业务含义说明"
               />
             </div>
             <div className="space-y-2">
-              <Label>值范围</Label>
+              <Label htmlFor="metadata-value-range">值范围</Label>
               <Input
+                id="metadata-value-range"
                 value={editingMetadata.valueRange || ''}
                 onChange={(e) => setEditingMetadata({ ...editingMetadata, valueRange: e.target.value })}
                 placeholder="如：长度1-100字符"
@@ -316,16 +321,18 @@ export function MetadataManager() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>参考标准</Label>
+                <Label htmlFor="metadata-standard">参考标准</Label>
                 <Input
+                  id="metadata-standard"
                   value={editingMetadata.standard || ''}
                   onChange={(e) => setEditingMetadata({ ...editingMetadata, standard: e.target.value })}
                   placeholder="如：GB/T 44063"
                 />
               </div>
               <div className="space-y-2">
-                <Label>信息源头</Label>
+                <Label htmlFor="metadata-source">信息源头</Label>
                 <Input
+                  id="metadata-source"
                   value={editingMetadata.source || ''}
                   onChange={(e) => setEditingMetadata({ ...editingMetadata, source: e.target.value })}
                   placeholder="如：PLM/ERP"

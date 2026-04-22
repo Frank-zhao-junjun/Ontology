@@ -63,6 +63,7 @@ export function RuleModelEditor({ mode = 'full', entityId }: RuleModelEditorProp
       type: editingRule.type || 'field_validation',
       entity: entityId,
       field: editingRule.field,
+      priority: editingRule.priority || 100,
       condition: {
         type: editingCondition.type || 'regex',
         pattern: editingCondition.pattern,
@@ -73,6 +74,8 @@ export function RuleModelEditor({ mode = 'full', entityId }: RuleModelEditorProp
         refEntity: editingCondition.refEntity,
         refField: editingCondition.refField,
         refValue: editingCondition.refValue,
+        checkEntity: editingCondition.checkEntity,
+        checkCondition: editingCondition.checkCondition,
       },
       errorMessage: editingRule.errorMessage || '校验失败',
       severity: editingRule.severity || 'error',
@@ -159,6 +162,15 @@ export function RuleModelEditor({ mode = 'full', entityId }: RuleModelEditorProp
                           </SelectContent>
                         </Select>
                       </div>
+                    <div className="space-y-2">
+                      <Label>优先级</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={editingRule.priority || 100}
+                        onChange={(e) => setEditingRule({ ...editingRule, priority: Number(e.target.value) || 100 })}
+                      />
+                    </div>
                     </div>
 
                     <div className="space-y-2">
@@ -244,6 +256,54 @@ export function RuleModelEditor({ mode = 'full', entityId }: RuleModelEditorProp
                       </div>
                     )}
 
+                    {editingRule.type === 'cross_field_validation' && (
+                      <div className="space-y-2">
+                        <Label>参与字段（逗号分隔）</Label>
+                        <Input
+                          value={(editingCondition.fields || []).join(', ')}
+                          onChange={(e) => {
+                            const fields = e.target.value
+                              .split(',')
+                              .map((item) => item.trim())
+                              .filter(Boolean);
+                            setEditingCondition({ ...editingCondition, fields });
+                          }}
+                          placeholder="如：attr-contract-no, attr-amount"
+                        />
+                      </div>
+                    )}
+
+                    {editingRule.type === 'cross_entity_validation' && (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>检查实体</Label>
+                          <Select
+                            value={editingCondition.checkEntity || ''}
+                            onValueChange={(value) => setEditingCondition({ ...editingCondition, checkEntity: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="选择检查实体" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {entities.map((entity) => (
+                                <SelectItem key={entity.id} value={entity.id}>
+                                  {entity.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>检查条件</Label>
+                          <Input
+                            value={editingCondition.checkCondition || ''}
+                            onChange={(e) => setEditingCondition({ ...editingCondition, checkCondition: e.target.value })}
+                            placeholder="如：vendor.status == 'active'"
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-2">
                       <Label>错误消息</Label>
                       <Textarea
@@ -319,6 +379,7 @@ export function RuleModelEditor({ mode = 'full', entityId }: RuleModelEditorProp
                             <Badge variant={getSeverityColor(rule.severity || 'error') as "destructive" | "secondary" | "outline"}>
                               {rule.severity === 'error' ? '错误' : rule.severity === 'warning' ? '警告' : '提示'}
                             </Badge>
+                            <Badge variant="outline">P{rule.priority || 100}</Badge>
                           </div>
                           {rule.errorMessage && (
                             <div className="text-xs text-muted-foreground mt-1">

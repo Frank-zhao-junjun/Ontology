@@ -304,8 +304,16 @@ describe('Ontology Store State Transitions', () => {
   });
 
   it('规则与事件相关 action 应支持自动建模和完整增删改', () => {
+    const project = createMockProject({ ruleModel: null, eventModel: null });
+    if (project.dataModel?.entities[0]) {
+      project.dataModel.entities[0] = {
+        ...project.dataModel.entities[0],
+        entityRole: 'aggregate_root',
+      };
+    }
+
     useOntologyStore.setState({
-      project: createMockProject({ ruleModel: null, eventModel: null }),
+      project,
       versions: [],
       activeModelType: 'data',
     });
@@ -323,7 +331,7 @@ describe('Ontology Store State Transitions', () => {
     };
     const event: EventDefinition = {
       id: 'event-1',
-      name: '合同创建',
+      name: '合同已创建',
       nameEn: 'ContractCreated',
       entity: 'entity-1',
       trigger: 'create',
@@ -336,6 +344,12 @@ describe('Ontology Store State Transitions', () => {
       handler: 'async',
       action: 'webhook',
       actionRef: 'https://example.com/webhook',
+      retryPolicy: {
+        maxRetries: 3,
+        backoff: 'fixed',
+        interval: 10,
+      },
+      handlerId: 'contract-indexer',
     };
 
     store.addRule(rule);
@@ -367,7 +381,7 @@ describe('Ontology Store State Transitions', () => {
     expect(state.project?.ruleModel?.rules).toEqual([]);
   });
 
-  it('删除类 action 应从对应集合中移除目标对象', () => {
+  it('删除类 action 应遵守关联约束并仅移除允许删除的对象', () => {
     const project = createFrozenProject('1.0.0');
     useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
     const store = useOntologyStore.getState();
@@ -383,7 +397,7 @@ describe('Ontology Store State Transitions', () => {
     const state = useOntologyStore.getState();
     expect(state.project?.dataModel?.entities.map((entity) => entity.id)).toEqual(['contract-1']);
     expect(state.project?.dataModel?.projects).toEqual([]);
-    expect(state.project?.dataModel?.businessScenarios).toEqual([]);
+    expect(state.project?.dataModel?.businessScenarios.map((scenario) => scenario.id)).toEqual(['scenario-1']);
   });
 
   it('clearAllModels 应保留项目与分类并清空建模数据', () => {

@@ -14,6 +14,10 @@ export interface ProjectVersion {
     process: ProcessModel | null;
     events: EventModel | null;
     epc?: EpcModel | null;
+    masterData?: {
+      definitions: MasterData[];
+      records: Record<string, MasterDataRecord[]>;
+    };
   };
   createdAt: string;
   publishedAt?: string;
@@ -111,6 +115,7 @@ export interface Attribute {
   masterDataField?: string;
   autoFill?: string;
   description?: string;
+  businessMeaning?: string;
   metadataTemplateId?: string;
   metadataTemplateName?: string;
 }
@@ -124,9 +129,33 @@ export interface Relation {
   viaEntity?: string;
   cascade?: 'none' | 'delete' | 'all';
   description?: string;
+  attributes?: Attribute[]; // 附加关系属性
+  isRecursive?: boolean;    // 是否是自引用关系
+  directionality?: 'directed' | 'undirected'; // 关系的方向性
 }
 
 export type EntityRole = 'aggregate_root' | 'child_entity';
+
+export interface ComputedProperty {
+  id: string;
+  name: string;
+  nameEn: string;
+  description?: string;
+  computationType: 'formula' | 'aggregation' | 'lookup' | 'ai-inference';
+  expression: string;
+  targetEntity?: string;
+  aggregationFunction?: 'sum' | 'count' | 'avg' | 'min' | 'max';
+  businessMeaning?: string;
+}
+
+export interface SourceMapping {
+  id: string;
+  entityId: string;
+  attributeId: string;
+  sourceSystem: string;
+  sourceFieldPath: string;
+  transformRule?: string;
+}
 
 export interface Entity {
   id: string;
@@ -135,11 +164,15 @@ export interface Entity {
   projectId: string;  // 所属项目
   businessScenarioId: string;  // 所属业务场景
   description?: string;
+  businessMeaning?: string;    // AI理解该对象的业务语义
+  aliases?: string[];          // 对象同义词
   entityRole?: EntityRole;     // DDD角色：聚合根 / 聚合内子实体
   parentAggregateId?: string;  // 当 entityRole=child_entity 时，指向所属聚合根
   isAggregateRoot?: boolean;   // 兼容旧数据：由 entityRole 派生，不再作为主字段
   attributes: Attribute[];
   relations: Relation[];
+  computedProperties?: ComputedProperty[]; // 派生属性
+  sourceMappings?: SourceMapping[];        // 源系统映射机制
   indexes?: {
     fields: string[];
     type: 'btree' | 'hash';
@@ -181,6 +214,22 @@ export interface State {
   color?: string;
 }
 
+export interface TransitionTriggerConfig {
+  eventId?: string;
+  cron?: string;
+  timezone?: string;
+  publishEventId?: string;
+}
+
+export interface TriggerExecutionLog {
+  id: string;
+  triggerType: 'manual' | 'automatic' | 'scheduled';
+  status: 'success' | 'failed';
+  triggeredAt: string;
+  message?: string;
+  publishedEventId?: string;
+}
+
 export interface Transition {
   id: string;
   name: string;
@@ -188,18 +237,52 @@ export interface Transition {
   to: string;
   trigger: 'manual' | 'automatic' | 'scheduled';
   uiAction?: string;
+  triggerConfig?: TransitionTriggerConfig;
+  executionLogs?: TriggerExecutionLog[];
   preConditions?: string[];
   postActions?: string[];
   description?: string;
 }
 
+export interface Parameter {
+  id: string;
+  name: string;
+  nameEn: string;
+  dataType: string;
+  required?: boolean;
+}
+
 export interface Action {
-  transition: string;
-  actionType: 'validate' | 'notify' | 'execute' | 'webhook';
+  // Ontology 2.0 (Palantir-style) Top-level Behavior
+  id?: string;
+  name?: string;
+  nameEn?: string;
+  description?: string;
+  targetEntityId?: string;
+  actionType: 'create' | 'update' | 'delete' | 'link' | 'unlink' | 'custom' | 'validate' | 'notify' | 'execute' | 'webhook';
+  parameters?: Parameter[];
+  preConditions?: string[];
+  postEffects?: string[];
+  executionType?: 'sync' | 'async' | 'approval';
+  requiredRoles?: string[];
+  
+  // V1 State Transition backwards compatibility
+  transition?: string;
   ruleRefs?: string[];
   template?: string;
   recipients?: string[];
   script?: string;
+}
+
+export interface FunctionDefinition {
+  id: string;
+  name: string;
+  nameEn: string;
+  description?: string;
+  apiEndpoint?: string;
+  httpMethod?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  parameters: Parameter[];
+  returnType: string;
 }
 
 export interface StateMachine {
@@ -218,6 +301,8 @@ export interface BehaviorModel {
   version: string;
   domain: string;
   stateMachines: StateMachine[];
+  actions?: Action[];
+  functions?: FunctionDefinition[];
   createdAt: string;
   updatedAt: string;
 }
@@ -259,11 +344,21 @@ export interface Rule {
   type: RuleType;
   entity: string;
   field?: string;
+  priority?: number;
   condition: RuleCondition;
   errorMessage: string;
   severity?: 'error' | 'warning' | 'info';
   enabled?: boolean;
   description?: string;
+  executionLogs?: RuleExecutionLog[];
+}
+
+export interface RuleExecutionLog {
+  id: string;
+  operation: string;
+  status: 'blocked' | 'allowed';
+  message: string;
+  recordedAt: string;
 }
 
 export interface RuleModel {

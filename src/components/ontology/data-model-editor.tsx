@@ -11,8 +11,11 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Separator } from '@/components/ui/separator';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { getAggregateRootEntities, normalizeEntityRoleFields, resolveEntityRole } from '@/lib/entity-role';
 import type { Entity, Attribute, Relation } from '@/types/ontology';
 
@@ -63,6 +66,8 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
   const [editingAttribute, setEditingAttribute] = useState<Partial<Attribute>>({});
   const [editingAttributeId, setEditingAttributeId] = useState<string | null>(null); // null = 新建, 有值 = 编辑
   const [editingRelation, setEditingRelation] = useState<Partial<Relation>>({});
+  const [editingRelationId, setEditingRelationId] = useState<string | null>(null);
+  const [metadataPopoverOpen, setMetadataPopoverOpen] = useState(false);
 
   const entities = project?.dataModel?.entities || [];
   const projects = project?.dataModel?.projects || [];
@@ -156,6 +161,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
       id: editingAttributeId || generateId(),
       name: editingAttribute.name || '新属性',
       nameEn: editingAttribute.nameEn,
+      businessMeaning: editingAttribute.businessMeaning,
       dataType,
       required: editingAttribute.required || false,
       unique: editingAttribute.unique || false,
@@ -322,6 +328,27 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                   placeholder="实体用途说明"
                 />
               </div>
+              <div className="space-y-2">
+                <Label className="text-blue-700">业务含义 (Business Meaning) ⭐</Label>
+                <Textarea
+                  value={editingEntity.businessMeaning || ''}
+                  onChange={(e) => setEditingEntity({ ...editingEntity, businessMeaning: e.target.value })}
+                  placeholder="供AI理解该实体的精确业务定义，例如：产生购买行为并需要系统跟进的个人或企业实例"
+                  className="bg-blue-50 border-blue-200"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-blue-700">同义词表 (Aliases) ⭐</Label>
+                <Input
+                  value={editingEntity.aliases?.join(', ') || ''}
+                  onChange={(e) => {
+                    const strs = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                    setEditingEntity({ ...editingEntity, aliases: strs.length ? strs : undefined });
+                  }}
+                  placeholder="多个同义词用逗号隔开，如：消费者, 散客、买家"
+                  className="bg-blue-50 border-blue-200"
+                />
+              </div>
               <Button onClick={() => {
                 if (!editingEntity.projectId && projects.length > 0) {
                   setEditingEntity({ ...editingEntity, projectId: projects[0].id, entityRole: editingEntityRole });
@@ -341,6 +368,8 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                   name: editingEntity.name || '新实体',
                   nameEn: editingEntity.nameEn || 'NewEntity',
                   description: editingEntity.description,
+                  businessMeaning: editingEntity.businessMeaning,
+                  aliases: editingEntity.aliases,
                   projectId: editingEntity.projectId,
                   businessScenarioId: editingEntity.businessScenarioId,
                   entityRole: editingEntityRole,
@@ -393,36 +422,82 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                   </DialogHeader>
                   <div className="space-y-4 pt-4">
                     {/* 元数据选择 */}
-                    <div className="space-y-2">
+                    <div className="space-y-2 flex flex-col">
                       <Label>关联元数据（可选）</Label>
-                      <Select
-                        value={editingAttribute.metadataTemplateId || '_none'}
-                        onValueChange={(value) => {
-                          if (value === '_none') {
-                            setEditingAttribute({ 
-                              ...editingAttribute, 
-                              metadataTemplateId: undefined, 
-                              metadataTemplateName: undefined 
-                            });
-                          } else {
-                            handleMetadataSelect(value);
-                          }
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="选择元数据自动填充属性信息" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="_none">不关联元数据</SelectItem>
-                          {metadataList.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.name} ({m.nameEn}) - {m.domain}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={metadataPopoverOpen} onOpenChange={setMetadataPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={metadataPopoverOpen}
+                            className="w-full justify-between font-normal"
+                          >
+                            {editingAttribute.metadataTemplateId ? (
+                              <span className="truncate">
+                                {(() => {
+                                  const m = metadataList.find(meta => meta.id === editingAttribute.metadataTemplateId);
+                                  return m ? `${m.name} (${m.nameEn}) - ${m.domain}` : '选择元数据自动填充属性信息...';
+                                })()}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground truncate">选择元数据自动填充属性信息...</span>
+                            )}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[450px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="搜索元数据名称或编码..." />
+                            <CommandList>
+                              <CommandEmpty>未找到匹配的元数据。</CommandEmpty>
+                              <CommandGroup>
+                                <CommandItem
+                                  value="_none"
+                                  onSelect={() => {
+                                    setEditingAttribute({ 
+                                      ...editingAttribute, 
+                                      metadataTemplateId: undefined, 
+                                      metadataTemplateName: undefined 
+                                    });
+                                    setMetadataPopoverOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      !editingAttribute.metadataTemplateId ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  不关联元数据
+                                </CommandItem>
+                                {metadataList.map((m) => (
+                                  <CommandItem
+                                    key={m.id}
+                                    value={`${m.name} ${m.nameEn} ${m.domain}`}
+                                    onSelect={() => {
+                                      handleMetadataSelect(m.id);
+                                      setMetadataPopoverOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        editingAttribute.metadataTemplateId === m.id ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <div className="flex flex-col truncate">
+                                      <span className="font-medium truncate">{m.name} ({m.nameEn})</span>
+                                      <span className="text-xs text-muted-foreground truncate">领域: {m.domain} · 类型: {m.type}</span>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       {editingAttribute.metadataTemplateId && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground pt-1">
                           已关联元数据模板，数据类型将按模板锁定。
                         </p>
                       )}
@@ -449,6 +524,15 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                           placeholder="如：contractNo"
                         />
                       </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-blue-700">业务含义 (Business Meaning) ⭐</Label>
+                      <Textarea
+                        value={editingAttribute.businessMeaning || ''}
+                        onChange={(e) => setEditingAttribute({ ...editingAttribute, businessMeaning: e.target.value })}
+                        placeholder="供AI理解该属性的具体定义，明确度量规则"
+                        className="min-h-[60px] bg-blue-50 border-blue-200"
+                      />
                     </div>
                     <div className="space-y-3">
                       <Label>属性维护方式</Label>
@@ -812,12 +896,15 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
               </div>
               <Dialog open={showRelationDialog} onOpenChange={setShowRelationDialog}>
                 <DialogTrigger asChild>
-                  <Button size="sm" onClick={() => setEditingRelation({})}>+ 添加关系</Button>
+                  <Button size="sm" onClick={() => {
+                    setEditingRelation({});
+                    setEditingRelationId(null);
+                  }}>+ 添加关系</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>添加关系</DialogTitle>
-                    <DialogDescription>定义与其他实体的关系</DialogDescription>
+                    <DialogTitle>{editingRelationId ? '编辑关系' : '添加关系'}</DialogTitle>
+                    <DialogDescription>{editingRelationId ? '修改已有关系定义' : '定义与其他实体的关系'}</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 pt-4">
                     <div className="space-y-2">
@@ -846,6 +933,41 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                         </SelectContent>
                       </Select>
                     </div>
+                    {editingRelation.type === 'many_to_many' && (
+                      <div className="space-y-2">
+                        <Label>中间实体</Label>
+                        <Input
+                          value={editingRelation.viaEntity || ''}
+                          onChange={(e) => setEditingRelation({ ...editingRelation, viaEntity: e.target.value })}
+                          placeholder="如：contract_order_link"
+                        />
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <Label className="text-blue-700">关系方向性 (Directionality) ⭐</Label>
+                      <Select
+                        value={editingRelation.directionality || 'directed'}
+                        onValueChange={(v) => setEditingRelation({ ...editingRelation, directionality: v as Relation['directionality'] })}
+                      >
+                        <SelectTrigger className="bg-blue-50 border-blue-200">
+                          <SelectValue placeholder="选择关系方向" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="directed">单向 (Directed)</SelectItem>
+                          <SelectItem value="undirected">双向 (Undirected)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2 mt-4 mb-2">
+                      <input
+                        type="checkbox"
+                        id="isRecursive"
+                        checked={editingRelation.isRecursive || false}
+                        onChange={(e) => setEditingRelation({ ...editingRelation, isRecursive: e.target.checked })}
+                        className="rounded"
+                      />
+                      <Label htmlFor="isRecursive" className="text-sm font-normal text-blue-700">自引用关系 (Self-Referencing) ⭐</Label>
+                    </div>
                     <div className="space-y-2">
                       <Label>目标实体</Label>
                       <Select
@@ -856,7 +978,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                           <SelectValue placeholder="选择目标实体" />
                         </SelectTrigger>
                         <SelectContent>
-                          {entities.filter(e => e.id !== entityId).map((e) => (
+                          {entities.filter(e => e.id !== entityId || editingRelation.isRecursive).map((e) => (
                             <SelectItem key={e.id} value={e.id}>
                               {e.name} ({e.nameEn})
                             </SelectItem>
@@ -890,22 +1012,39 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                     </div>
                     <Button onClick={() => {
                       if (!entityId) return;
-                      const newRelation: Relation = {
-                        id: generateId(),
+                      const targetEntity = editingRelation.isRecursive ? entityId : editingRelation.targetEntity;
+                      if (!targetEntity) {
+                        alert('关系必须选择目标实体');
+                        return;
+                      }
+                      if (editingRelation.type === 'many_to_many' && !editingRelation.viaEntity?.trim()) {
+                        alert('多对多关系必须填写中间实体');
+                        return;
+                      }
+                      const relationData: Relation = {
+                        id: editingRelationId || generateId(),
                         name: editingRelation.name || '新关系',
                         type: editingRelation.type || 'one_to_many',
-                        targetEntity: editingRelation.targetEntity || '',
+                        targetEntity,
                         cascade: editingRelation.cascade || 'none',
                         description: editingRelation.description,
+                        directionality: editingRelation.directionality || 'directed',
+                        isRecursive: editingRelation.isRecursive || false,
+                        viaEntity: editingRelation.type === 'many_to_many' ? editingRelation.viaEntity?.trim() : undefined,
+                        attributes: editingRelation.attributes || [], // 默认空属性表
                       };
+                      const nextRelations = editingRelationId
+                        ? selectedEntity.relations.map((relation) => relation.id === editingRelationId ? relationData : relation)
+                        : [...selectedEntity.relations, relationData];
                       updateEntity(entityId, {
                         ...selectedEntity,
-                        relations: [...selectedEntity.relations, newRelation],
+                        relations: nextRelations,
                       });
                       setEditingRelation({});
+                      setEditingRelationId(null);
                       setShowRelationDialog(false);
                     }} className="w-full">
-                      添加关系
+                      {editingRelationId ? '保存关系' : '添加关系'}
                     </Button>
                   </div>
                 </DialogContent>
@@ -931,6 +1070,12 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                       <Badge variant="outline" className="text-xs">
                         {RELATION_TYPES.find(t => t.value === rel.type)?.label}
                       </Badge>
+                      {rel.directionality === 'undirected' && (
+                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">双向</Badge>
+                      )}
+                      {rel.isRecursive && (
+                        <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">自引用</Badge>
+                      )}
                       <span className="text-muted-foreground">
                         → {entities.find(e => e.id === rel.targetEntity)?.name || rel.targetEntity}
                       </span>
@@ -940,19 +1085,32 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                         </Badge>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive"
-                      onClick={() => {
-                        updateEntity(entityId!, {
-                          ...selectedEntity,
-                          relations: selectedEntity.relations.filter(r => r.id !== rel.id),
-                        });
-                      }}
-                    >
-                      删除
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingRelation(rel);
+                          setEditingRelationId(rel.id);
+                          setShowRelationDialog(true);
+                        }}
+                      >
+                        编辑
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive"
+                        onClick={() => {
+                          updateEntity(entityId!, {
+                            ...selectedEntity,
+                            relations: selectedEntity.relations.filter(r => r.id !== rel.id),
+                          });
+                        }}
+                      >
+                        删除
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

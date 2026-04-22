@@ -109,6 +109,38 @@ describe('Masterdata Init Route', () => {
     expect(sdkState.extractedHeaders).toEqual({ forwardedFor: '10.0.0.2' });
   });
 
+  it('应兼容字段别名与主数据名称别名映射', async () => {
+    process.env.MASTERDATA_EXCEL_URL = 'https://example.com/masterdata-alias.md';
+    sdkState.fetchResponse = {
+      status_code: 0,
+      status_message: '',
+      content: [{
+        type: 'text',
+        text: [
+          '| 业务领域 | 主数据名称 | 英文名称 | 主数据编码 | 说明 | 核心主数据 | 字段清单 | 来源系统 |',
+          '| --- | --- | --- | --- | --- | --- | --- | --- |',
+          '| 采购管理 | 采购组织主数据 | PurchasingOrg | PUR_ORG | 采购组织定义 | 否 | 组织编码,组织名称,状态 | SRM |',
+        ].join('\n'),
+      }],
+    };
+
+    const { GET } = await import('./route');
+    const response = await GET(new NextRequest('http://localhost/api/masterdata/init'));
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.success).toBe(true);
+    expect(payload.total).toBe(1);
+    expect(payload.data.definitions[0]).toEqual(expect.objectContaining({
+      domain: '采购管理',
+      name: '采购组织主数据',
+      nameEn: 'PurchasingOrg',
+      code: 'PUR_ORG',
+      fieldNames: '组织编码,组织名称,状态',
+      sourceSystem: 'SRM',
+    }));
+  });
+
   it('远端抓取抛错时应返回 500', async () => {
     process.env.MASTERDATA_EXCEL_URL = 'https://example.com/masterdata.md';
     sdkState.fetchError = new Error('network down');
