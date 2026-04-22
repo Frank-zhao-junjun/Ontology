@@ -152,8 +152,8 @@ describe('IT-EPC-001: 聚合根 EPC 页签骨架', () => {
       }
       return element;
     }) as typeof document.createElement);
-    vi.spyOn(URL, 'createObjectURL').mockImplementation((blob: Blob) => {
-      objectUrlPayloads.push(blob);
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((blob: Blob | MediaSource) => {
+      objectUrlPayloads.push(blob as Blob);
       return `blob:epc-${objectUrlPayloads.length}`;
     });
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);

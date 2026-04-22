@@ -45,8 +45,9 @@ describe('US-10.1: 版本快照依赖管理与回滚策略', () => {
     store.addMasterDataRecord('md-version-test', rec);
     
     // Modify a basic project attribute to test model rollback
+    const entity1 = store.project?.dataModel?.entities.find(e => e.id === 'entity-1');
     store.updateEntity('entity-1', {
-      ...store.project?.dataModel?.entities.find(e => e.id === 'entity-1') as never,
+      ...(entity1 || { id: 'entity-1', name: '', nameEn: '', projectId: '', businessScenarioId: '', attributes: [], relations: [] }),
       id: 'entity-1',
       name: 'Original Entity Name',
       entityRole: 'aggregate_root'
@@ -64,8 +65,9 @@ describe('US-10.1: 版本快照依赖管理与回滚策略', () => {
     });
     
     // 2. Mess up the state
+    const messedUpEntity = store.project?.dataModel?.entities.find(e => e.id === 'entity-1');
     store.updateEntity('entity-1', {
-      ...store.project?.dataModel?.entities.find(e => e.id === 'entity-1') as never,
+      ...(messedUpEntity || { id: 'entity-1', name: '', nameEn: '', projectId: '', businessScenarioId: '', attributes: [], relations: [] }),
       id: 'entity-1',
       name: 'Messed Up Entity',
       entityRole: 'aggregate_root'
