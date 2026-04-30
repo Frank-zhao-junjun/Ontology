@@ -93,6 +93,27 @@ describe('US-10.1: 版本快照依赖管理与回滚策略', () => {
     expect(restoredStore.masterDataRecords['md-version-test'][0].values['name']).toBe('Original Name');
   });
 
+  it('回滚旧版本快照缺少主数据块时应保留当前主数据', () => {
+    setupMockData();
+    const store = useOntologyStore.getState();
+    const version = store.createVersion({
+      version: '0.9.0',
+      name: '旧版快照',
+    });
+
+    delete version.metamodels.masterData;
+
+    store.updateMasterDataRecord('md-version-test', 'rec-version-test', {
+      values: { code: 'A', name: 'Current Name' },
+    });
+
+    useOntologyStore.getState().rollbackVersion(version.id);
+
+    const rolledBackStore = useOntologyStore.getState();
+    expect(rolledBackStore.masterDataList).toHaveLength(1);
+    expect(rolledBackStore.masterDataRecords['md-version-test'][0].values['name']).toBe('Current Name');
+  });
+
   it('未加载项目或指定的版本不存在时回滚应抛出错误', () => {
     const store = useOntologyStore.getState();
     expect(() => store.rollbackVersion('non-existent')).toThrow('版本不存在');
