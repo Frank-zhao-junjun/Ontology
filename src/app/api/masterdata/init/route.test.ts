@@ -141,6 +141,27 @@ describe('Masterdata Init Route', () => {
     }));
   });
 
+  it('配置远端地址但解析不到主数据时应返回错误，避免回落到示例数据', async () => {
+    process.env.MASTERDATA_EXCEL_URL = 'https://example.com/broken-masterdata.md';
+    sdkState.fetchResponse = {
+      status_code: 0,
+      status_message: '',
+      content: [{
+        type: 'text',
+        text: '<html>not a markdown table</html>',
+      }],
+    };
+
+    const { GET } = await import('./route');
+    const response = await GET(new NextRequest('http://localhost/api/masterdata/init'));
+    const payload = await response.json();
+
+    expect(response.status).toBe(502);
+    expect(payload.success).toBe(false);
+    expect(payload.error).toContain('未解析到有效主数据');
+    expect(payload.data).toBeUndefined();
+  });
+
   it('远端抓取抛错时应返回 500', async () => {
     process.env.MASTERDATA_EXCEL_URL = 'https://example.com/masterdata.md';
     sdkState.fetchError = new Error('network down');

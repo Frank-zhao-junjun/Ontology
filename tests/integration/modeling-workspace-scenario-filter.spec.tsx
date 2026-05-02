@@ -183,4 +183,16 @@ describe('US-2.3 / IT-BS-003: ModelingWorkspace 按业务场景过滤实体列�
     expect(screen.getByText('收货单')).toBeInTheDocument();
     expect(screen.queryByText('采购合同')).not.toBeInTheDocument();
   });
+
+  it('旧项目缺少 epcModel 时选择聚合根实体不应崩溃', () => {
+    const legacyProject = createProject();
+    delete (legacyProject as Partial<OntologyProject>).epcModel;
+
+    render(React.createElement(ModelingWorkspace, { project: legacyProject }));
+
+    fireEvent.click(screen.getByText('合同签订'));
+    fireEvent.click(screen.getByText('采购合同'));
+
+    expect(screen.getByText('EPC事件说明书')).toBeInTheDocument();
+  });
 });
