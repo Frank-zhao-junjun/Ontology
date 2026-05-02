@@ -23,6 +23,12 @@
 
 ## 近期完成记录
 
+### 2026-05-02
+
+| 提交 | 说明 |
+|------|------|
+| `4c60feb` | fix: prevent masterdata fallback corruption |
+
 ### 2026-04-20
 
 | 提交 | 说明 |
