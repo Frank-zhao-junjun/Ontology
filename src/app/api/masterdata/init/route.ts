@@ -281,7 +281,23 @@ export async function GET(request: NextRequest) {
             total: masterData.length
           });
         }
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: '未解析到有效主数据，请检查远端主数据文件格式',
+          },
+          { status: 502 }
+        );
       }
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: response.status_message || '远端主数据文件获取失败',
+        },
+        { status: 502 }
+      );
     }
 
     // 返回示例数据

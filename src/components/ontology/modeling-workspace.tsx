@@ -1171,7 +1171,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                             ? relatedModels.rules.length
                             : tab.id === 'event'
                             ? relatedModels.events.length
-                            : project.epcModel?.profiles.some((profile) => profile.aggregateId === entity.id)
+                            : project.epcModel?.profiles?.some((profile) => profile.aggregateId === entity.id)
                             ? 1
                             : 0;
                           
