@@ -42,7 +42,8 @@ async function flushPendingSave(syncStateRef: { current: ProjectSyncState }) {
 
     // Preserve write ordering: send any newer debounced snapshot only after
     // the active full-project save has finished.
-    if (syncState.pendingSave && syncState.pendingSave.projectJson !== syncState.lastSyncJson) {
+    const nextPendingSave = syncStateRef.current.pendingSave;
+    if (nextPendingSave && nextPendingSave.projectJson !== syncStateRef.current.lastSyncJson) {
       void flushPendingSave(syncStateRef);
     }
   }
