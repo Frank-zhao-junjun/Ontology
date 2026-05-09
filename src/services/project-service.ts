@@ -16,6 +16,8 @@ interface ApiResponse<T> {
   error?: string;
 }
 
+const projectUpdateQueues = new Map<string, Promise<void>>();
+
 // 获取项目列表
 export async function fetchProjects(): Promise<ProjectListItem[]> {
   const response = await fetch('/api/projects');
@@ -55,8 +57,7 @@ export async function createProject(project: OntologyProject): Promise<void> {
   }
 }
 
-// 更新项目
-export async function updateProject(project: OntologyProject): Promise<void> {
+async function sendProjectUpdate(project: OntologyProject): Promise<void> {
   const response = await fetch(`/api/projects/${project.id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -68,6 +69,30 @@ export async function updateProject(project: OntologyProject): Promise<void> {
   if (!result.success) {
     throw new Error(result.error || '更新项目失败');
   }
+}
+
+// 更新项目
+export function updateProject(project: OntologyProject): Promise<void> {
+  const previousUpdate = projectUpdateQueues.get(project.id) ?? Promise.resolve();
+  const currentUpdate = previousUpdate
+    .catch(() => undefined)
+    .then(() => sendProjectUpdate(project));
+
+  projectUpdateQueues.set(project.id, currentUpdate);
+  currentUpdate.then(
+    () => {
+      if (projectUpdateQueues.get(project.id) === currentUpdate) {
+        projectUpdateQueues.delete(project.id);
+      }
+    },
+    () => {
+      if (projectUpdateQueues.get(project.id) === currentUpdate) {
+        projectUpdateQueues.delete(project.id);
+      }
+    },
+  );
+
+  return currentUpdate;
 }
 
 // 删除项目
