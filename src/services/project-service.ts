@@ -17,7 +17,6 @@ interface ApiResponse<T> {
 }
 
 const projectWriteQueues = new Map<string, Promise<void>>();
-const deletedProjectIds = new Set<string>();
 const projectDeleteRequests = new Map<string, Promise<void>>();
 
 function enqueueProjectWrite(projectId: string, operation: () => Promise<void>): Promise<void> {
@@ -81,7 +80,6 @@ export async function createProject(project: OntologyProject): Promise<void> {
     throw new Error(result.error || '创建项目失败');
   }
 
-  deletedProjectIds.delete(project.id);
   projectDeleteRequests.delete(project.id);
 }
 
@@ -101,10 +99,6 @@ async function sendProjectUpdate(project: OntologyProject): Promise<void> {
 
 // 更新项目
 export function updateProject(project: OntologyProject): Promise<void> {
-  if (deletedProjectIds.has(project.id)) {
-    return Promise.resolve();
-  }
-
   const pendingDelete = projectDeleteRequests.get(project.id);
   if (pendingDelete) {
     return pendingDelete.then(
@@ -140,7 +134,6 @@ export function deleteProject(id: string): Promise<void> {
 
   deleteRequest.then(
     () => {
-      deletedProjectIds.add(id);
       if (projectDeleteRequests.get(id) === deleteRequest) {
         projectDeleteRequests.delete(id);
       }

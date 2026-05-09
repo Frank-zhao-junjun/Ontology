@@ -114,7 +114,8 @@ describe('project-service', () => {
   });
 
   it('ignores stale project updates once deletion has been requested', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(successResponse());
+    const deleteResponse = deferred<Response>();
+    vi.mocked(fetch).mockReturnValueOnce(deleteResponse.promise);
 
     const project = createMockProject({
       id: 'project-delete-tombstone',
@@ -136,8 +137,41 @@ describe('project-service', () => {
     await flushPromises();
 
     expect(fetch).toHaveBeenCalledTimes(1);
+
+    deleteResponse.resolve(successResponse());
     await deleteSave;
     await staleUpdate;
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows project updates after a completed deletion so imports can restore the same id', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(successResponse())
+      .mockResolvedValueOnce(successResponse());
+
+    const project = createMockProject({
+      id: 'project-delete-restore',
+      name: 'Restored project',
+    });
+
+    await deleteProject(project.id);
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenLastCalledWith('/api/projects/project-delete-restore', expect.objectContaining({
+      method: 'DELETE',
+    }));
+
+    await updateProject(project);
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenLastCalledWith('/api/projects/project-delete-restore', expect.objectContaining({
+      body: JSON.stringify({ project }),
+      method: 'PUT',
+    }));
   });
 
   it('preserves updates that were already queued before deletion was requested', async () => {
