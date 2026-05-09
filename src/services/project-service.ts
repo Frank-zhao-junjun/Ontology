@@ -16,7 +16,31 @@ interface ApiResponse<T> {
   error?: string;
 }
 
-const projectUpdateQueues = new Map<string, Promise<void>>();
+const projectWriteQueues = new Map<string, Promise<void>>();
+const deletedProjectIds = new Set<string>();
+
+function enqueueProjectWrite(projectId: string, operation: () => Promise<void>): Promise<void> {
+  const previousWrite = projectWriteQueues.get(projectId) ?? Promise.resolve();
+  const currentWrite = previousWrite
+    .catch(() => undefined)
+    .then(operation);
+
+  projectWriteQueues.set(projectId, currentWrite);
+  currentWrite.then(
+    () => {
+      if (projectWriteQueues.get(projectId) === currentWrite) {
+        projectWriteQueues.delete(projectId);
+      }
+    },
+    () => {
+      if (projectWriteQueues.get(projectId) === currentWrite) {
+        projectWriteQueues.delete(projectId);
+      }
+    },
+  );
+
+  return currentWrite;
+}
 
 // 获取项目列表
 export async function fetchProjects(): Promise<ProjectListItem[]> {
@@ -55,6 +79,8 @@ export async function createProject(project: OntologyProject): Promise<void> {
   if (!result.success) {
     throw new Error(result.error || '创建项目失败');
   }
+
+  deletedProjectIds.delete(project.id);
 }
 
 async function sendProjectUpdate(project: OntologyProject): Promise<void> {
@@ -73,30 +99,20 @@ async function sendProjectUpdate(project: OntologyProject): Promise<void> {
 
 // 更新项目
 export function updateProject(project: OntologyProject): Promise<void> {
-  const previousUpdate = projectUpdateQueues.get(project.id) ?? Promise.resolve();
-  const currentUpdate = previousUpdate
-    .catch(() => undefined)
-    .then(() => sendProjectUpdate(project));
+  if (deletedProjectIds.has(project.id)) {
+    return Promise.resolve();
+  }
 
-  projectUpdateQueues.set(project.id, currentUpdate);
-  currentUpdate.then(
-    () => {
-      if (projectUpdateQueues.get(project.id) === currentUpdate) {
-        projectUpdateQueues.delete(project.id);
-      }
-    },
-    () => {
-      if (projectUpdateQueues.get(project.id) === currentUpdate) {
-        projectUpdateQueues.delete(project.id);
-      }
-    },
-  );
+  return enqueueProjectWrite(project.id, () => {
+    if (deletedProjectIds.has(project.id)) {
+      return Promise.resolve();
+    }
 
-  return currentUpdate;
+    return sendProjectUpdate(project);
+  });
 }
 
-// 删除项目
-export async function deleteProject(id: string): Promise<void> {
+async function sendProjectDelete(id: string): Promise<void> {
   const response = await fetch(`/api/projects/${id}`, {
     method: 'DELETE',
   });
@@ -106,4 +122,14 @@ export async function deleteProject(id: string): Promise<void> {
   if (!result.success) {
     throw new Error(result.error || '删除项目失败');
   }
+}
+
+// 删除项目
+export function deleteProject(id: string): Promise<void> {
+  deletedProjectIds.add(id);
+
+  return enqueueProjectWrite(id, () => sendProjectDelete(id)).catch((error) => {
+    deletedProjectIds.delete(id);
+    throw error;
+  });
 }

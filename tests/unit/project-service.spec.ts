@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { updateProject } from '@/services/project-service';
+import { deleteProject, updateProject } from '@/services/project-service';
 import { createMockProject } from './test-helpers';
 
 function deferred<T>() {
@@ -70,5 +70,67 @@ describe('project-service', () => {
       method: 'PUT',
     }));
     await secondSave;
+  });
+
+  it('orders project deletion after an in-flight project update', async () => {
+    const firstResponse = deferred<Response>();
+    vi.mocked(fetch)
+      .mockReturnValueOnce(firstResponse.promise)
+      .mockResolvedValueOnce(successResponse());
+
+    const project = createMockProject({
+      id: 'project-delete-race',
+      name: 'Project before delete',
+    });
+
+    const updateSave = updateProject(project);
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenLastCalledWith('/api/projects/project-delete-race', expect.objectContaining({
+      method: 'PUT',
+    }));
+
+    const deleteSave = deleteProject(project.id);
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    firstResponse.resolve(successResponse());
+    await updateSave;
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenLastCalledWith('/api/projects/project-delete-race', expect.objectContaining({
+      method: 'DELETE',
+    }));
+    await deleteSave;
+  });
+
+  it('ignores stale project updates once deletion has been requested', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(successResponse());
+
+    const project = createMockProject({
+      id: 'project-delete-tombstone',
+      name: 'Project to delete',
+    });
+
+    const deleteSave = deleteProject(project.id);
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenLastCalledWith('/api/projects/project-delete-tombstone', expect.objectContaining({
+      method: 'DELETE',
+    }));
+
+    const staleUpdate = updateProject({
+      ...project,
+      name: 'Stale autosave after delete',
+    });
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await deleteSave;
+    await staleUpdate;
   });
 });
