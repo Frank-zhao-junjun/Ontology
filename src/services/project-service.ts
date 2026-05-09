@@ -18,6 +18,7 @@ interface ApiResponse<T> {
 
 const projectWriteQueues = new Map<string, Promise<void>>();
 const deletedProjectIds = new Set<string>();
+const projectDeleteRequests = new Map<string, Promise<void>>();
 
 function enqueueProjectWrite(projectId: string, operation: () => Promise<void>): Promise<void> {
   const previousWrite = projectWriteQueues.get(projectId) ?? Promise.resolve();
@@ -81,6 +82,7 @@ export async function createProject(project: OntologyProject): Promise<void> {
   }
 
   deletedProjectIds.delete(project.id);
+  projectDeleteRequests.delete(project.id);
 }
 
 async function sendProjectUpdate(project: OntologyProject): Promise<void> {
@@ -103,13 +105,15 @@ export function updateProject(project: OntologyProject): Promise<void> {
     return Promise.resolve();
   }
 
-  return enqueueProjectWrite(project.id, () => {
-    if (deletedProjectIds.has(project.id)) {
-      return Promise.resolve();
-    }
+  const pendingDelete = projectDeleteRequests.get(project.id);
+  if (pendingDelete) {
+    return pendingDelete.then(
+      () => undefined,
+      () => updateProject(project),
+    );
+  }
 
-    return sendProjectUpdate(project);
-  });
+  return enqueueProjectWrite(project.id, () => sendProjectUpdate(project));
 }
 
 async function sendProjectDelete(id: string): Promise<void> {
@@ -126,10 +130,27 @@ async function sendProjectDelete(id: string): Promise<void> {
 
 // 删除项目
 export function deleteProject(id: string): Promise<void> {
-  deletedProjectIds.add(id);
+  const pendingDelete = projectDeleteRequests.get(id);
+  if (pendingDelete) {
+    return pendingDelete;
+  }
 
-  return enqueueProjectWrite(id, () => sendProjectDelete(id)).catch((error) => {
-    deletedProjectIds.delete(id);
-    throw error;
-  });
+  const deleteRequest = enqueueProjectWrite(id, () => sendProjectDelete(id));
+  projectDeleteRequests.set(id, deleteRequest);
+
+  deleteRequest.then(
+    () => {
+      deletedProjectIds.add(id);
+      if (projectDeleteRequests.get(id) === deleteRequest) {
+        projectDeleteRequests.delete(id);
+      }
+    },
+    () => {
+      if (projectDeleteRequests.get(id) === deleteRequest) {
+        projectDeleteRequests.delete(id);
+      }
+    },
+  );
+
+  return deleteRequest;
 }

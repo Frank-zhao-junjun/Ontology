@@ -19,6 +19,12 @@ function successResponse(): Response {
   } as Response;
 }
 
+function failureResponse(error: string): Response {
+  return {
+    json: async () => ({ success: false, error }),
+  } as Response;
+}
+
 async function flushPromises() {
   await Promise.resolve();
   await Promise.resolve();
@@ -132,5 +138,87 @@ describe('project-service', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
     await deleteSave;
     await staleUpdate;
+  });
+
+  it('preserves updates that were already queued before deletion was requested', async () => {
+    const firstResponse = deferred<Response>();
+    vi.mocked(fetch)
+      .mockReturnValueOnce(firstResponse.promise)
+      .mockResolvedValueOnce(successResponse())
+      .mockResolvedValueOnce(failureResponse('delete failed'));
+
+    const originalProject = createMockProject({
+      id: 'project-delete-queued-update',
+      name: 'Original project',
+      updatedAt: '2026-05-09T11:00:00.000Z',
+    });
+    const editedProject = {
+      ...originalProject,
+      name: 'Queued edit before delete',
+      updatedAt: '2026-05-09T11:00:05.000Z',
+    };
+
+    const firstSave = updateProject(originalProject);
+    await flushPromises();
+    const secondSave = updateProject(editedProject);
+    await flushPromises();
+    const deleteSave = deleteProject(originalProject.id);
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    firstResponse.resolve(successResponse());
+    await firstSave;
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenLastCalledWith('/api/projects/project-delete-queued-update', expect.objectContaining({
+      body: JSON.stringify({ project: editedProject }),
+      method: 'PUT',
+    }));
+
+    await secondSave;
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(fetch).toHaveBeenLastCalledWith('/api/projects/project-delete-queued-update', expect.objectContaining({
+      method: 'DELETE',
+    }));
+    await expect(deleteSave).rejects.toThrow('delete failed');
+  });
+
+  it('replays updates requested during deletion if the deletion fails', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(failureResponse('delete failed'))
+      .mockResolvedValueOnce(successResponse());
+
+    const project = createMockProject({
+      id: 'project-delete-failed-autosave',
+      name: 'Project to delete',
+    });
+
+    const deleteSave = deleteProject(project.id);
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenLastCalledWith('/api/projects/project-delete-failed-autosave', expect.objectContaining({
+      method: 'DELETE',
+    }));
+
+    const replayedUpdate = updateProject({
+      ...project,
+      name: 'Autosave after failed delete',
+    });
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await expect(deleteSave).rejects.toThrow('delete failed');
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenLastCalledWith('/api/projects/project-delete-failed-autosave', expect.objectContaining({
+      method: 'PUT',
+    }));
+    await replayedUpdate;
   });
 });
