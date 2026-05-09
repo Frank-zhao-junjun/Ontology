@@ -1,6 +1,6 @@
 # Ontology 项目开发进度
 
-> 最后更新：2026-04-20
+> 最后更新：2026-05-09
 > 当前版本：v2.0 (基于 iteration-plan-v2)
 
 ---
@@ -22,6 +22,16 @@
 ---
 
 ## 近期完成记录
+
+### 2026-05-09
+
+| 提交 | 说明 |
+|------|------|
+| `ffdfce4` | fix: allow restore after project delete |
+| `e54a3bd` | fix: replay saves after failed project delete |
+| `d6cee98` | fix: order project deletes with autosaves |
+| `ad1b5b3` | fix: serialize project update requests |
+| `d4298e5` | fix: serialize project autosaves |
 
 ### 2026-04-20
 
