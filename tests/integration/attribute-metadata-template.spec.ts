@@ -157,6 +157,48 @@ describe('IT-ATTR-META: metadata template + attribute (strict binding)', () => {
       expect(savedAttribute?.metadataTemplateName).toBe('标准名称');
       expect(savedAttribute?.dataType).toBe('string');
     });
+
+    it('绑定引用类型元数据模板后应保存为实体引用属性', async () => {
+      useOntologyStore.setState({
+        metadataList: [
+          ...useOntologyStore.getState().metadataList,
+          {
+            id: 'meta-linked-order',
+            domain: '合同管理',
+            name: '关联订单',
+            nameEn: 'LinkedOrder',
+            description: '关联的订单实体',
+            type: 'reference',
+            createdAt: now,
+            updatedAt: now,
+          },
+        ],
+      });
+
+      render(React.createElement(DataModelEditor, { mode: 'entity-detail', entityId: 'entity-contract' }));
+
+      openAttributeDialog();
+
+      fireEvent.change(screen.getByLabelText('中文名称'), { target: { value: '关联订单' } });
+      fireEvent.change(screen.getByLabelText('英文名称'), { target: { value: 'linkedOrder' } });
+      chooseMetadataTemplate(/关联订单/);
+
+      fireEvent.click(await screen.findByRole('combobox', { name: '引用实体' }));
+      fireEvent.click(await screen.findByText('订单 (Order)'));
+
+      fireEvent.click(screen.getByRole('button', { name: /添加属性|保存修改/i }));
+
+      const savedAttribute = useOntologyStore
+        .getState()
+        .project?.dataModel?.entities.find((entity) => entity.id === 'entity-contract')
+        ?.attributes.find((attribute) => attribute.name === '关联订单');
+
+      expect(savedAttribute?.metadataTemplateId).toBe('meta-linked-order');
+      expect(savedAttribute?.metadataTemplateName).toBe('关联订单');
+      expect(savedAttribute?.dataType).toBe('reference');
+      expect(savedAttribute?.referenceKind).toBe('entity');
+      expect(savedAttribute?.referencedEntityId).toBe('entity-order');
+    });
   });
 
   describe('IT-ATTR-META-002 [REQ-ATTR-META-02]', () => {
