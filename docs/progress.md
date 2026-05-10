@@ -1,6 +1,6 @@
 # Ontology 项目开发进度
 
-> 最后更新：2026-04-20
+> 最后更新：2026-05-10
 > 当前版本：v2.0 (基于 iteration-plan-v2)
 
 ---
@@ -22,6 +22,13 @@
 ---
 
 ## 近期完成记录
+
+### 2026-05-10
+
+| 提交 | 说明 |
+|------|------|
+| `b98e83d` | fix: preserve reference metadata attribute type |
+| `6251898` | test: reproduce reference metadata attribute regression |
 
 ### 2026-04-20
 

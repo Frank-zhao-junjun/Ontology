@@ -96,6 +96,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
       '日期': 'date',
       '日期时间': 'datetime',
       '枚举': 'enum',
+      '引用': 'reference',
       'string': 'string',
       'text': 'text',
       'integer': 'integer',
@@ -104,6 +105,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
       'date': 'date',
       'datetime': 'datetime',
       'enum': 'enum',
+      'reference': 'reference',
     };
     return typeMap[metadataType] || 'string';
   };
