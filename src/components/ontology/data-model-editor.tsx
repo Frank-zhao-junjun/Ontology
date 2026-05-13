@@ -156,8 +156,13 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
       alert('引用实体时必须选择目标实体');
       return;
     }
+
+    const existingAttribute = editingAttributeId
+      ? selectedEntity.attributes.find((attribute) => attribute.id === editingAttributeId)
+      : undefined;
     
     const attrData: Attribute = {
+      ...existingAttribute,
       id: editingAttributeId || generateId(),
       name: editingAttribute.name || '新属性',
       nameEn: editingAttribute.nameEn,
@@ -171,6 +176,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
       scale: editingAttribute.scale,
       referenceKind,
       referencedEntityId: dataType === 'reference' && referenceKind === 'entity' ? editingAttribute.referencedEntityId : undefined,
+      referenceDisplayField: dataType === 'reference' ? editingAttribute.referenceDisplayField : undefined,
       isMasterDataRef,
       masterDataType: isMasterDataRef ? editingAttribute.masterDataType : undefined,
       masterDataField: isMasterDataRef ? editingAttribute.masterDataField : undefined,

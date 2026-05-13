@@ -87,6 +87,7 @@ export function normalizeAttribute(attribute: LegacyAttribute): Attribute {
     masterDataField: dataType === 'reference' && isMasterDataRef ? attribute.masterDataField : undefined,
     autoFill: attribute.autoFill,
     description: attribute.description,
+    businessMeaning: attribute.businessMeaning,
     metadataTemplateId: attribute.metadataTemplateId ?? attribute.metadataId,
     metadataTemplateName: attribute.metadataTemplateName ?? attribute.metadataName,
   };
