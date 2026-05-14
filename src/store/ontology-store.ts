@@ -159,6 +159,13 @@ interface OntologyState {
   generateCodePackage: (versionId: string, config: PublishConfig) => Promise<string>;
 }
 
+interface ProjectExportPayload extends OntologyProject {
+  metadataList?: Metadata[];
+  masterDataList?: MasterData[];
+  masterDataRecords?: Record<string, MasterDataRecord[]>;
+  versions?: ProjectVersion[];
+}
+
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
 function ensureEntityScenario(entity: Entity, stateProject: OntologyProject | null): Entity {
@@ -220,6 +227,32 @@ function collectCascadeEntityIds(entities: Entity[], rootId: string): Set<string
   }
 
   return idsToDelete;
+}
+
+function ruleReferencesDeletedEntity(rule: Rule, idsToDelete: Set<string>): boolean {
+  const condition = rule.condition;
+  return [rule.entity, condition.refEntity, condition.detailEntity, condition.checkEntity].some(
+    (entityId) => typeof entityId === 'string' && idsToDelete.has(entityId),
+  );
+}
+
+function pruneDeletedEntityReferences(entity: Entity, idsToDelete: Set<string>): Entity {
+  const attributes = entity.attributes.filter(
+    (attribute) => attribute.referenceKind !== 'entity' || !attribute.referencedEntityId || !idsToDelete.has(attribute.referencedEntityId),
+  );
+  const relations = entity.relations.filter(
+    (relation) => !idsToDelete.has(relation.targetEntity) && (!relation.viaEntity || !idsToDelete.has(relation.viaEntity)),
+  );
+
+  if (attributes.length === entity.attributes.length && relations.length === entity.relations.length) {
+    return entity;
+  }
+
+  return {
+    ...entity,
+    attributes,
+    relations,
+  };
 }
 
 function ensureAggregateRootRoleChangeSafety(existingEntity: Entity, nextEntity: Entity, stateProject: OntologyProject | null): void {
@@ -646,15 +679,44 @@ export const useOntologyStore = create<OntologyState>()(
         set((state) => {
           if (!state.project?.dataModel) return state;
           const idsToDelete = collectCascadeEntityIds(state.project.dataModel.entities, entityId);
+          const now = new Date().toISOString();
+          const deletedEventIds = new Set(
+            (state.project.eventModel?.events || [])
+              .filter((event) => idsToDelete.has(event.entity))
+              .map((event) => event.id),
+          );
           return {
             project: {
               ...state.project,
               dataModel: {
                 ...state.project.dataModel,
-                entities: state.project.dataModel.entities.filter((e) => !idsToDelete.has(e.id)),
-                updatedAt: new Date().toISOString(),
+                entities: state.project.dataModel.entities
+                  .filter((e) => !idsToDelete.has(e.id))
+                  .map((e) => pruneDeletedEntityReferences(e, idsToDelete)),
+                updatedAt: now,
               },
-              updatedAt: new Date().toISOString(),
+              behaviorModel: state.project.behaviorModel ? {
+                ...state.project.behaviorModel,
+                stateMachines: state.project.behaviorModel.stateMachines.filter((sm) => !idsToDelete.has(sm.entity)),
+                updatedAt: now,
+              } : state.project.behaviorModel,
+              ruleModel: state.project.ruleModel ? {
+                ...state.project.ruleModel,
+                rules: state.project.ruleModel.rules.filter((rule) => !ruleReferencesDeletedEntity(rule, idsToDelete)),
+                updatedAt: now,
+              } : state.project.ruleModel,
+              eventModel: state.project.eventModel ? {
+                ...state.project.eventModel,
+                events: state.project.eventModel.events.filter((event) => !idsToDelete.has(event.entity)),
+                subscriptions: state.project.eventModel.subscriptions.filter((subscription) => !deletedEventIds.has(subscription.eventId)),
+                updatedAt: now,
+              } : state.project.eventModel,
+              epcModel: state.project.epcModel ? {
+                ...state.project.epcModel,
+                profiles: state.project.epcModel.profiles.filter((profile) => !idsToDelete.has(profile.aggregateId)),
+                updatedAt: now,
+              } : state.project.epcModel,
+              updatedAt: now,
             },
           };
         });
@@ -1606,13 +1668,46 @@ export const useOntologyStore = create<OntologyState>()(
       // 导入导出
       exportProject: () => {
         const state = get();
-        return JSON.stringify(state.project, null, 2);
+        if (!state.project) {
+          return JSON.stringify(null, null, 2);
+        }
+
+        const payload: ProjectExportPayload = {
+          ...state.project,
+          metadataList: state.metadataList,
+          masterDataList: state.masterDataList,
+          masterDataRecords: state.masterDataRecords,
+          versions: state.versions.filter((version) => version.projectId === state.project?.id),
+        };
+
+        return JSON.stringify(payload, null, 2);
       },
       
       importProject: (json) => {
         try {
-          const project = normalizeOntologyProject(JSON.parse(json) as OntologyProject);
-          set({ project, activeModelType: 'data' });
+          const parsed = JSON.parse(json) as Partial<ProjectExportPayload> & { project?: OntologyProject };
+          const projectPayload = parsed.project || parsed;
+          const project = normalizeOntologyProject(projectPayload as OntologyProject);
+          const nextState: Partial<OntologyState> = { project, activeModelType: 'data' };
+
+          if (Array.isArray(parsed.metadataList)) {
+            nextState.metadataList = parsed.metadataList;
+          }
+          if (Array.isArray(parsed.masterDataList)) {
+            nextState.masterDataList = parsed.masterDataList;
+          }
+          if (parsed.masterDataRecords && typeof parsed.masterDataRecords === 'object' && !Array.isArray(parsed.masterDataRecords)) {
+            nextState.masterDataRecords = parsed.masterDataRecords;
+          }
+          if (Array.isArray(parsed.versions)) {
+            const importedVersions = parsed.versions.filter((version) => version.projectId === project.id);
+            nextState.versions = [
+              ...get().versions.filter((version) => version.projectId !== project.id),
+              ...importedVersions,
+            ];
+          }
+
+          set(nextState);
         } catch (error) {
           console.error('导入项目失败:', error);
         }
