@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useOntologyStore } from '@/store/ontology-store';
-import type { Entity, EventDefinition, MasterData, MasterDataRecord, OntologyProject, Rule, Subscription } from '@/types/ontology';
+import type { Entity, EventDefinition, MasterData, MasterDataRecord, Metadata, OntologyProject, Rule, Subscription } from '@/types/ontology';
 import { createFrozenProject, createMockProject } from './test-helpers';
 
 function resetStore() {
@@ -188,6 +188,60 @@ describe('Ontology Store State Transitions', () => {
     expect(attribute?.masterDataType).toBe('md-customer');
     expect(attribute?.metadataTemplateId).toBe('meta-1');
     expect(attribute?.metadataTemplateName).toBe('客户模板');
+  });
+
+  it('exportProject/importProject 应保留项目依赖的元数据、主数据和版本快照', () => {
+    useOntologyStore.setState({ project: createMockProject(), versions: [], activeModelType: 'data' });
+    const store = useOntologyStore.getState();
+    const metadata: Metadata = {
+      id: 'meta-customer-code',
+      domain: '合同管理',
+      name: '客户编码',
+      nameEn: 'CUSTOMER_CODE',
+      description: '客户唯一编码',
+      type: 'string',
+      createdAt: '2026-04-02T00:00:00.000Z',
+      updatedAt: '2026-04-02T00:00:00.000Z',
+    };
+    const masterData: MasterData = {
+      id: 'md-customer',
+      domain: '合同管理',
+      name: '客户主数据',
+      nameEn: 'CustomerMaster',
+      code: 'CUSTOMER',
+      description: '客户信息',
+      coreData: '是',
+      fieldNames: '客户编码,客户名称',
+      sourceSystem: 'MDM',
+      status: '00',
+      createdAt: '2026-04-02T00:00:00.000Z',
+      updatedAt: '2026-04-02T00:00:00.000Z',
+    };
+    const record: MasterDataRecord = {
+      id: 'record-1',
+      definitionId: 'md-customer',
+      values: { 客户编码: 'C-001', 客户名称: '华中客户' },
+      status: '00',
+      createdAt: '2026-04-02T00:00:00.000Z',
+      updatedAt: '2026-04-02T00:00:00.000Z',
+    };
+
+    store.addMetadata(metadata);
+    store.addMasterData(masterData);
+    store.addMasterDataRecord('md-customer', record);
+    const version = store.createVersion({ version: '1.0.0', name: '可恢复快照' });
+    const exported = useOntologyStore.getState().exportProject();
+
+    resetStore();
+    useOntologyStore.getState().importProject(exported);
+
+    const importedState = useOntologyStore.getState();
+    expect(importedState.project?.id).toBe('project-1');
+    expect(importedState.metadataList).toEqual([metadata]);
+    expect(importedState.masterDataList).toEqual([masterData]);
+    expect(importedState.masterDataRecords['md-customer']).toEqual([record]);
+    expect(importedState.versions.map((item) => item.id)).toEqual([version.id]);
+    expect(importedState.versions[0].metamodels.masterData?.records['md-customer']).toEqual([record]);
   });
 
   it('updateEntity 应保留原有 businessScenarioId，不允许跨场景移动', () => {
@@ -398,6 +452,34 @@ describe('Ontology Store State Transitions', () => {
     expect(state.project?.dataModel?.entities.map((entity) => entity.id)).toEqual(['contract-1']);
     expect(state.project?.dataModel?.projects).toEqual([]);
     expect(state.project?.dataModel?.businessScenarios.map((scenario) => scenario.id)).toEqual(['scenario-1']);
+  });
+
+  it('deleteEntity 应同步清理删除实体关联的行为、规则、事件和 EPC 快照', () => {
+    const project = createFrozenProject('1.0.0');
+    project.dataModel!.entities = project.dataModel!.entities.map((entity) =>
+      entity.id === 'clause-1'
+        ? { ...entity, entityRole: 'child_entity', parentAggregateId: 'contract-1' }
+        : { ...entity, entityRole: 'aggregate_root' },
+    );
+    project.eventModel!.subscriptions = [{
+      id: 'sub-1',
+      name: '同步合同索引',
+      eventId: 'event-1',
+      handler: 'async',
+      action: 'webhook',
+      actionRef: 'https://example.com/webhook',
+    }];
+    useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
+
+    useOntologyStore.getState().deleteEntity('contract-1');
+
+    const state = useOntologyStore.getState();
+    expect(state.project?.dataModel?.entities).toEqual([]);
+    expect(state.project?.behaviorModel?.stateMachines).toEqual([]);
+    expect(state.project?.ruleModel?.rules).toEqual([]);
+    expect(state.project?.eventModel?.events).toEqual([]);
+    expect(state.project?.eventModel?.subscriptions).toEqual([]);
+    expect(state.project?.epcModel?.profiles).toEqual([]);
   });
 
   it('clearAllModels 应保留项目与分类并清空建模数据', () => {
