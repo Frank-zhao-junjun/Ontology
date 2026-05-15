@@ -82,4 +82,47 @@ describe('US-11.2 / AI suggestion apply and rollback', () => {
       expect(screen.getByRole('button', { name: '应用' })).toBeInTheDocument();
     });
   });
+
+  it('AI 自动生成失败后不应无限重试', async () => {
+    const project = createFrozenProject('1.0.0');
+    useOntologyStore.setState({
+      project,
+      metadataList: [],
+      masterDataList: [],
+      masterDataRecords: {},
+      versions: [],
+      activeModelType: 'data',
+    });
+
+    const entity = project.dataModel!.entities.find((item) => item.id === 'contract-1')!;
+    const fetchMock = vi.fn().mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      return {
+        ok: false,
+        json: async () => ({
+          error: 'AI服务暂不可用',
+        }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(React.createElement(ManualGenerator, {
+      onBack: () => undefined,
+      selectedEntityId: entity.id,
+      relatedModels: {
+        entity,
+        stateMachines: [],
+        rules: [],
+        events: [],
+        subscriptions: [],
+      },
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByText('AI服务暂不可用')).toBeInTheDocument();
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

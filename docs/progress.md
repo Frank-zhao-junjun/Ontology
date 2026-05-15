@@ -1,6 +1,6 @@
 # Ontology 项目开发进度
 
-> 最后更新：2026-04-20
+> 最后更新：2026-05-15
 > 当前版本：v2.0 (基于 iteration-plan-v2)
 
 ---
@@ -22,6 +22,14 @@
 ---
 
 ## 近期完成记录
+
+### 2026-05-15
+
+| 提交 | 说明 |
+|------|------|
+| 本次修复 | fix: stop AI retry loops and preserve custom metadata |
+
+**验证**：`pnpm run ci:check` 通过（lint、ts-check、unit、integration、e2e smoke）。
 
 ### 2026-04-20
 
