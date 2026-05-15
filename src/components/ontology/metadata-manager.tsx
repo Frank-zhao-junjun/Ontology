@@ -57,8 +57,8 @@ export function MetadataManager() {
 
   // 初始化时加载元数据
   useEffect(() => {
-    // 如果没有数据，或者数据中没有domain字段（旧数据），则重新加载
-    if (metadataList.length === 0 || !metadataList[0]?.domain) {
+    // 仅在完全没有元数据时自动初始化；已有数据必须由用户显式重载，避免覆盖自定义字段。
+    if (metadataList.length === 0) {
       queueMicrotask(() => {
         void handleInitFromExcel();
       });

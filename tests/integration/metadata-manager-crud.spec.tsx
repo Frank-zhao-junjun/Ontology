@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MetadataManager } from '@/components/ontology/metadata-manager';
 import { useOntologyStore } from '@/store/ontology-store';
+import type { Metadata } from '@/types/ontology';
 
 const now = '2026-04-21T00:00:00.000Z';
 
@@ -101,5 +102,50 @@ describe('US-9.1 / MetadataManager CRUD and category filtering', () => {
     fireEvent.change(screen.getByPlaceholderText('搜索元数据（名称、英文名、描述）...'), { target: { value: 'ContractName' } });
     expect(screen.getByText('合同名称')).toBeInTheDocument();
     expect(screen.queryByText('采购组织')).not.toBeInTheDocument();
+  });
+
+  it('不应因为首条元数据缺少领域而自动覆盖已有自定义元数据', async () => {
+    const customMetadata: Metadata = {
+      id: 'legacy-custom',
+      domain: '',
+      name: '自定义字段',
+      nameEn: 'CustomField',
+      description: '用户维护的自定义字段',
+      type: 'string',
+      createdAt: now,
+      updatedAt: now,
+    };
+    useOntologyStore.setState({
+      metadataList: [customMetadata],
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: [
+          {
+            id: 'excel-field',
+            domain: '标准领域',
+            name: '标准字段',
+            nameEn: 'StandardField',
+            description: 'Excel 标准字段',
+            type: 'string',
+            createdAt: now,
+            updatedAt: now,
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(React.createElement(MetadataManager));
+
+    await waitFor(() => {
+      expect(screen.getByText('自定义字段')).toBeInTheDocument();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(useOntologyStore.getState().metadataList).toEqual([customMetadata]);
   });
 });
