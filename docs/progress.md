@@ -1,6 +1,6 @@
 # Ontology 项目开发进度
 
-> 最后更新：2026-04-20
+> 最后更新：2026-05-16
 > 当前版本：v2.0 (基于 iteration-plan-v2)
 
 ---
@@ -22,6 +22,13 @@
 ---
 
 ## 近期完成记录
+
+### 2026-05-16
+
+| 提交 | 说明 |
+|------|------|
+| `21401d0` | fix: preserve master data on legacy rollback |
+| `424696b` | fix: defer scenario selection reset in effect |
 
 ### 2026-04-20
 
