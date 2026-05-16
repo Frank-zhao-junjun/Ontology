@@ -1701,7 +1701,7 @@ export const useOntologyStore = create<OntologyState>()(
         set((state) => {
           if (!state.project) return state;
 
-          return {
+          const rolledBackState: Partial<OntologyState> = {
             project: {
               ...state.project,
               dataModel: targetVersion.metamodels.data ? JSON.parse(JSON.stringify(targetVersion.metamodels.data)) : null,
@@ -1712,9 +1712,14 @@ export const useOntologyStore = create<OntologyState>()(
               epcModel: targetVersion.metamodels.epc ? JSON.parse(JSON.stringify(targetVersion.metamodels.epc)) : null,
               updatedAt: new Date().toISOString(),
             },
-            masterDataList: targetVersion.metamodels.masterData ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.definitions)) : [],
-            masterDataRecords: targetVersion.metamodels.masterData ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.records)) : {},
           };
+
+          if (targetVersion.metamodels.masterData) {
+            rolledBackState.masterDataList = JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.definitions));
+            rolledBackState.masterDataRecords = JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.records));
+          }
+
+          return rolledBackState;
         });
       },
 

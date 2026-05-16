@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useOntologyStore } from '@/store/ontology-store';
 import { createMockProject } from './test-helpers';
-import type { MasterData, MasterDataRecord } from '@/types/ontology';
+import type { MasterData, MasterDataRecord, ProjectVersion } from '@/types/ontology';
 
 const now = '2026-04-21T00:00:00.000Z';
 
@@ -99,5 +99,50 @@ describe('US-10.1: 版本快照依赖管理与回滚策略', () => {
     
     useOntologyStore.setState({ project: null });
     expect(() => store.rollbackVersion('some-id')).toThrow('没有活动项目');
+  });
+
+  it('回滚缺少主数据快照的历史版本时不应清空现有主数据', () => {
+    setupMockData();
+    const project = createMockProject();
+    const versionProject = createMockProject();
+    const entity = versionProject.dataModel?.entities.find((e) => e.id === 'entity-1');
+    if (!entity || !versionProject.dataModel) {
+      throw new Error('测试项目缺少基础实体');
+    }
+
+    versionProject.dataModel = {
+      ...versionProject.dataModel,
+      entities: versionProject.dataModel.entities.map((item) =>
+        item.id === 'entity-1'
+          ? { ...item, name: 'Legacy Snapshot Entity', entityRole: 'aggregate_root' }
+          : item
+      ),
+    };
+
+    const legacyVersion: ProjectVersion = {
+      id: 'legacy-version-without-master-data',
+      projectId: project.id,
+      version: '0.9.0',
+      name: '历史版本',
+      metamodels: {
+        data: versionProject.dataModel,
+        behavior: versionProject.behaviorModel,
+        rules: versionProject.ruleModel,
+        process: versionProject.processModel,
+        events: versionProject.eventModel,
+        epc: versionProject.epcModel,
+      },
+      createdAt: now,
+      status: 'draft',
+    };
+
+    useOntologyStore.setState({ project, versions: [legacyVersion] });
+
+    useOntologyStore.getState().rollbackVersion(legacyVersion.id);
+
+    const restoredStore = useOntologyStore.getState();
+    expect(restoredStore.project?.dataModel?.entities.find((e) => e.id === 'entity-1')?.name).toBe('Legacy Snapshot Entity');
+    expect(restoredStore.masterDataList).toHaveLength(1);
+    expect(restoredStore.masterDataRecords['md-version-test'][0].values['name']).toBe('Original Name');
   });
 });
