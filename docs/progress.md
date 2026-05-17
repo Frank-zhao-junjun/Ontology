@@ -23,6 +23,12 @@
 
 ## 近期完成记录
 
+### 2026-05-17
+
+| 提交 | 说明 |
+|------|------|
+| 本次修复 | fix: keep newly created project IDs consistent between Supabase and local store |
+
 ### 2026-04-20
 
 | 提交 | 说明 |
