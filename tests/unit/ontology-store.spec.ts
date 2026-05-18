@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useOntologyStore } from '@/store/ontology-store';
-import type { Entity, EventDefinition, MasterData, MasterDataRecord, OntologyProject, Rule, Subscription } from '@/types/ontology';
+import type { Entity, EventDefinition, MasterData, MasterDataRecord, OntologyProject, ProjectVersion, Rule, Subscription } from '@/types/ontology';
 import { createFrozenProject, createMockProject } from './test-helpers';
 
 function resetStore() {
@@ -227,6 +227,52 @@ describe('Ontology Store State Transitions', () => {
     expect(savedVersion?.metamodels.data?.entities.find((entity) => entity.id === 'contract-1')?.name).toBe('合同');
     expect(useOntologyStore.getState().project?.dataModel?.entities.find((entity) => entity.id === 'contract-1')?.name).toBe('合同主单');
     expect(savedVersion?.metamodels.epc?.profiles.length).toBeGreaterThan(0);
+  });
+
+  it('rollbackVersion 应归一化旧版本快照中的主数据引用', () => {
+    const project = createFrozenProject('1.0.0');
+    const legacyDataModel = JSON.parse(JSON.stringify(project.dataModel)) as NonNullable<OntologyProject['dataModel']>;
+    legacyDataModel.entities[0] = {
+      ...legacyDataModel.entities[0],
+      attributes: [{
+        id: 'legacy-master-ref',
+        name: '客户主体',
+        nameEn: 'customerSubject',
+        dataType: 'reference',
+        referenceKind: 'masterData',
+        masterDataType: 'md-customer',
+      }],
+    };
+    const version: ProjectVersion = {
+      id: 'version-legacy',
+      projectId: project.id,
+      version: '0.9.0',
+      name: '旧版快照',
+      metamodels: {
+        data: legacyDataModel,
+        behavior: null,
+        rules: null,
+        process: null,
+        events: null,
+        epc: null,
+        masterData: {
+          definitions: [],
+          records: {},
+        },
+      },
+      createdAt: '2026-04-02T00:00:00.000Z',
+      status: 'published',
+    };
+
+    useOntologyStore.setState({ project, versions: [version], activeModelType: 'data' });
+
+    useOntologyStore.getState().rollbackVersion(version.id);
+
+    const restoredAttribute = useOntologyStore.getState().project?.dataModel?.entities[0].attributes[0];
+    expect(restoredAttribute?.referenceKind).toBe('masterData');
+    expect(restoredAttribute?.isMasterDataRef).toBe(true);
+    expect(restoredAttribute?.masterDataType).toBe('md-customer');
+    expect(restoredAttribute?.referencedEntityId).toBeUndefined();
   });
 
   it('ensureEpcProfile 与 regenerateEpcDocument 应同步 EPC 派生信息', () => {
