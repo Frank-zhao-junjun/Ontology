@@ -109,6 +109,17 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const writeToken = process.env.AGENT_SKILLS_WRITE_TOKEN;
+    const authHeader = request.headers.get('authorization');
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+
+    if (!writeToken || bearerToken !== writeToken) {
+      return NextResponse.json(
+        { success: false, error: '代理技能写操作未授权' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { action, type, data } = body;
 
