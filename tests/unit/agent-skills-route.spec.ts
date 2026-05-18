@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET, POST } from './route';
+import { GET, POST } from '@/app/api/agent/skills/route';
 import { superpowersManager, type AgentSkill } from '@/lib/superpowers/skills';
 
 const originalWriteToken = process.env.AGENT_SKILLS_WRITE_TOKEN;
