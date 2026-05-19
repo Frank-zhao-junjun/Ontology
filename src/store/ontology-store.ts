@@ -1696,13 +1696,16 @@ export const useOntologyStore = create<OntologyState>()(
         if (!targetVersion) {
           throw new Error('版本不存在');
         }
+        if (targetVersion.projectId !== state.project.id) {
+          throw new Error('版本不属于当前项目');
+        }
 
         // Deep copy from metamodels to project
         set((state) => {
           if (!state.project) return state;
-
-          return {
-            project: {
+          const masterDataSnapshot = targetVersion.metamodels.masterData;
+          const nextState: Partial<OntologyState> = {
+            project: normalizeOntologyProject({
               ...state.project,
               dataModel: targetVersion.metamodels.data ? JSON.parse(JSON.stringify(targetVersion.metamodels.data)) : null,
               behaviorModel: targetVersion.metamodels.behavior ? JSON.parse(JSON.stringify(targetVersion.metamodels.behavior)) : null,
@@ -1711,10 +1714,15 @@ export const useOntologyStore = create<OntologyState>()(
               eventModel: targetVersion.metamodels.events ? JSON.parse(JSON.stringify(targetVersion.metamodels.events)) : null,
               epcModel: targetVersion.metamodels.epc ? JSON.parse(JSON.stringify(targetVersion.metamodels.epc)) : null,
               updatedAt: new Date().toISOString(),
-            },
-            masterDataList: targetVersion.metamodels.masterData ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.definitions)) : [],
-            masterDataRecords: targetVersion.metamodels.masterData ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.records)) : {},
+            }),
           };
+
+          if (masterDataSnapshot) {
+            nextState.masterDataList = JSON.parse(JSON.stringify(masterDataSnapshot.definitions ?? []));
+            nextState.masterDataRecords = JSON.parse(JSON.stringify(masterDataSnapshot.records ?? {}));
+          }
+
+          return nextState;
         });
       },
 
