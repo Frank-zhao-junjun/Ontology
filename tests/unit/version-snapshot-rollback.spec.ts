@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useOntologyStore } from '@/store/ontology-store';
 import { createMockProject } from './test-helpers';
-import type { MasterData, MasterDataRecord } from '@/types/ontology';
+import type { MasterData, MasterDataRecord, ProjectVersion } from '@/types/ontology';
 
 const now = '2026-04-21T00:00:00.000Z';
 
@@ -100,4 +100,65 @@ describe('US-10.1: 版本快照依赖管理与回滚策略', () => {
     useOntologyStore.setState({ project: null });
     expect(() => store.rollbackVersion('some-id')).toThrow('没有活动项目');
   });
+
+  it('回滚旧版本快照缺少主数据字段时不应清空当前主数据', () => {
+    setupMockData();
+    const state = useOntologyStore.getState();
+    const project = state.project!;
+    const legacyVersion: ProjectVersion = {
+      id: 'legacy-version',
+      projectId: project.id,
+      version: '0.9.0',
+      name: '旧版快照',
+      metamodels: {
+        data: project.dataModel,
+        behavior: project.behaviorModel,
+        rules: project.ruleModel,
+        process: project.processModel,
+        events: project.eventModel,
+        epc: project.epcModel,
+      },
+      createdAt: now,
+      status: 'draft',
+    };
+
+    useOntologyStore.setState({ versions: [legacyVersion] });
+
+    state.rollbackVersion(legacyVersion.id);
+
+    const restored = useOntologyStore.getState();
+    expect(restored.masterDataList).toHaveLength(1);
+    expect(restored.masterDataList[0].id).toBe('md-version-test');
+    expect(restored.masterDataRecords['md-version-test'][0].id).toBe('rec-version-test');
+  });
+
+  it('拒绝回滚不属于当前项目的版本快照以避免跨项目覆盖', () => {
+    const currentProject = createMockProject({ id: 'project-current' });
+    const otherProject = createMockProject({ id: 'project-other' });
+    const otherVersion: ProjectVersion = {
+      id: 'other-project-version',
+      projectId: otherProject.id,
+      version: '1.0.0',
+      name: '其他项目快照',
+      metamodels: {
+        data: otherProject.dataModel,
+        behavior: otherProject.behaviorModel,
+        rules: otherProject.ruleModel,
+        process: otherProject.processModel,
+        events: otherProject.eventModel,
+        epc: otherProject.epcModel,
+      },
+      createdAt: now,
+      status: 'draft',
+    };
+
+    useOntologyStore.setState({
+      project: currentProject,
+      versions: [otherVersion],
+    });
+
+    expect(() => useOntologyStore.getState().rollbackVersion(otherVersion.id)).toThrow('版本不属于当前项目');
+    expect(useOntologyStore.getState().project?.id).toBe('project-current');
+  });
+
 });
