@@ -463,6 +463,14 @@ describe('Ontology Store State Transitions', () => {
       errorMessage: '合同必须有关联条款',
       severity: 'error',
     });
+    project.eventModel!.events.push({
+      id: 'event-child',
+      name: '条款已更新',
+      nameEn: 'ClauseUpdated',
+      entity: 'clause-1',
+      trigger: 'update',
+      payload: [{ field: 'c1' }],
+    });
     project.epcModel!.profiles[0].informationObjects.push({
       id: 'info-clause-1',
       name: '合同条款',
@@ -479,6 +487,13 @@ describe('Ontology Store State Transitions', () => {
       inputObjectIds: ['info-clause-1'],
       outputObjectIds: ['info-clause-1'],
     });
+    project.epcModel!.profiles[0].connectors.push({
+      id: 'connector-child',
+      type: 'xor',
+      sourceActivityId: 'activity-child-rule',
+      sourceEventId: 'event-child',
+      branches: [{ label: '条款异常', targetEventName: '条款异常事件', ruleId: 'cross-rule-child' }],
+    });
 
     useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
 
@@ -491,6 +506,7 @@ describe('Ontology Store State Transitions', () => {
     expect(state.project?.ruleModel?.rules.map((rule) => rule.id)).not.toContain('cross-rule-child');
     expect(state.project?.epcModel?.profiles[0].informationObjects.map((info) => info.sourceRefId)).not.toContain('clause-1');
     expect(state.project?.epcModel?.profiles[0].activities.map((activity) => activity.id)).not.toContain('activity-child-rule');
+    expect(state.project?.epcModel?.profiles[0].connectors.map((connector) => connector.id)).not.toContain('connector-child');
   });
 
   it('clearAllModels 应保留项目与分类并清空建模数据', () => {

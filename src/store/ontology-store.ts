@@ -268,20 +268,24 @@ function scrubDeletedEntityEpcReferences(
     }))
     .filter((activity) => !(activity.eventId && deletedEventIds.has(activity.eventId)))
     .filter((activity) => !(activity.derivedFrom === 'rule' && activity.ruleIds && activity.ruleIds.length === 0));
+  const remainingActivityIds = new Set(activities.map((activity) => activity.id));
 
   return {
     ...profile,
     status: 'draft',
     informationObjects: profile.informationObjects.filter((info) => !deletedInformationObjectIds.has(info.id)),
     activities,
-    connectors: profile.connectors.map((connector) => ({
-      ...connector,
-      branches: connector.branches.map((branch) =>
-        branch.ruleId && deletedRuleIds.has(branch.ruleId)
-          ? { ...branch, ruleId: undefined }
-          : branch,
-      ),
-    })),
+    connectors: profile.connectors
+      .filter((connector) => !(connector.sourceActivityId && !remainingActivityIds.has(connector.sourceActivityId)))
+      .filter((connector) => !(connector.sourceEventId && deletedEventIds.has(connector.sourceEventId)))
+      .map((connector) => ({
+        ...connector,
+        branches: connector.branches.map((branch) =>
+          branch.ruleId && deletedRuleIds.has(branch.ruleId)
+            ? { ...branch, ruleId: undefined }
+            : branch,
+        ),
+      })),
     generatedDocument: undefined,
     validationSummary: undefined,
   };
