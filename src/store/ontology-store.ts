@@ -231,6 +231,42 @@ function pruneDeletedEntityActions(actions: Action[] | undefined, idsToDelete: S
   return actions.filter((action) => !actionTargetsDeletedEntity(action, idsToDelete));
 }
 
+function attributeReferencesDeletedEntity(attribute: Entity['attributes'][number], idsToDelete: Set<string>): boolean {
+  return Boolean(attribute.referencedEntityId && idsToDelete.has(attribute.referencedEntityId));
+}
+
+function scrubDeletedEventTransitions(stateMachine: StateMachine, deletedEventIds: Set<string>): StateMachine {
+  return {
+    ...stateMachine,
+    transitions: stateMachine.transitions
+      .filter((transition) => !(transition.triggerConfig?.eventId && deletedEventIds.has(transition.triggerConfig.eventId)))
+      .map((transition) => {
+        let triggerConfig = transition.triggerConfig;
+        if (triggerConfig?.publishEventId && deletedEventIds.has(triggerConfig.publishEventId)) {
+          const { publishEventId, ...restTriggerConfig } = triggerConfig;
+          void publishEventId;
+          triggerConfig = Object.keys(restTriggerConfig).length > 0 ? restTriggerConfig : undefined;
+        }
+
+        const executionLogs = transition.executionLogs?.map((log) => {
+          if (log.publishedEventId && deletedEventIds.has(log.publishedEventId)) {
+            const { publishedEventId, ...restLog } = log;
+            void publishedEventId;
+            return restLog;
+          }
+
+          return log;
+        });
+
+        return {
+          ...transition,
+          triggerConfig,
+          executionLogs,
+        };
+      }),
+  };
+}
+
 function ruleReferencesDeletedEntity(rule: Rule, idsToDelete: Set<string>): boolean {
   const referencedEntityIds = [
     rule.entity,
@@ -736,6 +772,7 @@ export const useOntologyStore = create<OntologyState>()(
                   .filter((e) => !idsToDelete.has(e.id))
                   .map((entity) => ({
                     ...entity,
+                    attributes: entity.attributes.filter((attribute) => !attributeReferencesDeletedEntity(attribute, idsToDelete)),
                     relations: entity.relations.filter((relation) => !idsToDelete.has(relation.targetEntity)),
                   })),
                 updatedAt: now,
@@ -744,6 +781,7 @@ export const useOntologyStore = create<OntologyState>()(
                 ...state.project.behaviorModel,
                 stateMachines: state.project.behaviorModel.stateMachines
                   .filter((sm) => !idsToDelete.has(sm.entity))
+                  .map((sm) => scrubDeletedEventTransitions(sm, deletedEventIds))
                   .map((sm) => ({
                     ...sm,
                     actions: pruneDeletedEntityActions(sm.actions, idsToDelete),

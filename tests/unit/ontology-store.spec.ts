@@ -405,7 +405,21 @@ describe('Ontology Store State Transitions', () => {
     project.dataModel!.entities = project.dataModel!.entities.map((entity) =>
       entity.id === 'clause-1'
         ? { ...entity, entityRole: 'child_entity', parentAggregateId: 'contract-1' }
-        : { ...entity, entityRole: 'aggregate_root' },
+        : {
+            ...entity,
+            entityRole: 'aggregate_root',
+            attributes: [
+              ...entity.attributes,
+              {
+                id: 'attr-clause-ref',
+                name: '条款引用',
+                nameEn: 'clauseRef',
+                dataType: 'reference',
+                referenceKind: 'entity',
+                referencedEntityId: 'clause-1',
+              },
+            ],
+          },
     );
     project.eventModel!.subscriptions = [{
       id: 'sub-1',
@@ -454,6 +468,22 @@ describe('Ontology Store State Transitions', () => {
       targetEntityId: 'clause-1',
       actionType: 'validate',
     }];
+    project.behaviorModel!.stateMachines[0].transitions.push({
+      id: 'transition-child-event',
+      name: '条款更新触发',
+      from: 's1',
+      to: 's2',
+      trigger: 'automatic',
+      preConditions: ['条款已更新'],
+      triggerConfig: { eventId: 'event-child', publishEventId: 'event-child' },
+      executionLogs: [{
+        id: 'log-child-event',
+        triggerType: 'automatic',
+        status: 'success',
+        triggeredAt: '2026-04-02T00:00:00.000Z',
+        publishedEventId: 'event-child',
+      }],
+    });
     project.ruleModel!.rules.push({
       id: 'cross-rule-child',
       name: '合同条款存在性校验',
@@ -501,8 +531,10 @@ describe('Ontology Store State Transitions', () => {
 
     const state = useOntologyStore.getState();
     expect(state.project?.dataModel?.entities.map((entity) => entity.id)).toEqual(['contract-1']);
+    expect(state.project?.dataModel?.entities[0].attributes.map((attribute) => attribute.id)).not.toContain('attr-clause-ref');
     expect(state.project?.behaviorModel?.actions).toEqual([]);
     expect(state.project?.behaviorModel?.stateMachines[0].actions).toEqual([]);
+    expect(state.project?.behaviorModel?.stateMachines[0].transitions.map((transition) => transition.id)).not.toContain('transition-child-event');
     expect(state.project?.ruleModel?.rules.map((rule) => rule.id)).not.toContain('cross-rule-child');
     expect(state.project?.epcModel?.profiles[0].informationObjects.map((info) => info.sourceRefId)).not.toContain('clause-1');
     expect(state.project?.epcModel?.profiles[0].activities.map((activity) => activity.id)).not.toContain('activity-child-rule');
