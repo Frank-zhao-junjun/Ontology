@@ -82,4 +82,101 @@ describe('US-11.2 / AI suggestion apply and rollback', () => {
       expect(screen.getByRole('button', { name: '应用' })).toBeInTheDocument();
     });
   });
+
+  it('AI 自动生成失败后不应重复请求导致无限重试', async () => {
+    const project = createFrozenProject('1.0.0');
+    useOntologyStore.setState({
+      project,
+      metadataList: [],
+      masterDataList: [],
+      masterDataRecords: {},
+      versions: [],
+      activeModelType: 'data',
+    });
+
+    const entity = project.dataModel!.entities.find((item) => item.id === 'contract-1')!;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'AI 服务不可用' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(React.createElement(ManualGenerator, {
+      onBack: () => undefined,
+      selectedEntityId: entity.id,
+      relatedModels: {
+        entity,
+        stateMachines: [],
+        rules: [],
+        events: [],
+        subscriptions: [],
+      },
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByText('AI 服务不可用')).toBeInTheDocument();
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('连续应用多个 AI 属性建议时不应丢失先前写入的属性', async () => {
+    const project = createFrozenProject('1.0.0');
+    useOntologyStore.setState({
+      project,
+      metadataList: [],
+      masterDataList: [],
+      masterDataRecords: {},
+      versions: [],
+      activeModelType: 'data',
+    });
+
+    const entity = project.dataModel!.entities.find((item) => item.id === 'contract-1')!;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          dataModel: {
+            suggestedAttributes: [
+              { name: 'AI建议字段A', nameEn: 'aiFieldA', type: 'string', required: true, description: 'AI 推荐 A' },
+              { name: 'AI建议字段B', nameEn: 'aiFieldB', type: 'string', required: false, description: 'AI 推荐 B' },
+            ],
+          },
+          behaviorModel: { suggestedStates: [], suggestedTransitions: [] },
+          ruleModel: { suggestedRules: [] },
+          eventModel: { suggestedEvents: [], suggestedSubscriptions: [] },
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(React.createElement(ManualGenerator, {
+      onBack: () => undefined,
+      selectedEntityId: entity.id,
+      relatedModels: {
+        entity,
+        stateMachines: [],
+        rules: [],
+        events: [],
+        subscriptions: [],
+      },
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByText('AI建议字段A')).toBeInTheDocument();
+      expect(screen.getByText('AI建议字段B')).toBeInTheDocument();
+    });
+
+    const applyButtons = screen.getAllByRole('button', { name: '应用' });
+    fireEvent.click(applyButtons[0]);
+    fireEvent.click(applyButtons[1]);
+
+    await waitFor(() => {
+      const saved = useOntologyStore.getState().project?.dataModel?.entities.find((item) => item.id === entity.id);
+      const names = saved?.attributes.map((attr) => attr.name) || [];
+      expect(names).toContain('AI建议字段A');
+      expect(names).toContain('AI建议字段B');
+    });
+  });
 });

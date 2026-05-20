@@ -400,6 +400,147 @@ describe('Ontology Store State Transitions', () => {
     expect(state.project?.dataModel?.businessScenarios.map((scenario) => scenario.id)).toEqual(['scenario-1']);
   });
 
+  it('deleteEntity 删除聚合根时应级联清理依赖该实体的模型引用', () => {
+    const project = createFrozenProject('1.0.0');
+    project.dataModel!.entities = project.dataModel!.entities.map((entity) =>
+      entity.id === 'clause-1'
+        ? { ...entity, entityRole: 'child_entity', parentAggregateId: 'contract-1' }
+        : {
+            ...entity,
+            entityRole: 'aggregate_root',
+            attributes: [
+              ...entity.attributes,
+              {
+                id: 'attr-clause-ref',
+                name: '条款引用',
+                nameEn: 'clauseRef',
+                dataType: 'reference',
+                referenceKind: 'entity',
+                referencedEntityId: 'clause-1',
+              },
+            ],
+          },
+    );
+    project.eventModel!.subscriptions = [{
+      id: 'sub-1',
+      name: '合同事件订阅',
+      eventId: 'event-1',
+      handler: 'async',
+      action: 'notification',
+      actionRef: 'contract-team',
+    }];
+    project.behaviorModel!.actions = [{
+      id: 'action-contract',
+      name: '删除合同',
+      targetEntityId: 'contract-1',
+      actionType: 'delete',
+    }];
+    useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
+
+    useOntologyStore.getState().deleteEntity('contract-1');
+
+    const state = useOntologyStore.getState();
+    expect(state.project?.dataModel?.entities).toEqual([]);
+    expect(state.project?.behaviorModel?.stateMachines).toEqual([]);
+    expect(state.project?.behaviorModel?.actions).toEqual([]);
+    expect(state.project?.ruleModel?.rules).toEqual([]);
+    expect(state.project?.eventModel?.events).toEqual([]);
+    expect(state.project?.eventModel?.subscriptions).toEqual([]);
+    expect(state.project?.epcModel?.profiles).toEqual([]);
+  });
+
+  it('deleteEntity 删除子实体时应清理幸存模型中的交叉引用', () => {
+    const project = createFrozenProject('1.0.0');
+    project.dataModel!.entities = project.dataModel!.entities.map((entity) =>
+      entity.id === 'clause-1'
+        ? { ...entity, entityRole: 'child_entity', parentAggregateId: 'contract-1' }
+        : { ...entity, entityRole: 'aggregate_root' },
+    );
+    project.behaviorModel!.actions = [{
+      id: 'action-child',
+      name: '更新条款',
+      targetEntityId: 'clause-1',
+      actionType: 'update',
+    }];
+    project.behaviorModel!.stateMachines[0].actions = [{
+      id: 'nested-action-child',
+      name: '校验条款',
+      targetEntityId: 'clause-1',
+      actionType: 'validate',
+    }];
+    project.behaviorModel!.stateMachines[0].transitions.push({
+      id: 'transition-child-event',
+      name: '条款更新触发',
+      from: 's1',
+      to: 's2',
+      trigger: 'automatic',
+      preConditions: ['条款已更新'],
+      triggerConfig: { eventId: 'event-child', publishEventId: 'event-child' },
+      executionLogs: [{
+        id: 'log-child-event',
+        triggerType: 'automatic',
+        status: 'success',
+        triggeredAt: '2026-04-02T00:00:00.000Z',
+        publishedEventId: 'event-child',
+      }],
+    });
+    project.ruleModel!.rules.push({
+      id: 'cross-rule-child',
+      name: '合同条款存在性校验',
+      type: 'cross_entity_validation',
+      entity: 'contract-1',
+      condition: { type: 'expression', checkEntity: 'clause-1', checkCondition: 'exists' },
+      errorMessage: '合同必须有关联条款',
+      severity: 'error',
+    });
+    project.eventModel!.events.push({
+      id: 'event-child',
+      name: '条款已更新',
+      nameEn: 'ClauseUpdated',
+      entity: 'clause-1',
+      trigger: 'update',
+      payload: [{ field: 'c1' }],
+    });
+    project.epcModel!.profiles[0].informationObjects.push({
+      id: 'info-clause-1',
+      name: '合同条款',
+      sourceType: 'child_entity',
+      sourceRefId: 'clause-1',
+      attributes: ['条款编号'],
+    });
+    project.epcModel!.profiles[0].activities.push({
+      id: 'activity-child-rule',
+      name: '条款校验活动',
+      activityType: 'task',
+      derivedFrom: 'rule',
+      ruleIds: ['cross-rule-child'],
+      inputObjectIds: ['info-clause-1'],
+      outputObjectIds: ['info-clause-1'],
+    });
+    project.epcModel!.profiles[0].connectors.push({
+      id: 'connector-child',
+      type: 'xor',
+      sourceActivityId: 'activity-child-rule',
+      sourceEventId: 'event-child',
+      branches: [{ label: '条款异常', targetEventName: '条款异常事件', ruleId: 'cross-rule-child' }],
+    });
+
+    useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
+
+    useOntologyStore.getState().deleteEntity('clause-1');
+
+    const state = useOntologyStore.getState();
+    expect(state.project?.dataModel?.entities.map((entity) => entity.id)).toEqual(['contract-1']);
+    expect(state.project?.dataModel?.entities[0].attributes.map((attribute) => attribute.id)).not.toContain('attr-clause-ref');
+    expect(state.project?.behaviorModel?.actions).toEqual([]);
+    expect(state.project?.behaviorModel?.stateMachines[0].actions).toEqual([]);
+    expect(state.project?.behaviorModel?.stateMachines[0].transitions.map((transition) => transition.id)).not.toContain('transition-child-event');
+    expect(state.project?.ruleModel?.rules.map((rule) => rule.id)).not.toContain('cross-rule-child');
+    expect(state.project?.epcModel?.profiles[0].informationObjects.map((info) => info.sourceRefId)).not.toContain('clause-1');
+    expect(state.project?.epcModel?.profiles[0].activities.map((activity) => activity.id)).not.toContain('activity-child-rule');
+    expect(state.project?.epcModel?.profiles[0].connectors.map((connector) => connector.id)).not.toContain('connector-child');
+  });
+
   it('clearAllModels 应保留项目与分类并清空建模数据', () => {
     const project = createFrozenProject('1.0.0');
     useOntologyStore.setState({ project, versions: [], activeModelType: 'event' });

@@ -222,6 +222,111 @@ function collectCascadeEntityIds(entities: Entity[], rootId: string): Set<string
   return idsToDelete;
 }
 
+function actionTargetsDeletedEntity(action: Action, idsToDelete: Set<string>): boolean {
+  return Boolean(action.targetEntityId && idsToDelete.has(action.targetEntityId));
+}
+
+function pruneDeletedEntityActions(actions: Action[] | undefined, idsToDelete: Set<string>): Action[] | undefined {
+  if (!actions) return actions;
+  return actions.filter((action) => !actionTargetsDeletedEntity(action, idsToDelete));
+}
+
+function attributeReferencesDeletedEntity(attribute: Entity['attributes'][number], idsToDelete: Set<string>): boolean {
+  return Boolean(attribute.referencedEntityId && idsToDelete.has(attribute.referencedEntityId));
+}
+
+function scrubDeletedEventTransitions(stateMachine: StateMachine, deletedEventIds: Set<string>): StateMachine {
+  return {
+    ...stateMachine,
+    transitions: stateMachine.transitions
+      .filter((transition) => !(transition.triggerConfig?.eventId && deletedEventIds.has(transition.triggerConfig.eventId)))
+      .map((transition) => {
+        let triggerConfig = transition.triggerConfig;
+        if (triggerConfig?.publishEventId && deletedEventIds.has(triggerConfig.publishEventId)) {
+          const { publishEventId, ...restTriggerConfig } = triggerConfig;
+          void publishEventId;
+          triggerConfig = Object.keys(restTriggerConfig).length > 0 ? restTriggerConfig : undefined;
+        }
+
+        const executionLogs = transition.executionLogs?.map((log) => {
+          if (log.publishedEventId && deletedEventIds.has(log.publishedEventId)) {
+            const { publishedEventId, ...restLog } = log;
+            void publishedEventId;
+            return restLog;
+          }
+
+          return log;
+        });
+
+        return {
+          ...transition,
+          triggerConfig,
+          executionLogs,
+        };
+      }),
+  };
+}
+
+function ruleReferencesDeletedEntity(rule: Rule, idsToDelete: Set<string>): boolean {
+  const referencedEntityIds = [
+    rule.entity,
+    rule.condition.checkEntity,
+    rule.condition.refEntity,
+    rule.condition.detailEntity,
+  ].filter(Boolean) as string[];
+
+  return referencedEntityIds.some((id) => idsToDelete.has(id));
+}
+
+function pruneDeletedIds(ids: string[] | undefined, deletedIds: Set<string>): string[] | undefined {
+  if (!ids) return ids;
+  return ids.filter((id) => !deletedIds.has(id));
+}
+
+function scrubDeletedEntityEpcReferences(
+  profile: EpcAggregateProfile,
+  idsToDelete: Set<string>,
+  deletedRuleIds: Set<string>,
+  deletedEventIds: Set<string>,
+): EpcAggregateProfile {
+  const deletedInformationObjectIds = new Set(
+    profile.informationObjects
+      .filter((info) => info.sourceRefId && idsToDelete.has(info.sourceRefId))
+      .map((info) => info.id),
+  );
+
+  const activities = profile.activities
+    .map((activity) => ({
+      ...activity,
+      ruleIds: pruneDeletedIds(activity.ruleIds, deletedRuleIds),
+      inputObjectIds: pruneDeletedIds(activity.inputObjectIds, deletedInformationObjectIds),
+      outputObjectIds: pruneDeletedIds(activity.outputObjectIds, deletedInformationObjectIds),
+    }))
+    .filter((activity) => !(activity.eventId && deletedEventIds.has(activity.eventId)))
+    .filter((activity) => !(activity.derivedFrom === 'rule' && activity.ruleIds && activity.ruleIds.length === 0));
+  const remainingActivityIds = new Set(activities.map((activity) => activity.id));
+
+  return {
+    ...profile,
+    status: 'draft',
+    informationObjects: profile.informationObjects.filter((info) => !deletedInformationObjectIds.has(info.id)),
+    activities,
+    connectors: profile.connectors
+      .filter((connector) => !(connector.sourceActivityId && !remainingActivityIds.has(connector.sourceActivityId)))
+      .filter((connector) => !(connector.sourceEventId && deletedEventIds.has(connector.sourceEventId)))
+      .map((connector) => ({
+        ...connector,
+        branches: connector.branches.map((branch) =>
+          branch.ruleId && deletedRuleIds.has(branch.ruleId)
+            ? { ...branch, ruleId: undefined }
+            : branch,
+        ),
+      })),
+    generatedDocument: undefined,
+    validationSummary: undefined,
+  };
+}
+
 function ensureAggregateRootRoleChangeSafety(existingEntity: Entity, nextEntity: Entity, stateProject: OntologyProject | null): void {
   if (resolveEntityRole(existingEntity) !== 'aggregate_root' || resolveEntityRole(nextEntity) === 'aggregate_root') {
     return;
@@ -646,15 +751,63 @@ export const useOntologyStore = create<OntologyState>()(
         set((state) => {
           if (!state.project?.dataModel) return state;
           const idsToDelete = collectCascadeEntityIds(state.project.dataModel.entities, entityId);
+          const now = new Date().toISOString();
+          const deletedEventIds = new Set(
+            state.project.eventModel?.events
+              .filter((event) => idsToDelete.has(event.entity))
+              .map((event) => event.id) || [],
+          );
+          const deletedRuleIds = new Set(
+            state.project.ruleModel?.rules
+              .filter((rule) => ruleReferencesDeletedEntity(rule, idsToDelete))
+              .map((rule) => rule.id) || [],
+          );
+
           return {
             project: {
               ...state.project,
               dataModel: {
                 ...state.project.dataModel,
-                entities: state.project.dataModel.entities.filter((e) => !idsToDelete.has(e.id)),
-                updatedAt: new Date().toISOString(),
+                entities: state.project.dataModel.entities
+                  .filter((e) => !idsToDelete.has(e.id))
+                  .map((entity) => ({
+                    ...entity,
+                    attributes: entity.attributes.filter((attribute) => !attributeReferencesDeletedEntity(attribute, idsToDelete)),
+                    relations: entity.relations.filter((relation) => !idsToDelete.has(relation.targetEntity)),
+                  })),
+                updatedAt: now,
               },
-              updatedAt: new Date().toISOString(),
+              behaviorModel: state.project.behaviorModel ? {
+                ...state.project.behaviorModel,
+                stateMachines: state.project.behaviorModel.stateMachines
+                  .filter((sm) => !idsToDelete.has(sm.entity))
+                  .map((sm) => scrubDeletedEventTransitions(sm, deletedEventIds))
+                  .map((sm) => ({
+                    ...sm,
+                    actions: pruneDeletedEntityActions(sm.actions, idsToDelete),
+                  })),
+                actions: pruneDeletedEntityActions(state.project.behaviorModel.actions, idsToDelete),
+                updatedAt: now,
+              } : null,
+              ruleModel: state.project.ruleModel ? {
+                ...state.project.ruleModel,
+                rules: state.project.ruleModel.rules.filter((rule) => !ruleReferencesDeletedEntity(rule, idsToDelete)),
+                updatedAt: now,
+              } : null,
+              eventModel: state.project.eventModel ? {
+                ...state.project.eventModel,
+                events: state.project.eventModel.events.filter((event) => !idsToDelete.has(event.entity)),
+                subscriptions: state.project.eventModel.subscriptions.filter((subscription) => !deletedEventIds.has(subscription.eventId)),
+                updatedAt: now,
+              } : null,
+              epcModel: state.project.epcModel ? {
+                ...state.project.epcModel,
+                profiles: state.project.epcModel.profiles
+                  .filter((profile) => !idsToDelete.has(profile.aggregateId))
+                  .map((profile) => scrubDeletedEntityEpcReferences(profile, idsToDelete, deletedRuleIds, deletedEventIds)),
+                updatedAt: now,
+              } : null,
+              updatedAt: now,
             },
           };
         });
@@ -1696,12 +1849,15 @@ export const useOntologyStore = create<OntologyState>()(
         if (!targetVersion) {
           throw new Error('版本不存在');
         }
+        if (targetVersion.projectId !== state.project.id) {
+          throw new Error('版本不属于当前项目');
+        }
 
         // Deep copy from metamodels to project
         set((state) => {
           if (!state.project) return state;
 
-          return {
+          const nextState: Partial<OntologyState> = {
             project: {
               ...state.project,
               dataModel: targetVersion.metamodels.data ? JSON.parse(JSON.stringify(targetVersion.metamodels.data)) : null,
@@ -1712,9 +1868,14 @@ export const useOntologyStore = create<OntologyState>()(
               epcModel: targetVersion.metamodels.epc ? JSON.parse(JSON.stringify(targetVersion.metamodels.epc)) : null,
               updatedAt: new Date().toISOString(),
             },
-            masterDataList: targetVersion.metamodels.masterData ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.definitions)) : [],
-            masterDataRecords: targetVersion.metamodels.masterData ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.records)) : {},
           };
+
+          if (targetVersion.metamodels.masterData) {
+            nextState.masterDataList = JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.definitions));
+            nextState.masterDataRecords = JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.records));
+          }
+
+          return nextState;
         });
       },
 
