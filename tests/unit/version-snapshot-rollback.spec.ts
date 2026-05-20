@@ -100,4 +100,49 @@ describe('US-10.1: 版本快照依赖管理与回滚策略', () => {
     useOntologyStore.setState({ project: null });
     expect(() => store.rollbackVersion('some-id')).toThrow('没有活动项目');
   });
+
+  it('不应将其他项目的版本快照回滚到当前项目', () => {
+    const store = useOntologyStore.getState();
+    const sourceVersion = store.createVersion({ version: '1.0.0', name: '项目A版本' });
+    const targetProject = createMockProject({
+      id: 'project-b',
+      name: '项目B',
+      dataModel: {
+        ...createMockProject().dataModel!,
+        entities: [{
+          ...createMockProject().dataModel!.entities[0],
+          id: 'entity-b',
+          name: '项目B实体',
+          entityRole: 'aggregate_root',
+        }],
+      },
+    });
+    useOntologyStore.setState({ project: targetProject });
+
+    expect(() => useOntologyStore.getState().rollbackVersion(sourceVersion.id)).toThrow('版本不属于当前项目');
+    expect(useOntologyStore.getState().project?.id).toBe('project-b');
+    expect(useOntologyStore.getState().project?.dataModel?.entities[0].name).toBe('项目B实体');
+  });
+
+  it('回滚旧版快照缺少主数据段时应保留当前主数据', () => {
+    setupMockData();
+    const version = useOntologyStore.getState().createVersion({ version: '1.0.0', name: '旧版快照' });
+    const legacyVersion = {
+      ...version,
+      metamodels: {
+        ...version.metamodels,
+        masterData: undefined,
+      },
+    };
+
+    useOntologyStore.setState({
+      versions: [legacyVersion],
+    });
+
+    useOntologyStore.getState().rollbackVersion(legacyVersion.id);
+
+    const restoredStore = useOntologyStore.getState();
+    expect(restoredStore.masterDataList).toHaveLength(1);
+    expect(restoredStore.masterDataRecords['md-version-test'][0].values['name']).toBe('Original Name');
+  });
 });

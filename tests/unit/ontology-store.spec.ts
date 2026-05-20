@@ -400,6 +400,34 @@ describe('Ontology Store State Transitions', () => {
     expect(state.project?.dataModel?.businessScenarios.map((scenario) => scenario.id)).toEqual(['scenario-1']);
   });
 
+  it('deleteEntity 删除聚合根时应级联清理依赖该实体的模型引用', () => {
+    const project = createFrozenProject('1.0.0');
+    project.dataModel!.entities = project.dataModel!.entities.map((entity) =>
+      entity.id === 'clause-1'
+        ? { ...entity, entityRole: 'child_entity', parentAggregateId: 'contract-1' }
+        : { ...entity, entityRole: 'aggregate_root' },
+    );
+    project.eventModel!.subscriptions = [{
+      id: 'sub-1',
+      name: '合同事件订阅',
+      eventId: 'event-1',
+      handler: 'async',
+      action: 'notification',
+      actionRef: 'contract-team',
+    }];
+    useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
+
+    useOntologyStore.getState().deleteEntity('contract-1');
+
+    const state = useOntologyStore.getState();
+    expect(state.project?.dataModel?.entities).toEqual([]);
+    expect(state.project?.behaviorModel?.stateMachines).toEqual([]);
+    expect(state.project?.ruleModel?.rules).toEqual([]);
+    expect(state.project?.eventModel?.events).toEqual([]);
+    expect(state.project?.eventModel?.subscriptions).toEqual([]);
+    expect(state.project?.epcModel?.profiles).toEqual([]);
+  });
+
   it('clearAllModels 应保留项目与分类并清空建模数据', () => {
     const project = createFrozenProject('1.0.0');
     useOntologyStore.setState({ project, versions: [], activeModelType: 'event' });

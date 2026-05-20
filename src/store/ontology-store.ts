@@ -646,15 +646,48 @@ export const useOntologyStore = create<OntologyState>()(
         set((state) => {
           if (!state.project?.dataModel) return state;
           const idsToDelete = collectCascadeEntityIds(state.project.dataModel.entities, entityId);
+          const now = new Date().toISOString();
+          const deletedEventIds = new Set(
+            state.project.eventModel?.events
+              .filter((event) => idsToDelete.has(event.entity))
+              .map((event) => event.id) || [],
+          );
+
           return {
             project: {
               ...state.project,
               dataModel: {
                 ...state.project.dataModel,
-                entities: state.project.dataModel.entities.filter((e) => !idsToDelete.has(e.id)),
-                updatedAt: new Date().toISOString(),
+                entities: state.project.dataModel.entities
+                  .filter((e) => !idsToDelete.has(e.id))
+                  .map((entity) => ({
+                    ...entity,
+                    relations: entity.relations.filter((relation) => !idsToDelete.has(relation.targetEntity)),
+                  })),
+                updatedAt: now,
               },
-              updatedAt: new Date().toISOString(),
+              behaviorModel: state.project.behaviorModel ? {
+                ...state.project.behaviorModel,
+                stateMachines: state.project.behaviorModel.stateMachines.filter((sm) => !idsToDelete.has(sm.entity)),
+                updatedAt: now,
+              } : null,
+              ruleModel: state.project.ruleModel ? {
+                ...state.project.ruleModel,
+                rules: state.project.ruleModel.rules.filter((rule) => !idsToDelete.has(rule.entity)),
+                updatedAt: now,
+              } : null,
+              eventModel: state.project.eventModel ? {
+                ...state.project.eventModel,
+                events: state.project.eventModel.events.filter((event) => !idsToDelete.has(event.entity)),
+                subscriptions: state.project.eventModel.subscriptions.filter((subscription) => !deletedEventIds.has(subscription.eventId)),
+                updatedAt: now,
+              } : null,
+              epcModel: state.project.epcModel ? {
+                ...state.project.epcModel,
+                profiles: state.project.epcModel.profiles.filter((profile) => !idsToDelete.has(profile.aggregateId)),
+                updatedAt: now,
+              } : null,
+              updatedAt: now,
             },
           };
         });
@@ -1696,12 +1729,15 @@ export const useOntologyStore = create<OntologyState>()(
         if (!targetVersion) {
           throw new Error('版本不存在');
         }
+        if (targetVersion.projectId !== state.project.id) {
+          throw new Error('版本不属于当前项目');
+        }
 
         // Deep copy from metamodels to project
         set((state) => {
           if (!state.project) return state;
 
-          return {
+          const nextState: Partial<OntologyState> = {
             project: {
               ...state.project,
               dataModel: targetVersion.metamodels.data ? JSON.parse(JSON.stringify(targetVersion.metamodels.data)) : null,
@@ -1712,9 +1748,14 @@ export const useOntologyStore = create<OntologyState>()(
               epcModel: targetVersion.metamodels.epc ? JSON.parse(JSON.stringify(targetVersion.metamodels.epc)) : null,
               updatedAt: new Date().toISOString(),
             },
-            masterDataList: targetVersion.metamodels.masterData ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.definitions)) : [],
-            masterDataRecords: targetVersion.metamodels.masterData ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.records)) : {},
           };
+
+          if (targetVersion.metamodels.masterData) {
+            nextState.masterDataList = JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.definitions));
+            nextState.masterDataRecords = JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.records));
+          }
+
+          return nextState;
         });
       },
 

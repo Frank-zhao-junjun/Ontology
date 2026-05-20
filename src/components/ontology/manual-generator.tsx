@@ -169,6 +169,9 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
     try {
       switch (type) {
         case 'attribute': {
+          const currentEntity = useOntologyStore.getState().project?.dataModel?.entities.find((e) => e.id === entity.id);
+          if (!currentEntity) return;
+
           const newAttr: Attribute = {
             id: generateId(),
             name: item.name || '新属性',
@@ -179,8 +182,8 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
             description: item.description || '',
           };
           updateEntity(entity.id, {
-            ...entity,
-            attributes: [...entity.attributes, newAttr],
+            ...currentEntity,
+            attributes: [...currentEntity.attributes, newAttr],
           });
           rollbackHandlersRef.current.set(itemKey, () => {
             const currentEntity = useOntologyStore.getState().project?.dataModel?.entities.find((e) => e.id === entity.id);
@@ -194,6 +197,9 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
         }
 
         case 'relation': {
+          const currentEntity = useOntologyStore.getState().project?.dataModel?.entities.find((e) => e.id === entity.id);
+          if (!currentEntity) return;
+
           const newRel: Relation = {
             id: generateId(),
             name: item.name || '新关系',
@@ -202,8 +208,8 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
             description: item.description || '',
           };
           updateEntity(entity.id, {
-            ...entity,
-            relations: [...entity.relations, newRel],
+            ...currentEntity,
+            relations: [...currentEntity.relations, newRel],
           });
           rollbackHandlersRef.current.set(itemKey, () => {
             const currentEntity = useOntologyStore.getState().project?.dataModel?.entities.find((e) => e.id === entity.id);
