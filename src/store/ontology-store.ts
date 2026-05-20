@@ -222,6 +222,71 @@ function collectCascadeEntityIds(entities: Entity[], rootId: string): Set<string
   return idsToDelete;
 }
 
+function actionTargetsDeletedEntity(action: Action, idsToDelete: Set<string>): boolean {
+  return Boolean(action.targetEntityId && idsToDelete.has(action.targetEntityId));
+}
+
+function pruneDeletedEntityActions(actions: Action[] | undefined, idsToDelete: Set<string>): Action[] | undefined {
+  if (!actions) return actions;
+  return actions.filter((action) => !actionTargetsDeletedEntity(action, idsToDelete));
+}
+
+function ruleReferencesDeletedEntity(rule: Rule, idsToDelete: Set<string>): boolean {
+  const referencedEntityIds = [
+    rule.entity,
+    rule.condition.checkEntity,
+    rule.condition.refEntity,
+    rule.condition.detailEntity,
+  ].filter(Boolean) as string[];
+
+  return referencedEntityIds.some((id) => idsToDelete.has(id));
+}
+
+function pruneDeletedIds(ids: string[] | undefined, deletedIds: Set<string>): string[] | undefined {
+  if (!ids) return ids;
+  return ids.filter((id) => !deletedIds.has(id));
+}
+
+function scrubDeletedEntityEpcReferences(
+  profile: EpcAggregateProfile,
+  idsToDelete: Set<string>,
+  deletedRuleIds: Set<string>,
+  deletedEventIds: Set<string>,
+): EpcAggregateProfile {
+  const deletedInformationObjectIds = new Set(
+    profile.informationObjects
+      .filter((info) => info.sourceRefId && idsToDelete.has(info.sourceRefId))
+      .map((info) => info.id),
+  );
+
+  const activities = profile.activities
+    .map((activity) => ({
+      ...activity,
+      ruleIds: pruneDeletedIds(activity.ruleIds, deletedRuleIds),
+      inputObjectIds: pruneDeletedIds(activity.inputObjectIds, deletedInformationObjectIds),
+      outputObjectIds: pruneDeletedIds(activity.outputObjectIds, deletedInformationObjectIds),
+    }))
+    .filter((activity) => !(activity.eventId && deletedEventIds.has(activity.eventId)))
+    .filter((activity) => !(activity.derivedFrom === 'rule' && activity.ruleIds && activity.ruleIds.length === 0));
+
+  return {
+    ...profile,
+    status: 'draft',
+    informationObjects: profile.informationObjects.filter((info) => !deletedInformationObjectIds.has(info.id)),
+    activities,
+    connectors: profile.connectors.map((connector) => ({
+      ...connector,
+      branches: connector.branches.map((branch) =>
+        branch.ruleId && deletedRuleIds.has(branch.ruleId)
+          ? { ...branch, ruleId: undefined }
+          : branch,
+      ),
+    })),
+    generatedDocument: undefined,
+    validationSummary: undefined,
+  };
+}
+
 function ensureAggregateRootRoleChangeSafety(existingEntity: Entity, nextEntity: Entity, stateProject: OntologyProject | null): void {
   if (resolveEntityRole(existingEntity) !== 'aggregate_root' || resolveEntityRole(nextEntity) === 'aggregate_root') {
     return;
@@ -652,6 +717,11 @@ export const useOntologyStore = create<OntologyState>()(
               .filter((event) => idsToDelete.has(event.entity))
               .map((event) => event.id) || [],
           );
+          const deletedRuleIds = new Set(
+            state.project.ruleModel?.rules
+              .filter((rule) => ruleReferencesDeletedEntity(rule, idsToDelete))
+              .map((rule) => rule.id) || [],
+          );
 
           return {
             project: {
@@ -668,12 +738,18 @@ export const useOntologyStore = create<OntologyState>()(
               },
               behaviorModel: state.project.behaviorModel ? {
                 ...state.project.behaviorModel,
-                stateMachines: state.project.behaviorModel.stateMachines.filter((sm) => !idsToDelete.has(sm.entity)),
+                stateMachines: state.project.behaviorModel.stateMachines
+                  .filter((sm) => !idsToDelete.has(sm.entity))
+                  .map((sm) => ({
+                    ...sm,
+                    actions: pruneDeletedEntityActions(sm.actions, idsToDelete),
+                  })),
+                actions: pruneDeletedEntityActions(state.project.behaviorModel.actions, idsToDelete),
                 updatedAt: now,
               } : null,
               ruleModel: state.project.ruleModel ? {
                 ...state.project.ruleModel,
-                rules: state.project.ruleModel.rules.filter((rule) => !idsToDelete.has(rule.entity)),
+                rules: state.project.ruleModel.rules.filter((rule) => !ruleReferencesDeletedEntity(rule, idsToDelete)),
                 updatedAt: now,
               } : null,
               eventModel: state.project.eventModel ? {
@@ -684,7 +760,9 @@ export const useOntologyStore = create<OntologyState>()(
               } : null,
               epcModel: state.project.epcModel ? {
                 ...state.project.epcModel,
-                profiles: state.project.epcModel.profiles.filter((profile) => !idsToDelete.has(profile.aggregateId)),
+                profiles: state.project.epcModel.profiles
+                  .filter((profile) => !idsToDelete.has(profile.aggregateId))
+                  .map((profile) => scrubDeletedEntityEpcReferences(profile, idsToDelete, deletedRuleIds, deletedEventIds)),
                 updatedAt: now,
               } : null,
               updatedAt: now,
