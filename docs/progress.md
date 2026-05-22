@@ -31,6 +31,8 @@
 | `992ca01` | fix: serialize project autosaves |
 | `99bc239` | test: cover serialized project service saves |
 | `51612ba` | fix: serialize project service updates |
+| `d99e7a4` | test: cover independent project save queues |
+| `804056b` | fix: scope project save queues by id |
 
 ### 2026-04-20
 
