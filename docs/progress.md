@@ -1,6 +1,6 @@
 # Ontology 项目开发进度
 
-> 最后更新：2026-04-20
+> 最后更新：2026-05-22
 > 当前版本：v2.0 (基于 iteration-plan-v2)
 
 ---
@@ -22,6 +22,13 @@
 ---
 
 ## 近期完成记录
+
+### 2026-05-22
+
+| 提交 | 说明 |
+|------|------|
+| `e35408a` | test: cover autosave queueing |
+| `992ca01` | fix: serialize project autosaves |
 
 ### 2026-04-20
 
