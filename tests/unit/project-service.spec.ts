@@ -37,7 +37,7 @@ describe('project-service updateProject', () => {
 
   it('serializes overlapping saves and persists only the latest queued project', async () => {
     const pendingResponses: Array<() => void> = [];
-    const fetchMock = vi.fn(() => new Promise<Response>((resolve) => {
+    const fetchMock = vi.fn<typeof fetch>(() => new Promise<Response>((resolve) => {
       pendingResponses.push(() => resolve(successfulResponse()));
     }));
     vi.stubGlobal('fetch', fetchMock);
