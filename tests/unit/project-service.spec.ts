@@ -50,9 +50,10 @@ describe('project-service updateProject', () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string).project.name).toBe('第一版');
 
     pendingResponses[0]();
-    await Promise.resolve();
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
     expect(JSON.parse(fetchMock.mock.calls[1][1]?.body as string).project.name).toBe('第三版');
 
     pendingResponses[1]();
