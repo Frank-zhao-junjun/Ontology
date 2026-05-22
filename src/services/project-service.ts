@@ -16,6 +16,56 @@ interface ApiResponse<T> {
   error?: string;
 }
 
+type QueuedProjectUpdate = {
+  project: OntologyProject;
+  waiters: Array<{
+    resolve: () => void;
+    reject: (error: unknown) => void;
+  }>;
+};
+
+let inFlightProjectUpdate: Promise<void> | null = null;
+let queuedProjectUpdate: QueuedProjectUpdate | null = null;
+
+async function persistProjectUpdate(project: OntologyProject): Promise<void> {
+  const response = await fetch(`/api/projects/${project.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ project }),
+  });
+  
+  const result: ApiResponse<unknown> = await response.json();
+  
+  if (!result.success) {
+    throw new Error(result.error || '更新项目失败');
+  }
+}
+
+function startProjectUpdate(project: OntologyProject, waiters?: QueuedProjectUpdate['waiters']): Promise<void> {
+  inFlightProjectUpdate = persistProjectUpdate(project)
+    .then(() => {
+      waiters?.forEach(({ resolve }) => resolve());
+    })
+    .catch((error) => {
+      waiters?.forEach(({ reject }) => reject(error));
+      if (!waiters) {
+        throw error;
+      }
+    })
+    .finally(() => {
+      const nextUpdate = queuedProjectUpdate;
+      queuedProjectUpdate = null;
+
+      if (nextUpdate) {
+        void startProjectUpdate(nextUpdate.project, nextUpdate.waiters);
+      } else {
+        inFlightProjectUpdate = null;
+      }
+    });
+
+  return inFlightProjectUpdate;
+}
+
 // 获取项目列表
 export async function fetchProjects(): Promise<ProjectListItem[]> {
   const response = await fetch('/api/projects');
@@ -57,17 +107,22 @@ export async function createProject(project: OntologyProject): Promise<void> {
 
 // 更新项目
 export async function updateProject(project: OntologyProject): Promise<void> {
-  const response = await fetch(`/api/projects/${project.id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ project }),
-  });
-  
-  const result: ApiResponse<unknown> = await response.json();
-  
-  if (!result.success) {
-    throw new Error(result.error || '更新项目失败');
+  if (inFlightProjectUpdate) {
+    return new Promise<void>((resolve, reject) => {
+      if (queuedProjectUpdate) {
+        queuedProjectUpdate.project = project;
+        queuedProjectUpdate.waiters.push({ resolve, reject });
+        return;
+      }
+
+      queuedProjectUpdate = {
+        project,
+        waiters: [{ resolve, reject }],
+      };
+    });
   }
+
+  return startProjectUpdate(project);
 }
 
 // 删除项目
