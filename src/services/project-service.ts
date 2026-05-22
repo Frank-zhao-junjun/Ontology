@@ -24,8 +24,12 @@ type QueuedProjectUpdate = {
   }>;
 };
 
-let inFlightProjectUpdate: Promise<void> | null = null;
-let queuedProjectUpdate: QueuedProjectUpdate | null = null;
+type ProjectUpdateQueue = {
+  inFlight: Promise<void> | null;
+  queued: QueuedProjectUpdate | null;
+};
+
+const projectUpdateQueues = new Map<string, ProjectUpdateQueue>();
 
 async function persistProjectUpdate(project: OntologyProject): Promise<void> {
   const response = await fetch(`/api/projects/${project.id}`, {
@@ -41,8 +45,26 @@ async function persistProjectUpdate(project: OntologyProject): Promise<void> {
   }
 }
 
-function startProjectUpdate(project: OntologyProject, waiters?: QueuedProjectUpdate['waiters']): Promise<void> {
-  inFlightProjectUpdate = persistProjectUpdate(project)
+function getProjectUpdateQueue(projectId: string): ProjectUpdateQueue {
+  const existingQueue = projectUpdateQueues.get(projectId);
+  if (existingQueue) {
+    return existingQueue;
+  }
+
+  const queue: ProjectUpdateQueue = {
+    inFlight: null,
+    queued: null,
+  };
+  projectUpdateQueues.set(projectId, queue);
+  return queue;
+}
+
+function startProjectUpdate(
+  project: OntologyProject,
+  queue: ProjectUpdateQueue,
+  waiters?: QueuedProjectUpdate['waiters'],
+): Promise<void> {
+  queue.inFlight = persistProjectUpdate(project)
     .then(() => {
       waiters?.forEach(({ resolve }) => resolve());
     })
@@ -53,17 +75,18 @@ function startProjectUpdate(project: OntologyProject, waiters?: QueuedProjectUpd
       }
     })
     .finally(() => {
-      const nextUpdate = queuedProjectUpdate;
-      queuedProjectUpdate = null;
+      const nextUpdate = queue.queued;
+      queue.queued = null;
 
       if (nextUpdate) {
-        void startProjectUpdate(nextUpdate.project, nextUpdate.waiters);
+        void startProjectUpdate(nextUpdate.project, queue, nextUpdate.waiters);
       } else {
-        inFlightProjectUpdate = null;
+        queue.inFlight = null;
+        projectUpdateQueues.delete(project.id);
       }
     });
 
-  return inFlightProjectUpdate;
+  return queue.inFlight;
 }
 
 // 获取项目列表
@@ -107,22 +130,24 @@ export async function createProject(project: OntologyProject): Promise<void> {
 
 // 更新项目
 export async function updateProject(project: OntologyProject): Promise<void> {
-  if (inFlightProjectUpdate) {
+  const queue = getProjectUpdateQueue(project.id);
+
+  if (queue.inFlight) {
     return new Promise<void>((resolve, reject) => {
-      if (queuedProjectUpdate) {
-        queuedProjectUpdate.project = project;
-        queuedProjectUpdate.waiters.push({ resolve, reject });
+      if (queue.queued) {
+        queue.queued.project = project;
+        queue.queued.waiters.push({ resolve, reject });
         return;
       }
 
-      queuedProjectUpdate = {
+      queue.queued = {
         project,
         waiters: [{ resolve, reject }],
       };
     });
   }
 
-  return startProjectUpdate(project);
+  return startProjectUpdate(project, queue);
 }
 
 // 删除项目
