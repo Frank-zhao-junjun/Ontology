@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useOntologyStore } from '@/store/ontology-store';
 import { updateProject } from '@/services/project-service';
+import type { OntologyProject } from '@/types/ontology';
 
 /**
  * 自动同步项目数据到数据库的 hook
@@ -13,9 +14,10 @@ export function useProjectSync() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSyncRef = useRef<string>('');
   const inFlightRef = useRef(false);
-  const queuedSyncRef = useRef<{ project: typeof project; projectJson: string } | null>(null);
+  const queuedSyncRef = useRef<{ project: OntologyProject; projectJson: string } | null>(null);
+  const syncProjectRef = useRef<(projectToSync: OntologyProject, projectJson: string) => Promise<void>>(async () => undefined);
 
-  const syncProject = useCallback(async (projectToSync: NonNullable<typeof project>, projectJson: string): Promise<void> => {
+  syncProjectRef.current = async (projectToSync, projectJson) => {
     if (inFlightRef.current) {
       queuedSyncRef.current = { project: projectToSync, projectJson };
       return;
@@ -36,10 +38,10 @@ export function useProjectSync() {
       queuedSyncRef.current = null;
 
       if (queuedSync && queuedSync.projectJson !== lastSyncRef.current) {
-        void syncProject(queuedSync.project, queuedSync.projectJson);
+        void syncProjectRef.current(queuedSync.project, queuedSync.projectJson);
       }
     }
-  }, []);
+  };
 
   useEffect(() => {
     if (!project) return;
@@ -56,7 +58,7 @@ export function useProjectSync() {
         return;
       }
 
-      await syncProject(project, projectJson);
+      await syncProjectRef.current(project, projectJson);
     }, 2000);
 
     return () => {
@@ -64,5 +66,5 @@ export function useProjectSync() {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [project, syncProject]);
+  }, [project]);
 }
