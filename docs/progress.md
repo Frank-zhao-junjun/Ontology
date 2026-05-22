@@ -29,6 +29,8 @@
 |------|------|
 | `e35408a` | test: cover autosave queueing |
 | `992ca01` | fix: serialize project autosaves |
+| `99bc239` | test: cover serialized project service saves |
+| `51612ba` | fix: serialize project service updates |
 
 ### 2026-04-20
 
