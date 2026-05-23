@@ -108,6 +108,8 @@ export async function GET(request: NextRequest) {
  * 执行代理技能或添加用户故事
  */
 export async function POST(_request: NextRequest) {
+  void _request;
+
   return NextResponse.json(
     {
       success: false,
