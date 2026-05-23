@@ -194,7 +194,7 @@ describe('US-2.3 / IT-BS-003: ModelingWorkspace 按业务场景过滤实体列�
   it('清空建模数据确认后应立即持久化清空后的项目快照', async () => {
     const project = createProject();
     useOntologyStore.setState({ project });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.stubGlobal('confirm', vi.fn(() => true));
 
     render(React.createElement(ModelingWorkspace, { project }));
 
