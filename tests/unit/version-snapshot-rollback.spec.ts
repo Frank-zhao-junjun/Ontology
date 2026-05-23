@@ -100,4 +100,33 @@ describe('US-10.1: 版本快照依赖管理与回滚策略', () => {
     useOntologyStore.setState({ project: null });
     expect(() => store.rollbackVersion('some-id')).toThrow('没有活动项目');
   });
+
+  it('回滚旧版快照缺少主数据段时不应清空当前主数据', () => {
+    setupMockData();
+    const store = useOntologyStore.getState();
+    const version = store.createVersion({
+      version: '1.0.0',
+      name: '旧版快照',
+    });
+
+    useOntologyStore.setState((state) => ({
+      versions: state.versions.map((item) =>
+        item.id === version.id
+          ? {
+              ...item,
+              metamodels: {
+                ...item.metamodels,
+                masterData: undefined,
+              },
+            }
+          : item
+      ),
+    }));
+
+    useOntologyStore.getState().rollbackVersion(version.id);
+
+    const restoredStore = useOntologyStore.getState();
+    expect(restoredStore.masterDataList).toHaveLength(1);
+    expect(restoredStore.masterDataRecords['md-version-test']).toHaveLength(1);
+  });
 });
