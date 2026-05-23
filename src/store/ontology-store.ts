@@ -1712,8 +1712,12 @@ export const useOntologyStore = create<OntologyState>()(
               epcModel: targetVersion.metamodels.epc ? JSON.parse(JSON.stringify(targetVersion.metamodels.epc)) : null,
               updatedAt: new Date().toISOString(),
             },
-            masterDataList: targetVersion.metamodels.masterData ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.definitions)) : [],
-            masterDataRecords: targetVersion.metamodels.masterData ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.records)) : {},
+            masterDataList: targetVersion.metamodels.masterData
+              ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.definitions))
+              : state.masterDataList,
+            masterDataRecords: targetVersion.metamodels.masterData
+              ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.records))
+              : state.masterDataRecords,
           };
         });
       },

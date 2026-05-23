@@ -46,6 +46,14 @@ const RELATION_TYPES = [
 
 const generateId = () => Math.random().toString(36).substring(2, 10);
 
+type PrimitiveAttributeDataType = Exclude<Attribute['dataType'], 'reference'>;
+
+function isPrimitiveAttributeDataType(
+  dataType: Attribute['dataType'] | undefined
+): dataType is PrimitiveAttributeDataType {
+  return Boolean(dataType && dataType !== 'reference');
+}
+
 function parseMasterDataFields(fieldNames?: string): string[] {
   if (!fieldNames) {
     return [];
@@ -65,6 +73,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
   const [editingEntity, setEditingEntity] = useState<Partial<Entity>>({});
   const [editingAttribute, setEditingAttribute] = useState<Partial<Attribute>>({});
   const [editingAttributeId, setEditingAttributeId] = useState<string | null>(null); // null = 新建, 有值 = 编辑
+  const [lastPrimitiveDataType, setLastPrimitiveDataType] = useState<PrimitiveAttributeDataType>('string');
   const [editingRelation, setEditingRelation] = useState<Partial<Relation>>({});
   const [editingRelationId, setEditingRelationId] = useState<string | null>(null);
   const [metadataPopoverOpen, setMetadataPopoverOpen] = useState(false);
@@ -113,6 +122,9 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
     const metadata = metadataList.find(m => m.id === metadataId);
     if (metadata) {
       const dataType = mapMetadataTypeToAttributeType(metadata.type);
+      if (isPrimitiveAttributeDataType(dataType)) {
+        setLastPrimitiveDataType(dataType);
+      }
       setEditingAttribute({
         ...editingAttribute,
         metadataTemplateId: metadata.id,
@@ -134,6 +146,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
   const openEditAttributeDialog = (attr: Attribute) => {
     setEditingAttributeId(attr.id);
     setEditingAttribute({ ...attr });
+    setLastPrimitiveDataType(isPrimitiveAttributeDataType(attr.dataType) ? attr.dataType : 'string');
     setShowAttributeDialog(true);
   };
 
@@ -413,6 +426,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                   <Button size="sm" onClick={() => {
                     setEditingAttribute({});
                     setEditingAttributeId(null);
+                    setLastPrimitiveDataType('string');
                   }}>+ 添加属性</Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-lg">
@@ -541,9 +555,12 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                         disabled={metadataLocked}
                         onValueChange={(value) => {
                           if (value === 'primitive') {
+                            const dataType = isPrimitiveAttributeDataType(editingAttribute.dataType)
+                              ? editingAttribute.dataType
+                              : lastPrimitiveDataType;
                             setEditingAttribute({
                               ...editingAttribute,
-                              dataType: editingAttribute.dataType === 'reference' ? 'string' : (editingAttribute.dataType || 'string'),
+                              dataType,
                               referenceKind: undefined,
                               referencedEntityId: undefined,
                               isMasterDataRef: false,
@@ -554,6 +571,9 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                           }
 
                           if (value === 'entityRef') {
+                            if (isPrimitiveAttributeDataType(editingAttribute.dataType)) {
+                              setLastPrimitiveDataType(editingAttribute.dataType);
+                            }
                             setEditingAttribute({
                               ...editingAttribute,
                               dataType: 'reference',
@@ -566,6 +586,9 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                             return;
                           }
 
+                          if (isPrimitiveAttributeDataType(editingAttribute.dataType)) {
+                            setLastPrimitiveDataType(editingAttribute.dataType);
+                          }
                           setEditingAttribute({
                             ...editingAttribute,
                             dataType: 'reference',
@@ -619,15 +642,21 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                           <Select
                             value={editingDataType}
                             disabled={metadataLocked}
-                            onValueChange={(v) => setEditingAttribute({
-                              ...editingAttribute,
-                              dataType: v as Attribute['dataType'],
-                              referenceKind: undefined,
-                              referencedEntityId: undefined,
-                              isMasterDataRef: false,
-                              masterDataType: undefined,
-                              masterDataField: undefined,
-                            })}
+                            onValueChange={(v) => {
+                              const dataType = v as Attribute['dataType'];
+                              if (isPrimitiveAttributeDataType(dataType)) {
+                                setLastPrimitiveDataType(dataType);
+                              }
+                              setEditingAttribute({
+                                ...editingAttribute,
+                                dataType,
+                                referenceKind: undefined,
+                                referencedEntityId: undefined,
+                                isMasterDataRef: false,
+                                masterDataType: undefined,
+                                masterDataField: undefined,
+                              });
+                            }}
                           >
                             <SelectTrigger id="attribute-type">
                               <SelectValue />
