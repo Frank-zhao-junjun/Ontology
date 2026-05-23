@@ -208,4 +208,23 @@ describe('US-2.3 / IT-BS-003: ModelingWorkspace 按业务场景过滤实体列�
     expect(persistedProject.dataModel?.entities).toEqual([]);
     expect(useOntologyStore.getState().project?.dataModel?.entities).toEqual([]);
   });
+
+  it('清空建模数据立即持久化失败时应恢复本地项目快照', async () => {
+    const project = createProject();
+    useOntologyStore.setState({ project });
+    vi.mocked(updateProject).mockRejectedValueOnce(new Error('network'));
+    vi.stubGlobal('confirm', vi.fn(() => true));
+    const alertMock = vi.fn();
+    vi.stubGlobal('alert', alertMock);
+
+    render(React.createElement(ModelingWorkspace, { project }));
+
+    fireEvent.click(screen.getByRole('button', { name: /清空数据/ }));
+
+    await waitFor(() => {
+      expect(alertMock).toHaveBeenCalledWith('清空建模数据失败，请重试');
+    });
+
+    expect(useOntologyStore.getState().project?.dataModel?.entities).toHaveLength(2);
+  });
 });

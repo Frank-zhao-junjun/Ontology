@@ -129,4 +129,33 @@ describe('US-10.1: 版本快照依赖管理与回滚策略', () => {
     expect(restoredStore.masterDataList).toHaveLength(1);
     expect(restoredStore.masterDataRecords['md-version-test']).toHaveLength(1);
   });
+
+  it('回滚旧版快照主数据段格式异常时不应清空当前主数据', () => {
+    setupMockData();
+    const store = useOntologyStore.getState();
+    const version = store.createVersion({
+      version: '1.0.0',
+      name: '异常旧版快照',
+    });
+
+    useOntologyStore.setState((state) => ({
+      versions: state.versions.map((item) =>
+        item.id === version.id
+          ? {
+              ...item,
+              metamodels: {
+                ...item.metamodels,
+                masterData: {} as never,
+              },
+            }
+          : item
+      ),
+    }));
+
+    expect(() => useOntologyStore.getState().rollbackVersion(version.id)).not.toThrow();
+
+    const restoredStore = useOntologyStore.getState();
+    expect(restoredStore.masterDataList).toHaveLength(1);
+    expect(restoredStore.masterDataRecords['md-version-test']).toHaveLength(1);
+  });
 });
