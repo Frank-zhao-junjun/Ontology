@@ -302,8 +302,10 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
     }
 
     if (!projectBusinessScenarios.some((scenario) => scenario.id === selectedScenarioId)) {
-      setSelectedScenarioId(null);
-      setSelectedEntityId(null);
+      queueMicrotask(() => {
+        setSelectedScenarioId(null);
+        setSelectedEntityId(null);
+      });
     }
   }, [projectBusinessScenarios, selectedProjectId, selectedScenarioId]);
 
