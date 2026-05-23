@@ -78,7 +78,6 @@ export async function GET(request: NextRequest) {
       case 'ralph':
         result = {
           state: ralphLoopManager.getState(),
-          stories: ralphLoopManager.getStories(),
         };
         break;
 

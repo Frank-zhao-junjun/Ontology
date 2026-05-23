@@ -1700,6 +1700,14 @@ export const useOntologyStore = create<OntologyState>()(
         // Deep copy from metamodels to project
         set((state) => {
           if (!state.project) return state;
+          const masterDataSnapshot = targetVersion.metamodels.masterData;
+          const hasCompleteMasterDataSnapshot = Boolean(
+            masterDataSnapshot &&
+            Array.isArray(masterDataSnapshot.definitions) &&
+            masterDataSnapshot.records &&
+            typeof masterDataSnapshot.records === 'object' &&
+            !Array.isArray(masterDataSnapshot.records)
+          );
 
           return {
             project: {
@@ -1712,11 +1720,11 @@ export const useOntologyStore = create<OntologyState>()(
               epcModel: targetVersion.metamodels.epc ? JSON.parse(JSON.stringify(targetVersion.metamodels.epc)) : null,
               updatedAt: new Date().toISOString(),
             },
-            masterDataList: targetVersion.metamodels.masterData
-              ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.definitions))
+            masterDataList: hasCompleteMasterDataSnapshot && masterDataSnapshot
+              ? JSON.parse(JSON.stringify(masterDataSnapshot.definitions))
               : state.masterDataList,
-            masterDataRecords: targetVersion.metamodels.masterData
-              ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.records))
+            masterDataRecords: hasCompleteMasterDataSnapshot && masterDataSnapshot
+              ? JSON.parse(JSON.stringify(masterDataSnapshot.records))
               : state.masterDataRecords,
           };
         });

@@ -248,6 +248,8 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
       return;
     }
 
+    const previousProject = useOntologyStore.getState().project;
+
     try {
       clearAllModels();
       setSelectedEntityId(null);
@@ -258,6 +260,9 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
         await updateProject(updatedProject);
       }
     } catch (error) {
+      if (previousProject) {
+        useOntologyStore.setState({ project: previousProject });
+      }
       console.error('清空建模数据失败:', error);
       alert('清空建模数据失败，请重试');
     }
