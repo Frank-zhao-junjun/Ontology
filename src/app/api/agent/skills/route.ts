@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
  * POST /api/agent/skills
  * 执行代理技能或添加用户故事
  */
-export async function POST() {
+export async function POST(_request: NextRequest) {
   return NextResponse.json(
     {
       success: false,
