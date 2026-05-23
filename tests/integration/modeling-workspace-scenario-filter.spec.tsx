@@ -1,7 +1,9 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ModelingWorkspace } from '@/components/ontology/modeling-workspace';
+import { updateProject } from '@/services/project-service';
+import { useOntologyStore } from '@/store/ontology-store';
 import type { OntologyProject } from '@/types/ontology';
 
 vi.mock('@/hooks/use-project-sync', () => ({
@@ -156,6 +158,11 @@ function createProject(): OntologyProject {
 describe('US-2.3 / IT-BS-003: ModelingWorkspace 按业务场景过滤实体列表', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useOntologyStore.setState({
+      project: null,
+      activeModelType: null,
+    });
+    vi.mocked(updateProject).mockResolvedValue(undefined);
   });
 
   it('未选择业务场景时应禁用新建实体，并显示提示', () => {
@@ -182,5 +189,42 @@ describe('US-2.3 / IT-BS-003: ModelingWorkspace 按业务场景过滤实体列�
     expect(screen.getByText(hasText('场景：到货登记'))).toBeInTheDocument();
     expect(screen.getByText('收货单')).toBeInTheDocument();
     expect(screen.queryByText('采购合同')).not.toBeInTheDocument();
+  });
+
+  it('清空建模数据确认后应立即持久化清空后的项目快照', async () => {
+    const project = createProject();
+    useOntologyStore.setState({ project });
+    vi.stubGlobal('confirm', vi.fn(() => true));
+
+    render(React.createElement(ModelingWorkspace, { project }));
+
+    fireEvent.click(screen.getByRole('button', { name: /清空数据/ }));
+
+    await waitFor(() => {
+      expect(updateProject).toHaveBeenCalledTimes(1);
+    });
+
+    const persistedProject = vi.mocked(updateProject).mock.calls[0][0];
+    expect(persistedProject.dataModel?.entities).toEqual([]);
+    expect(useOntologyStore.getState().project?.dataModel?.entities).toEqual([]);
+  });
+
+  it('清空建模数据立即持久化失败时应恢复本地项目快照', async () => {
+    const project = createProject();
+    useOntologyStore.setState({ project });
+    vi.mocked(updateProject).mockRejectedValueOnce(new Error('network'));
+    vi.stubGlobal('confirm', vi.fn(() => true));
+    const alertMock = vi.fn();
+    vi.stubGlobal('alert', alertMock);
+
+    render(React.createElement(ModelingWorkspace, { project }));
+
+    fireEvent.click(screen.getByRole('button', { name: /清空数据/ }));
+
+    await waitFor(() => {
+      expect(alertMock).toHaveBeenCalledWith('清空建模数据失败，请重试');
+    });
+
+    expect(useOntologyStore.getState().project?.dataModel?.entities).toHaveLength(2);
   });
 });

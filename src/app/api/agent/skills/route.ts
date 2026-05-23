@@ -78,7 +78,6 @@ export async function GET(request: NextRequest) {
       case 'ralph':
         result = {
           state: ralphLoopManager.getState(),
-          stories: ralphLoopManager.getStories(),
         };
         break;
 
@@ -107,97 +106,14 @@ export async function GET(request: NextRequest) {
  * POST /api/agent/skills
  * 执行代理技能或添加用户故事
  */
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { action, type, data } = body;
+export async function POST(_request: NextRequest) {
+  void _request;
 
-    switch (action) {
-      case 'toggle-skill':
-        if (type === 'superpowers') {
-          const { skillId, enabled } = data;
-          const success = superpowersManager.toggleSkill(skillId, enabled);
-          return NextResponse.json({ success });
-        }
-        break;
-
-      case 'add-story':
-        if (type === 'ralph') {
-          const storyId = ralphLoopManager.addStory(data);
-          return NextResponse.json({
-            success: true,
-            storyId,
-          });
-        }
-        break;
-
-      case 'add-stories':
-        if (type === 'ralph') {
-          const storyIds = ralphLoopManager.addStories(data);
-          return NextResponse.json({
-            success: true,
-            storyIds,
-          });
-        }
-        break;
-
-      case 'start-loop':
-        if (type === 'ralph') {
-          // Ralph Loop需要异步执行，这里只返回启动确认
-          return NextResponse.json({
-            success: true,
-            message: 'Ralph Loop已启动',
-            state: ralphLoopManager.getState(),
-          });
-        }
-        break;
-
-      case 'pause-loop':
-        if (type === 'ralph') {
-          ralphLoopManager.pause();
-          return NextResponse.json({
-            success: true,
-            state: ralphLoopManager.getState(),
-          });
-        }
-        break;
-
-      case 'stop-loop':
-        if (type === 'ralph') {
-          ralphLoopManager.stop();
-          return NextResponse.json({
-            success: true,
-            state: ralphLoopManager.getState(),
-          });
-        }
-        break;
-
-      case 'reset-loop':
-        if (type === 'ralph') {
-          ralphLoopManager.reset();
-          return NextResponse.json({
-            success: true,
-            state: ralphLoopManager.getState(),
-          });
-        }
-        break;
-
-      default:
-        return NextResponse.json(
-          { error: '未知的操作类型' },
-          { status: 400 }
-        );
-    }
-
-    return NextResponse.json(
-      { error: '无效的请求参数' },
-      { status: 400 }
-    );
-  } catch (error) {
-    console.error('Agent skills action error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : '操作失败' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    {
+      success: false,
+      error: '代理技能变更操作需要认证与用户级隔离，当前已禁用',
+    },
+    { status: 403 }
+  );
 }

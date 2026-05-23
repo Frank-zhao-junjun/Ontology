@@ -243,6 +243,31 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
     URL.revokeObjectURL(url);
   };
 
+  const handleClearAllModels = async () => {
+    if (!confirm('确定要清空所有建模数据吗？此操作不可恢复，但会保留项目和分类。')) {
+      return;
+    }
+
+    const previousProject = useOntologyStore.getState().project;
+
+    try {
+      clearAllModels();
+      setSelectedEntityId(null);
+      setActiveTab('data');
+
+      const updatedProject = useOntologyStore.getState().project;
+      if (updatedProject) {
+        await updateProject(updatedProject);
+      }
+    } catch (error) {
+      if (previousProject) {
+        useOntologyStore.setState({ project: previousProject });
+      }
+      console.error('清空建模数据失败:', error);
+      alert('清空建模数据失败，请重试');
+    }
+  };
+
   // 获取选中实体相关的模型数据
   const getRelatedModels = (entityId: string | null) => {
     if (!entityId) return null;
@@ -282,8 +307,10 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
     }
 
     if (!projectBusinessScenarios.some((scenario) => scenario.id === selectedScenarioId)) {
-      setSelectedScenarioId(null);
-      setSelectedEntityId(null);
+      queueMicrotask(() => {
+        setSelectedScenarioId(null);
+        setSelectedEntityId(null);
+      });
     }
   }, [projectBusinessScenarios, selectedProjectId, selectedScenarioId]);
 
@@ -614,11 +641,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                 size="sm"
                 className="text-red-600 hover:bg-red-50 hover:text-red-700"
                 onClick={() => {
-                  if (confirm('确定要清空所有建模数据吗？此操作不可恢复，但会保留项目和分类。')) {
-                    clearAllModels();
-                    setSelectedEntityId(null);
-                    setActiveTab('data');
-                  }
+                  void handleClearAllModels();
                 }}
               >
                 🗑️ 清空数据

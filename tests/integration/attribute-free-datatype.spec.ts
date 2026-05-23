@@ -177,6 +177,26 @@ describe('IT-ATTR-META: free modeling (no metadata template)', () => {
         ])
       );
     });
+
+    it('切换到引用维护后再切回直接维护字段时应保留原始基础数据类型', async () => {
+      render(React.createElement(DataModelEditor, { mode: 'entity-detail', entityId: 'entity-contract' }));
+
+      openAttributeDialog();
+      fillAttributeNames('审批顺序', 'approvalOrder');
+      fireEvent.click(screen.getByRole('combobox', { name: '数据类型' }));
+      fireEvent.click(await screen.findByText('整数 (Integer)'));
+
+      fireEvent.click(screen.getByLabelText('维护实体引用'));
+      fireEvent.click(screen.getByLabelText('直接维护字段'));
+      fireEvent.click(screen.getByRole('button', { name: /添加属性|保存修改/i }));
+
+      const savedAttribute = useOntologyStore
+        .getState()
+        .project?.dataModel?.entities.find((entity) => entity.id === 'entity-contract')
+        ?.attributes.find((attribute) => attribute.name === '审批顺序');
+
+      expect(savedAttribute?.dataType).toBe('integer');
+    });
   });
 
   describe('IT-ATTR-META-005 [REQ-ATTR-META-05]', () => {
