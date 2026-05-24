@@ -22,7 +22,7 @@ const PRESET_DOMAINS: Domain[] = [
 ];
 
 export function ProjectSetup() {
-  const { createProject: setProject, importProject } = useOntologyStore();
+  const { importProject } = useOntologyStore();
   const [step, setStep] = useState<'domain' | 'details'>('domain');
   const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -76,7 +76,7 @@ export function ProjectSetup() {
       // 保存到数据库
       await createProject(newProject);
       // 更新本地 store
-      setProject(projectName, domain, projectDescription);
+      importProject(JSON.stringify(newProject));
     } catch (error) {
       console.error('创建项目失败:', error);
       alert(error instanceof Error ? error.message : '创建项目失败');
