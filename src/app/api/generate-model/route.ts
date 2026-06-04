@@ -1,11 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
+import {
+  assessModelSuggestions,
+  buildPersonalizationPrompt,
+  resolvePersonalizationProfile,
+  type ModelSuggestionPersonalization,
+} from '@/lib/ai/suggestion-quality';
 import type { Metadata, MasterData } from '@/types/ontology';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { entity, domain, project, existingModels, metadataList, masterDataList } = body;
+    const {
+      entity,
+      domain,
+      project,
+      existingModels,
+      metadataList,
+      masterDataList,
+      personalization,
+    } = body as {
+      entity: Record<string, unknown>;
+      domain: Record<string, unknown>;
+      project?: Record<string, unknown>;
+      existingModels?: unknown;
+      metadataList?: Metadata[];
+      masterDataList?: MasterData[];
+      personalization?: ModelSuggestionPersonalization;
+    };
 
     if (!entity || !domain) {
       return NextResponse.json(
@@ -139,6 +161,9 @@ export async function POST(request: NextRequest) {
 
 请确保生成的建议符合业务逻辑和领域特点。`;
 
+    const personalizationProfile = resolvePersonalizationProfile(personalization);
+    const personalizationPrompt = buildPersonalizationPrompt(personalization);
+
     const userPrompt = `请为以下业务实体生成四大模型建议：
 
 ## 领域信息
@@ -157,7 +182,9 @@ ${metadataPrompt}${masterDataPrompt}
 ## 已有模型数据
 ${existingModels ? JSON.stringify(existingModels, null, 2) : '暂无已有模型数据'}
 
-请基于领域知识和业务场景，为该实体生成合理的模型建议。`;
+请基于领域知识和业务场景，为该实体生成合理的模型建议。
+
+${personalizationPrompt}`;
 
     const messages = [
       { role: 'system' as const, content: systemPrompt },
@@ -204,10 +231,17 @@ ${existingModels ? JSON.stringify(existingModels, null, 2) : '暂无已有模型
       );
     }
 
+    const qualitySummary = assessModelSuggestions(parsedContent, {
+      metadataNames: (metadataList ?? []).flatMap((item) => [item.name, item.nameEn]),
+      existingAttributeCount: Array.isArray(entity.attributes) ? entity.attributes.length : 0,
+    });
+
     return NextResponse.json({
       success: true,
       data: parsedContent,
-      rawContent: fullContent
+      rawContent: fullContent,
+      qualitySummary,
+      personalizationProfile,
     });
 
   } catch (error) {
