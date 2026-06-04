@@ -259,16 +259,17 @@ gh issue create --title "P0-02: POST /api/manifest/validate" --body "依赖 P0-0
 
 ---
 
-### P0-12 — round-trip 单方 golden 测试（可选 P0 末）
+### P0-12 — round-trip 单方 golden 测试 **【已落地】**
 
 | 项 | 内容 |
 |----|------|
 | **标题** | test(manifest): golden compile + validate manufacturing fixture |
-| **描述** | 项目 → compile → validate；与 `tests/fixtures/manufacturing-manifest.yaml` 关键 id 对齐（平台未就绪前单方验收）。 |
-| **验收标准** | CI 通过；记录在测试 README。 |
-| **涉及文件** | `tests/unit/manifest-compiler.spec.ts` |
+| **描述** | 项目 → compile → validate → export；与 `manufacturing-manifest.yaml` 关键 id 子集对齐（`manufacturing-golden-expectations.json`）。 |
+| **验收标准** | CI 通过；见 `tests/README.md`。 |
+| **涉及文件** | `tests/unit/manifest-manufacturing-golden.spec.ts`、`tests/fixtures/manufacturing-golden-expectations.json` |
 | **依赖** | P0-07、`manifest-export.ts` |
 | **估算** | M |
+| **状态** | ✅ 已落地 |
 
 ---
 
