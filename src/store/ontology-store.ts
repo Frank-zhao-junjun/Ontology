@@ -152,6 +152,11 @@ interface OntologyState {
   updateComplianceRule: (ruleId: string, rule: Partial<ComplianceRule>) => void;
   deleteComplianceRule: (ruleId: string) => void;
 
+  // S10: 枚举定义
+  addEnumDef: (enumDef: import('@/types/ontology').OntologyEnumDef) => void;
+  updateEnumDef: (enumDefId: string, enumDef: Partial<import('@/types/ontology').OntologyEnumDef>) => void;
+  deleteEnumDef: (enumDefId: string) => void;
+
   // 数据源层
   ensureDataSourcesModel: () => DataSourcesModel;
   setDataSourcesModel: (model: DataSourcesModel) => void;
@@ -658,6 +663,7 @@ export const useOntologyStore = create<OntologyState>()(
             projects: [],
             businessScenarios: [],
             entities: [],
+            enumDefs: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
@@ -735,6 +741,7 @@ export const useOntologyStore = create<OntologyState>()(
             projects: [],
             businessScenarios: [],
             entities: [],
+            enumDefs: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
@@ -1817,6 +1824,63 @@ export const useOntologyStore = create<OntologyState>()(
               governanceModel: {
                 ...state.project.governanceModel,
                 complianceRules: (state.project.governanceModel.complianceRules || []).filter((r) => r.id !== ruleId),
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      // S10: 枚举定义 CRUD
+      addEnumDef: (enumDef) => {
+        set((state) => {
+          if (!state.project?.dataModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              dataModel: {
+                ...state.project.dataModel,
+                enumDefs: [...(state.project.dataModel.enumDefs || []), enumDef],
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      updateEnumDef: (enumDefId, enumDef) => {
+        set((state) => {
+          if (!state.project?.dataModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              dataModel: {
+                ...state.project.dataModel,
+                enumDefs: (state.project.dataModel.enumDefs || []).map((ed) =>
+                  ed.id === enumDefId ? { ...ed, ...enumDef } : ed
+                ),
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      deleteEnumDef: (enumDefId) => {
+        set((state) => {
+          if (!state.project?.dataModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              dataModel: {
+                ...state.project.dataModel,
+                enumDefs: (state.project.dataModel.enumDefs || []).filter((ed) => ed.id !== enumDefId),
                 updatedAt: now,
               },
               updatedAt: now,

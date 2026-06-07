@@ -134,7 +134,7 @@ export interface Relation {
   directionality?: 'directed' | 'undirected'; // 关系的方向性
 }
 
-export type EntityRole = 'aggregate_root' | 'child_entity';
+export type EntityRole = 'aggregate_root' | 'child_entity' | 'value_object';
 
 export interface ComputedProperty {
   id: string;
@@ -192,6 +192,26 @@ export interface EntityProject {
   updatedAt?: string;
 }
 
+// S10: 枚举联合策略
+export type EnumCombinationPolicy = 'single' | 'multi' | 'ordered';
+
+export interface OntologyEnumValue {
+  code: string;        // 枚举值编码，如 "PENDING"
+  label: string;       // 中文标签，如 "待处理"
+  labelEn?: string;    // 英文标签，如 "Pending"
+  description?: string;
+  isDefault?: boolean;
+}
+
+export interface OntologyEnumDef {
+  id: string;
+  name: string;
+  nameEn: string;
+  combinationPolicy: EnumCombinationPolicy;  // 选值策略
+  values: OntologyEnumValue[];
+  description?: string;
+}
+
 export interface DataModel {
   id: string;
   name: string;
@@ -200,6 +220,7 @@ export interface DataModel {
   projects: EntityProject[];  // 项目列表
   businessScenarios: BusinessScenario[];  // 业务场景列表
   entities: Entity[];
+  enumDefs?: OntologyEnumDef[];   // S10: 枚举定义
   createdAt: string;
   updatedAt: string;
 }

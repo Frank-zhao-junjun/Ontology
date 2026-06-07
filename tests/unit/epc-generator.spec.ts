@@ -48,6 +48,7 @@ function createProject(): OntologyProject {
           relations: [],
         },
       ],
+      enumDefs: [],
       createdAt: now,
       updatedAt: now,
     },

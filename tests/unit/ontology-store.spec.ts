@@ -146,6 +146,7 @@ describe('Ontology Store State Transitions', () => {
         projects: [{ id: 'module-1', name: '合同中心', nameEn: 'ContractCenter' }],
         businessScenarios: [{ id: 'scenario-1', name: '合同签订', nameEn: 'ContractSign', projectId: 'project-legacy' }],
         entities: [{
+        enumDefs: [],
           id: 'entity-1',
           name: '合同',
           nameEn: 'Contract',

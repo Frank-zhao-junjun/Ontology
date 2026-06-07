@@ -51,11 +51,12 @@ describe('Export Validation', () => {
           projects: [],
           businessScenarios: [],
           entities: [],
+          enumDefs: [],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
       });
-      
+
       await expect(exporter.export(project, { includeData: false }))
         .rejects.toThrow('导出失败：数据模型为空');
     });
@@ -70,6 +71,7 @@ describe('Export Validation', () => {
           projects: [],
           businessScenarios: [],
           entities: [],
+          enumDefs: [],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },

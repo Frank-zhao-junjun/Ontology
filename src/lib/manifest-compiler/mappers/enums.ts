@@ -5,7 +5,10 @@ import type { Entity } from '@/types/ontology';
 import type { ObjectTypeKind } from '@/lib/manifest-validator';
 
 export function mapEntityRoleToObjectTypeKind(entity: Entity): ObjectTypeKind {
-  return resolveEntityRole(entity) === 'aggregate_root' ? 'aggregate_root' : 'entity';
+  const role = resolveEntityRole(entity);
+  if (role === 'aggregate_root') return 'aggregate_root';
+  if (role === 'value_object') return 'value_object';
+  return 'entity';
 }
 
 export function mapRelationCardinality(

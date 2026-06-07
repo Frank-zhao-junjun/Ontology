@@ -121,11 +121,35 @@ export interface ManifestDomainEvent {
   triggerActionId?: string;
 }
 
+export interface ManifestValueObject {
+  id: string;
+  name?: string;
+  nameEn?: string;
+  properties?: ManifestProperty[];
+}
+
+export interface ManifestEnumValue {
+  id: string;
+  name?: string;
+  nameEn: string;
+  description?: string;
+}
+
+export interface ManifestEnumDef {
+  id: string;
+  name?: string;
+  nameEn: string;
+  combinationPolicy: string;
+  values: ManifestEnumValue[];
+  description?: string;
+}
+
 export interface OntologyManifestSemantic {
   boundedContext?: Record<string, unknown>;
   businessScenarios?: Array<{ id: string }>;
   objectTypes?: ManifestObjectType[];
-  valueObjects?: Array<{ id: string }>;
+  valueObjects?: ManifestValueObject[];
+  enumDefs?: ManifestEnumDef[];
   stateMachines?: ManifestStateMachine[];
 }
 

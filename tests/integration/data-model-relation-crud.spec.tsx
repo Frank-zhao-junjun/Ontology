@@ -47,6 +47,7 @@ function initStore() {
             relations: [],
           },
         ],
+        enumDefs: [],
         createdAt: now,
         updatedAt: now,
       },
