@@ -50,6 +50,8 @@ import type {
   MetricsModel,
   BusinessMetric,
   TransactionBoundary,
+  EventSourcingConfig,
+  DeadLetterPolicy,
 } from '@/types/ontology';
 
 interface OntologyState {
@@ -124,6 +126,10 @@ interface OntologyState {
   addSubscription: (subscription: Subscription) => void;
   updateSubscription: (subId: string, subscription: Subscription) => void;
   deleteSubscription: (subId: string) => void;
+  updateEventSourcingConfig: (config: EventSourcingConfig) => void;
+  addDeadLetterPolicy: (policy: DeadLetterPolicy) => void;
+  updateDeadLetterPolicy: (policyId: string, policy: Partial<DeadLetterPolicy>) => void;
+  deleteDeadLetterPolicy: (policyId: string) => void;
 
   // 治理层
   ensureGovernanceModel: () => GovernanceModel;
@@ -1300,6 +1306,7 @@ export const useOntologyStore = create<OntologyState>()(
             domain: state.project.domain.id,
             events: [],
             subscriptions: [],
+            deadLetterPolicies: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
@@ -1365,6 +1372,7 @@ export const useOntologyStore = create<OntologyState>()(
             domain: state.project.domain.id,
             events: [],
             subscriptions: [],
+            deadLetterPolicies: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
@@ -1411,6 +1419,76 @@ export const useOntologyStore = create<OntologyState>()(
               eventModel: {
                 ...state.project.eventModel,
                 subscriptions: state.project.eventModel.subscriptions.filter((s) => s.id !== subId),
+                updatedAt: new Date().toISOString(),
+              },
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+      },
+
+      updateEventSourcingConfig: (config) => {
+        set((state) => {
+          if (!state.project?.eventModel) return state;
+          return {
+            project: {
+              ...state.project,
+              eventModel: {
+                ...state.project.eventModel,
+                eventSourcingConfig: config,
+                updatedAt: new Date().toISOString(),
+              },
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+      },
+
+      addDeadLetterPolicy: (policy) => {
+        set((state) => {
+          if (!state.project?.eventModel) return state;
+          return {
+            project: {
+              ...state.project,
+              eventModel: {
+                ...state.project.eventModel,
+                deadLetterPolicies: [...(state.project.eventModel.deadLetterPolicies || []), policy],
+                updatedAt: new Date().toISOString(),
+              },
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+      },
+
+      updateDeadLetterPolicy: (policyId, policy) => {
+        set((state) => {
+          if (!state.project?.eventModel) return state;
+          return {
+            project: {
+              ...state.project,
+              eventModel: {
+                ...state.project.eventModel,
+                deadLetterPolicies: (state.project.eventModel.deadLetterPolicies || []).map((p) =>
+                  p.id === policyId ? { ...p, ...policy } : p
+                ),
+                updatedAt: new Date().toISOString(),
+              },
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+      },
+
+      deleteDeadLetterPolicy: (policyId) => {
+        set((state) => {
+          if (!state.project?.eventModel) return state;
+          return {
+            project: {
+              ...state.project,
+              eventModel: {
+                ...state.project.eventModel,
+                deadLetterPolicies: (state.project.eventModel.deadLetterPolicies || []).filter((p) => p.id !== policyId),
                 updatedAt: new Date().toISOString(),
               },
               updatedAt: new Date().toISOString(),

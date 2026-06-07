@@ -170,12 +170,32 @@ export interface OntologyManifestBehavior {
   sideEffects?: ManifestSideEffect[];
 }
 
+export interface ManifestEventSourcingConfig {
+  id: string;
+  snapshotInterval: number;
+  retentionDays: number;
+  storeType: string;
+  description?: string;
+}
+
+export interface ManifestDeadLetterPolicy {
+  id: string;
+  name: string;
+  nameEn?: string;
+  maxRetries: number;
+  queue: string;
+  onExhausted: string;
+  description?: string;
+}
+
 export interface OntologyManifestEvents {
   domainEvents?: ManifestDomainEvent[];
   integrationEvents?: Array<{ id: string }>;
   routes?: Array<{ id: string }>;
   handlers?: Array<{ id: string }>;
   eventStore?: Record<string, unknown>;
+  eventSourcingConfig?: ManifestEventSourcingConfig;
+  deadLetterPolicies?: ManifestDeadLetterPolicy[];
 }
 
 export interface OntologyManifestGovernance {

@@ -137,6 +137,7 @@ const createFrozenProject = (version: string): OntologyProject => {
       domain: 'domain-1',
       events,
       subscriptions: [],
+      deadLetterPolicies: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     },

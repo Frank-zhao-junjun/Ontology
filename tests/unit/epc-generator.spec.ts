@@ -110,6 +110,7 @@ function createProject(): OntologyProject {
         },
       ],
       subscriptions: [],
+      deadLetterPolicies: [],
       createdAt: now,
       updatedAt: now,
     },

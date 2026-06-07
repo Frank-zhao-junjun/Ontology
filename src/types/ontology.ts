@@ -475,6 +475,7 @@ export interface Subscription {
   // E4: 幂等性配置
   handlerId?: string;             // 处理器唯一标识
   idempotencyKeyPattern?: string; // 幂等键模式，默认: "{event_id}:{handler_id}"
+  deadLetterPolicyId?: string;    // 死信策略ID（E05）
 }
 
 export interface EventModel {
@@ -484,8 +485,30 @@ export interface EventModel {
   domain: string;
   events: EventDefinition[];
   subscriptions: Subscription[];
+  eventSourcingConfig?: EventSourcingConfig;
+  deadLetterPolicies: DeadLetterPolicy[];
   createdAt: string;
   updatedAt: string;
+}
+
+// E3: 事件溯源配置
+export interface EventSourcingConfig {
+  id: string;
+  snapshotInterval: number;       // 快照间隔（事件数），默认100
+  retentionDays: number;          // 事件保留天数，默认30
+  storeType: 'inline' | 'external'; // 存储类型，默认inline
+  description?: string;
+}
+
+// E5: 死信策略
+export interface DeadLetterPolicy {
+  id: string;
+  name: string;
+  nameEn?: string;
+  maxRetries: number;            // 最大重试次数，默认3
+  queue: string;                 // 死信队列名称
+  onExhausted: 'discard' | 'replay' | 'notify'; // 耗尽策略，默认notify
+  description?: string;
 }
 
 // ========== EPC模型（聚合根业务活动规格说明书） ==========

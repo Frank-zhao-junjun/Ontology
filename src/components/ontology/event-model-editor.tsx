@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { isEntityAggregateRoot } from '@/lib/entity-role';
-import type { EventDefinition, Subscription } from '@/types/ontology';
+import type { EventDefinition, Subscription, EventSourcingConfig, DeadLetterPolicy } from '@/types/ontology';
 
 interface EventModelEditorProps {
   mode?: 'full' | 'entity-detail';
@@ -69,15 +69,20 @@ function getDefaultEventNameEn(entityNameEn: string, trigger: EventDefinition['t
 }
 
 export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorProps) {
-  const { project, addEventDefinition, deleteEventDefinition, addSubscription, deleteSubscription } = useOntologyStore();
+  const { project, addEventDefinition, deleteEventDefinition, addSubscription, deleteSubscription, updateEventSourcingConfig, addDeadLetterPolicy, updateDeadLetterPolicy, deleteDeadLetterPolicy } = useOntologyStore();
   const [showEventDialog, setShowEventDialog] = useState(false);
   const [showSubscriptionDialog, setShowSubscriptionDialog] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Partial<EventDefinition>>({});
   const [editingSubscription, setEditingSubscription] = useState<Partial<Subscription>>({});
-  const [activeTab, setActiveTab] = useState<'events' | 'subscriptions'>('events');
+  const [activeTab, setActiveTab] = useState<'events' | 'subscriptions' | 'config'>('events');
+  const [editingEsConfig, setEditingEsConfig] = useState<Partial<EventSourcingConfig>>({});
+  const [editingDlp, setEditingDlp] = useState<Partial<DeadLetterPolicy>>({});
+  const [showDlpDialog, setShowDlpDialog] = useState(false);
 
   const events = project?.eventModel?.events || [];
   const subscriptions = project?.eventModel?.subscriptions || [];
+  const deadLetterPolicies = project?.eventModel?.deadLetterPolicies || [];
+  const eventSourcingConfig = project?.eventModel?.eventSourcingConfig || null;
   const entities = project?.dataModel?.entities || [];
   const stateMachines = project?.behaviorModel?.stateMachines || [];
   const selectedEntity = entityId ? entities.find(e => e.id === entityId) : null;
@@ -159,6 +164,7 @@ export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorPr
       description: editingSubscription.description?.trim(),
       handlerId: editingSubscription.handlerId?.trim(),
       idempotencyKeyPattern: editingSubscription.idempotencyKeyPattern?.trim(),
+      deadLetterPolicyId: editingSubscription.deadLetterPolicyId,
     };
 
     try {
@@ -189,6 +195,41 @@ export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorPr
 
   const getActionLabel = (action: Subscription['action']) => {
     return SUBSCRIPTION_ACTIONS.find(a => a.value === action)?.label || action;
+  };
+
+  // E3: EventSourcingConfig handlers
+  const handleSaveEsConfig = () => {
+    if (!editingEsConfig.snapshotInterval || !editingEsConfig.retentionDays) return;
+    const config: EventSourcingConfig = {
+      id: eventSourcingConfig?.id || generateId(),
+      snapshotInterval: editingEsConfig.snapshotInterval,
+      retentionDays: editingEsConfig.retentionDays,
+      storeType: editingEsConfig.storeType || 'inline',
+      description: editingEsConfig.description,
+    };
+    updateEventSourcingConfig(config);
+    setEditingEsConfig({});
+  };
+
+  // E5: DeadLetterPolicy handlers
+  const handleSaveDlp = () => {
+    if (!editingDlp.name || !editingDlp.queue) return;
+    const policy: DeadLetterPolicy = {
+      id: editingDlp.id || generateId(),
+      name: editingDlp.name,
+      nameEn: editingDlp.nameEn,
+      maxRetries: editingDlp.maxRetries ?? 3,
+      queue: editingDlp.queue,
+      onExhausted: editingDlp.onExhausted || 'notify',
+      description: editingDlp.description,
+    };
+    if (editingDlp.id) {
+      updateDeadLetterPolicy(editingDlp.id, policy);
+    } else {
+      addDeadLetterPolicy(policy);
+    }
+    setEditingDlp({});
+    setShowDlpDialog(false);
   };
 
   // Entity Detail Mode
@@ -448,6 +489,25 @@ export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorPr
                             />
                           </div>
                         </div>
+                        <div className="space-y-2">
+                          <Label>死信策略</Label>
+                          <Select
+                            value={editingSubscription.deadLetterPolicyId || 'none'}
+                            onValueChange={(v) => setEditingSubscription({ ...editingSubscription, deadLetterPolicyId: v === 'none' ? undefined : v })}
+                          >
+                            <SelectTrigger aria-label="死信策略">
+                              <SelectValue placeholder="无" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">无</SelectItem>
+                              {deadLetterPolicies.map((policy) => (
+                                <SelectItem key={policy.id} value={policy.id}>
+                                  {policy.name} ({policy.onExhausted})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                         {editingSubscription.handler === 'async' && (
                           <div className="space-y-4 rounded-lg border border-dashed p-4">
                             <div className="text-sm font-medium">重试策略</div>
@@ -568,11 +628,193 @@ export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorPr
     );
   }
 
-  // Full mode
+  // Full mode — show model-level config: EventSourcing + DeadLetterPolicies
   return (
-    <div className="text-center py-12 text-muted-foreground">
-      <div className="text-2xl mb-2">📨</div>
-      <p>请从左侧选择实体查看事件模型</p>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">事件溯源配置 (Event Sourcing)</CardTitle>
+          <CardDescription>配置事件存储的快照间隔、保留策略</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {eventSourcingConfig ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>快照间隔</Label>
+                  <div className="font-medium">{eventSourcingConfig.snapshotInterval} 个事件</div>
+                </div>
+                <div className="space-y-2">
+                  <Label>保留天数</Label>
+                  <div className="font-medium">{eventSourcingConfig.retentionDays} 天</div>
+                </div>
+                <div className="space-y-2">
+                  <Label>存储类型</Label>
+                  <div className="font-medium">{eventSourcingConfig.storeType === 'inline' ? '内嵌' : '外部'}</div>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setEditingEsConfig(eventSourcingConfig)}>编辑配置</Button>
+            </div>
+          ) : (
+            <div className="text-center text-muted-foreground py-6">
+              <p>未配置事件溯源</p>
+              <Button variant="outline" size="sm" className="mt-2" onClick={() => setEditingEsConfig({ snapshotInterval: 100, retentionDays: 30, storeType: 'inline' })}>启用事件溯源</Button>
+            </div>
+          )}
+
+          {editingEsConfig.snapshotInterval !== undefined && (
+            <div className="mt-4 space-y-4 rounded-lg border p-4">
+              <div className="text-sm font-medium">{eventSourcingConfig ? '编辑' : '新建'}事件溯源配置</div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>快照间隔（事件数）</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={editingEsConfig.snapshotInterval || ''}
+                    onChange={(e) => setEditingEsConfig({ ...editingEsConfig, snapshotInterval: Number(e.target.value) })}
+                    placeholder="如：100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>保留天数</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={editingEsConfig.retentionDays || ''}
+                    onChange={(e) => setEditingEsConfig({ ...editingEsConfig, retentionDays: Number(e.target.value) })}
+                    placeholder="如：30"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>存储类型</Label>
+                  <Select
+                    value={editingEsConfig.storeType || 'inline'}
+                    onValueChange={(v) => setEditingEsConfig({ ...editingEsConfig, storeType: v as EventSourcingConfig['storeType'] })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inline">内嵌</SelectItem>
+                      <SelectItem value="external">外部</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>描述</Label>
+                <Textarea
+                  value={editingEsConfig.description || ''}
+                  onChange={(e) => setEditingEsConfig({ ...editingEsConfig, description: e.target.value })}
+                  placeholder="事件溯源配置说明"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSaveEsConfig}>保存</Button>
+                <Button size="sm" variant="outline" onClick={() => setEditingEsConfig({})}>取消</Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">死信策略 (Dead Letter Policies)</CardTitle>
+              <CardDescription>管理订阅失败后的死信处理策略</CardDescription>
+            </div>
+            <Dialog open={showDlpDialog} onOpenChange={setShowDlpDialog}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={() => setEditingDlp({ maxRetries: 3, onExhausted: 'notify' })}>+ 添加策略</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{editingDlp.id ? '编辑' : '新建'}死信策略</DialogTitle>
+                  <DialogDescription>定义事件处理失败后的处理规则</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>策略名称</Label>
+                      <Input value={editingDlp.name || ''} onChange={(e) => setEditingDlp({ ...editingDlp, name: e.target.value })} placeholder="如：默认死信" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>英文名称</Label>
+                      <Input value={editingDlp.nameEn || ''} onChange={(e) => setEditingDlp({ ...editingDlp, nameEn: e.target.value })} placeholder="如：default-dlq" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>最大重试次数</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={editingDlp.maxRetries?.toString() || ''}
+                        onChange={(e) => setEditingDlp({ ...editingDlp, maxRetries: Number(e.target.value) })}
+                        placeholder="如：3"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>耗尽策略</Label>
+                      <Select
+                        value={editingDlp.onExhausted || 'notify'}
+                        onValueChange={(v) => setEditingDlp({ ...editingDlp, onExhausted: v as DeadLetterPolicy['onExhausted'] })}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="discard">丢弃</SelectItem>
+                          <SelectItem value="replay">重放</SelectItem>
+                          <SelectItem value="notify">通知</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>死信队列名称</Label>
+                    <Input value={editingDlp.queue || ''} onChange={(e) => setEditingDlp({ ...editingDlp, queue: e.target.value })} placeholder="如：dlq-default" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>描述</Label>
+                    <Textarea value={editingDlp.description || ''} onChange={(e) => setEditingDlp({ ...editingDlp, description: e.target.value })} placeholder="死信策略说明" />
+                  </div>
+                  <Button onClick={handleSaveDlp} className="w-full">{editingDlp.id ? '更新策略' : '添加策略'}</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {deadLetterPolicies.length === 0 ? (
+            <div className="text-center text-muted-foreground py-6">
+              <p>暂无死信策略</p>
+              <p className="text-sm mt-1">添加死信策略来处理订阅失败的事件</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {deadLetterPolicies.map((policy) => (
+                <div key={policy.id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{policy.name}</span>
+                      {policy.nameEn && <span className="text-sm text-muted-foreground">({policy.nameEn})</span>}
+                      <Badge variant="outline">最大{policy.maxRetries}次</Badge>
+                      <Badge variant="outline">{policy.onExhausted === 'discard' ? '丢弃' : policy.onExhausted === 'replay' ? '重放' : '通知'}</Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      队列: {policy.queue}
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => { setEditingDlp(policy); setShowDlpDialog(true); }}>编辑</Button>
+                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => deleteDeadLetterPolicy(policy.id)}>删除</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
