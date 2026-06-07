@@ -707,11 +707,40 @@ export interface GovernanceAgentPolicy {
   defaultDeny?: boolean;
 }
 
+// G3: 数据脱敏策略
+export type MaskingStrategy = 'hash' | 'mask' | 'redact' | 'tokenize';
+
+export interface DataMaskingPolicy {
+  id: string;
+  name: string;
+  nameEn?: string;
+  strategy: MaskingStrategy;          // 脱敏方式
+  fieldPaths: string[];               // 受保护字段路径，如 ["user.phone", "order.idCard"]
+  allowedRoleIds: string[];           // 可查看明文的角色
+  description?: string;
+}
+
+// G5: 合规规则
+export type ComplianceStandard = 'GDPR' | 'HIPAA' | 'ISO27001' | 'PCI-DSS' | 'GB/T35273' | 'custom';
+
+export interface ComplianceRule {
+  id: string;
+  name: string;
+  nameEn?: string;
+  standard: ComplianceStandard;       // 所属合规标准
+  ruleRef: string;                    // 条款编号，如 "GDPR Art.17"
+  affectedObjectTypeIds: string[];    // 适用的对象类型
+  enforcement: 'mandatory' | 'advisory'; // 强制执行或建议
+  description?: string;
+}
+
 export interface GovernanceModel {
   id: string;
   roles: GovernanceRole[];
   fieldPermissions: GovernanceFieldPermission[];
   agentPolicies: GovernanceAgentPolicy[];
+  dataMaskingPolicies: DataMaskingPolicy[];   // G03
+  complianceRules: ComplianceRule[];          // G05
   createdAt: string;
   updatedAt: string;
 }

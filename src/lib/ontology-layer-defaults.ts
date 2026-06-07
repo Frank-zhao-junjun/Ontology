@@ -9,6 +9,8 @@ export function createEmptyGovernanceModel(): GovernanceModel {
     roles: [],
     fieldPermissions: [],
     agentPolicies: [],
+    dataMaskingPolicies: [],
+    complianceRules: [],
     createdAt: now,
     updatedAt: now,
   };

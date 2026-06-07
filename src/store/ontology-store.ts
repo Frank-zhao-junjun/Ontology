@@ -45,6 +45,8 @@ import type {
   GovernanceRole,
   GovernanceFieldPermission,
   GovernanceAgentPolicy,
+  DataMaskingPolicy,
+  ComplianceRule,
   DataSourcesModel,
   DataSourceDefinition,
   MetricsModel,
@@ -143,6 +145,12 @@ interface OntologyState {
   addAgentPolicy: (policy: GovernanceAgentPolicy) => void;
   updateAgentPolicy: (policyId: string, policy: GovernanceAgentPolicy) => void;
   deleteAgentPolicy: (policyId: string) => void;
+  addDataMaskingPolicy: (policy: DataMaskingPolicy) => void;
+  updateDataMaskingPolicy: (policyId: string, policy: Partial<DataMaskingPolicy>) => void;
+  deleteDataMaskingPolicy: (policyId: string) => void;
+  addComplianceRule: (rule: ComplianceRule) => void;
+  updateComplianceRule: (ruleId: string, rule: Partial<ComplianceRule>) => void;
+  deleteComplianceRule: (ruleId: string) => void;
 
   // 数据源层
   ensureDataSourcesModel: () => DataSourcesModel;
@@ -1697,6 +1705,118 @@ export const useOntologyStore = create<OntologyState>()(
                 agentPolicies: state.project.governanceModel.agentPolicies.filter(
                   (p) => p.id !== policyId
                 ),
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      addDataMaskingPolicy: (policy) => {
+        set((state) => {
+          if (!state.project?.governanceModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              governanceModel: {
+                ...state.project.governanceModel,
+                dataMaskingPolicies: [...(state.project.governanceModel.dataMaskingPolicies || []), policy],
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      updateDataMaskingPolicy: (policyId, policy) => {
+        set((state) => {
+          if (!state.project?.governanceModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              governanceModel: {
+                ...state.project.governanceModel,
+                dataMaskingPolicies: (state.project.governanceModel.dataMaskingPolicies || []).map((p) =>
+                  p.id === policyId ? { ...p, ...policy } : p
+                ),
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      deleteDataMaskingPolicy: (policyId) => {
+        set((state) => {
+          if (!state.project?.governanceModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              governanceModel: {
+                ...state.project.governanceModel,
+                dataMaskingPolicies: (state.project.governanceModel.dataMaskingPolicies || []).filter((p) => p.id !== policyId),
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      addComplianceRule: (rule) => {
+        set((state) => {
+          if (!state.project?.governanceModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              governanceModel: {
+                ...state.project.governanceModel,
+                complianceRules: [...(state.project.governanceModel.complianceRules || []), rule],
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      updateComplianceRule: (ruleId, rule) => {
+        set((state) => {
+          if (!state.project?.governanceModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              governanceModel: {
+                ...state.project.governanceModel,
+                complianceRules: (state.project.governanceModel.complianceRules || []).map((r) =>
+                  r.id === ruleId ? { ...r, ...rule } : r
+                ),
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      deleteComplianceRule: (ruleId) => {
+        set((state) => {
+          if (!state.project?.governanceModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              governanceModel: {
+                ...state.project.governanceModel,
+                complianceRules: (state.project.governanceModel.complianceRules || []).filter((r) => r.id !== ruleId),
                 updatedAt: now,
               },
               updatedAt: now,

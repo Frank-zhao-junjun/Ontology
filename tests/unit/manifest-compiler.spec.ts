@@ -107,6 +107,8 @@ describe('manifest-compiler', () => {
         roles: [{ id: 'role-a', name: '角色A', permissions: [] }],
         fieldPermissions: [],
         agentPolicies: [],
+        dataMaskingPolicies: [],
+        complianceRules: [],
         createdAt: now,
         updatedAt: now,
       };

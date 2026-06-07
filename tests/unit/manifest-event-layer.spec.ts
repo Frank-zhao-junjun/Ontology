@@ -25,6 +25,7 @@ const baseProject: OntologyProject = {
   behaviorModel: null as any,
   ruleModel: null as any,
   processModel: null as any,
+  eventModel: null as any,
   epcModel: null as any,
   governanceModel: null as any,
   dataSourcesModel: null as any,
@@ -176,10 +177,12 @@ describe('compileEvents golden test — E03/E04/E05 layers', () => {
           subscriptions: [
             {
               id: 'sub-1',
+              name: '邮件通知订阅',
               eventId: 'ev-order-created',
               actionRef: 'action-send-email',
               handler: 'async',
-              retryPolicy: { maxAttempts: 3, backoffMs: 1000 },
+              action: 'notification',
+              retryPolicy: { maxRetries: 3, backoff: 'fixed', interval: 1000 },
               deadLetterPolicyId: 'dlp-1',
             },
           ],
@@ -219,9 +222,11 @@ describe('compileEvents golden test — E03/E04/E05 layers', () => {
           subscriptions: [
             {
               id: 'sub-2',
+              name: '订单履约订阅',
               eventId: 'ev-order-paid',
               actionRef: 'action-fulfill',
               handler: 'sync',
+              action: 'skill',
             },
           ],
           deadLetterPolicies: [],
@@ -248,10 +253,12 @@ describe('compileEvents golden test — E03/E04/E05 layers', () => {
           subscriptions: [
             {
               id: 'sub-1',
+              name: '通知订阅',
               eventId: 'ev-order-created',
               actionRef: 'action-notify',
               handler: 'async',
-              retryPolicy: { maxAttempts: 3, backoffMs: 2000 },
+              action: 'notification',
+              retryPolicy: { maxRetries: 3, backoff: 'fixed', interval: 2000 },
               deadLetterPolicyId: 'dlp-1',
             },
           ],
