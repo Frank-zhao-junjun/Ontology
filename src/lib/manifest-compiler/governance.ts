@@ -29,5 +29,26 @@ export function compileGovernance(project: OntologyProject): OntologyManifestGov
       allowedActionIds: policy.allowedActionIds,
       defaultDeny: policy.defaultDeny,
     })),
+    // G03: Data Masking Policies
+    dataMaskingPolicies: (governance.dataMaskingPolicies || []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      nameEn: p.nameEn,
+      strategy: p.strategy,
+      fieldPaths: p.fieldPaths,
+      allowedRoleIds: p.allowedRoleIds,
+      description: p.description,
+    })),
+    // G05: Compliance Rules
+    complianceRules: (governance.complianceRules || []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      nameEn: r.nameEn,
+      standard: r.standard,
+      ruleRef: r.ruleRef,
+      affectedObjectTypeIds: r.affectedObjectTypeIds,
+      enforcement: r.enforcement,
+      description: r.description,
+    })),
   };
 }

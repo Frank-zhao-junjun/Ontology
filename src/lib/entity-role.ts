@@ -1,7 +1,11 @@
 import type { Entity, EntityRole, OntologyProject } from '@/types/ontology';
 
 export function resolveEntityRole(entity?: Partial<Entity> | null): EntityRole {
-  if (entity?.entityRole === 'aggregate_root' || entity?.entityRole === 'child_entity') {
+  if (
+    entity?.entityRole === 'aggregate_root' ||
+    entity?.entityRole === 'child_entity' ||
+    entity?.entityRole === 'value_object'
+  ) {
     return entity.entityRole;
   }
 
@@ -36,6 +40,9 @@ export function getEntityRoleLabel(role?: EntityRole): string {
     case 'aggregate_root':
       return '聚合根';
     case 'child_entity':
+      return '聚合内子实体';
+    case 'value_object':
+      return '值对象';
     default:
       return '聚合内子实体';
   }

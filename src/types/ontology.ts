@@ -134,7 +134,7 @@ export interface Relation {
   directionality?: 'directed' | 'undirected'; // 关系的方向性
 }
 
-export type EntityRole = 'aggregate_root' | 'child_entity';
+export type EntityRole = 'aggregate_root' | 'child_entity' | 'value_object';
 
 export interface ComputedProperty {
   id: string;
@@ -192,6 +192,26 @@ export interface EntityProject {
   updatedAt?: string;
 }
 
+// S10: 枚举联合策略
+export type EnumCombinationPolicy = 'single' | 'multi' | 'ordered';
+
+export interface OntologyEnumValue {
+  code: string;        // 枚举值编码，如 "PENDING"
+  label: string;       // 中文标签，如 "待处理"
+  labelEn?: string;    // 英文标签，如 "Pending"
+  description?: string;
+  isDefault?: boolean;
+}
+
+export interface OntologyEnumDef {
+  id: string;
+  name: string;
+  nameEn: string;
+  combinationPolicy: EnumCombinationPolicy;  // 选值策略
+  values: OntologyEnumValue[];
+  description?: string;
+}
+
 export interface DataModel {
   id: string;
   name: string;
@@ -200,6 +220,7 @@ export interface DataModel {
   projects: EntityProject[];  // 项目列表
   businessScenarios: BusinessScenario[];  // 业务场景列表
   entities: Entity[];
+  enumDefs?: OntologyEnumDef[];   // S10: 枚举定义
   createdAt: string;
   updatedAt: string;
 }
@@ -475,6 +496,7 @@ export interface Subscription {
   // E4: 幂等性配置
   handlerId?: string;             // 处理器唯一标识
   idempotencyKeyPattern?: string; // 幂等键模式，默认: "{event_id}:{handler_id}"
+  deadLetterPolicyId?: string;    // 死信策略ID（E05）
 }
 
 export interface EventModel {
@@ -484,8 +506,30 @@ export interface EventModel {
   domain: string;
   events: EventDefinition[];
   subscriptions: Subscription[];
+  eventSourcingConfig?: EventSourcingConfig;
+  deadLetterPolicies: DeadLetterPolicy[];
   createdAt: string;
   updatedAt: string;
+}
+
+// E3: 事件溯源配置
+export interface EventSourcingConfig {
+  id: string;
+  snapshotInterval: number;       // 快照间隔（事件数），默认100
+  retentionDays: number;          // 事件保留天数，默认30
+  storeType: 'inline' | 'external'; // 存储类型，默认inline
+  description?: string;
+}
+
+// E5: 死信策略
+export interface DeadLetterPolicy {
+  id: string;
+  name: string;
+  nameEn?: string;
+  maxRetries: number;            // 最大重试次数，默认3
+  queue: string;                 // 死信队列名称
+  onExhausted: 'discard' | 'replay' | 'notify'; // 耗尽策略，默认notify
+  description?: string;
 }
 
 // ========== EPC模型（聚合根业务活动规格说明书） ==========
@@ -684,11 +728,40 @@ export interface GovernanceAgentPolicy {
   defaultDeny?: boolean;
 }
 
+// G3: 数据脱敏策略
+export type MaskingStrategy = 'hash' | 'mask' | 'redact' | 'tokenize';
+
+export interface DataMaskingPolicy {
+  id: string;
+  name: string;
+  nameEn?: string;
+  strategy: MaskingStrategy;          // 脱敏方式
+  fieldPaths: string[];               // 受保护字段路径，如 ["user.phone", "order.idCard"]
+  allowedRoleIds: string[];           // 可查看明文的角色
+  description?: string;
+}
+
+// G5: 合规规则
+export type ComplianceStandard = 'GDPR' | 'HIPAA' | 'ISO27001' | 'PCI-DSS' | 'GB/T35273' | 'custom';
+
+export interface ComplianceRule {
+  id: string;
+  name: string;
+  nameEn?: string;
+  standard: ComplianceStandard;       // 所属合规标准
+  ruleRef: string;                    // 条款编号，如 "GDPR Art.17"
+  affectedObjectTypeIds: string[];    // 适用的对象类型
+  enforcement: 'mandatory' | 'advisory'; // 强制执行或建议
+  description?: string;
+}
+
 export interface GovernanceModel {
   id: string;
   roles: GovernanceRole[];
   fieldPermissions: GovernanceFieldPermission[];
   agentPolicies: GovernanceAgentPolicy[];
+  dataMaskingPolicies: DataMaskingPolicy[];   // G03
+  complianceRules: ComplianceRule[];          // G05
   createdAt: string;
   updatedAt: string;
 }

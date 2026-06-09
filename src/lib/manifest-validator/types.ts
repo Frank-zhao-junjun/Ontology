@@ -121,11 +121,35 @@ export interface ManifestDomainEvent {
   triggerActionId?: string;
 }
 
+export interface ManifestValueObject {
+  id: string;
+  name?: string;
+  nameEn?: string;
+  properties?: ManifestProperty[];
+}
+
+export interface ManifestEnumValue {
+  id: string;
+  name?: string;
+  nameEn: string;
+  description?: string;
+}
+
+export interface ManifestEnumDef {
+  id: string;
+  name?: string;
+  nameEn: string;
+  combinationPolicy: string;
+  values: ManifestEnumValue[];
+  description?: string;
+}
+
 export interface OntologyManifestSemantic {
   boundedContext?: Record<string, unknown>;
   businessScenarios?: Array<{ id: string }>;
   objectTypes?: ManifestObjectType[];
-  valueObjects?: Array<{ id: string }>;
+  valueObjects?: ManifestValueObject[];
+  enumDefs?: ManifestEnumDef[];
   stateMachines?: ManifestStateMachine[];
 }
 
@@ -170,18 +194,68 @@ export interface OntologyManifestBehavior {
   sideEffects?: ManifestSideEffect[];
 }
 
+export interface ManifestEventSourcingConfig {
+  id: string;
+  snapshotInterval: number;
+  retentionDays: number;
+  storeType: string;
+  description?: string;
+}
+
+export interface ManifestDeadLetterPolicy {
+  id: string;
+  name: string;
+  nameEn?: string;
+  maxRetries: number;
+  queue: string;
+  onExhausted: string;
+  description?: string;
+}
+
+export interface ManifestEventHandler {
+  id: string;
+  eventId?: string;
+  actionRef?: string;
+  deadLetterPolicyId?: string;
+}
+
 export interface OntologyManifestEvents {
   domainEvents?: ManifestDomainEvent[];
   integrationEvents?: Array<{ id: string }>;
   routes?: Array<{ id: string }>;
-  handlers?: Array<{ id: string }>;
+  handlers?: ManifestEventHandler[];
   eventStore?: Record<string, unknown>;
+  eventSourcingConfig?: ManifestEventSourcingConfig;
+  deadLetterPolicies?: ManifestDeadLetterPolicy[];
+}
+
+export interface ManifestDataMaskingPolicy {
+  id: string;
+  name: string;
+  nameEn?: string;
+  strategy: string;
+  fieldPaths: string[];
+  allowedRoleIds: string[];
+  description?: string;
+}
+
+export interface ManifestComplianceRule {
+  id: string;
+  name: string;
+  nameEn?: string;
+  standard: string;
+  ruleRef: string;
+  affectedObjectTypeIds: string[];
+  enforcement: string;
+  description?: string;
 }
 
 export interface OntologyManifestGovernance {
-  roles?: Array<{ id: string }>;
-  fieldPermissions?: Array<{ objectTypeId: string; propertyNameEn: string }>;
-  agentPolicies?: Array<{ id: string }>;
+  roles?: Array<{ id: string; name?: string; permissions?: unknown[] }>;
+  fieldPermissions?: Array<{ objectTypeId: string; propertyNameEn: string; allowedRoleIds?: string[] }>;
+  agentPolicies?: Array<{ id: string; roleId?: string }>;
+  dataMaskingPolicies?: ManifestDataMaskingPolicy[];
+  complianceRules?: ManifestComplianceRule[];
 }
 
 export interface OntologyManifestSpec {

@@ -51,6 +51,7 @@ function createProject(scenarioCount = 1): OntologyProject {
           relations: [],
         },
       ],
+      enumDefs: [],
       createdAt: '2026-04-21T00:00:00.000Z',
       updatedAt: '2026-04-21T00:00:00.000Z',
     },

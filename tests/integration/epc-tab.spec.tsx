@@ -75,7 +75,7 @@ describe('IT-EPC-001: 聚合根 EPC 页签骨架', () => {
         },
         ruleModel: { id: 'rm-1', name: '规则', version: '1.0.0', domain: 'domain-1', rules: [], createdAt: now, updatedAt: now },
         processModel: null,
-        eventModel: { id: 'em-1', name: '事件', version: '1.0.0', domain: 'domain-1', events: [], subscriptions: [], createdAt: now, updatedAt: now },
+        eventModel: { id: 'em-1', name: '事件', version: '1.0.0', domain: 'domain-1', events: [], subscriptions: [], deadLetterPolicies: [], createdAt: now, updatedAt: now },
         epcModel: null,
         createdAt: now,
         updatedAt: now,

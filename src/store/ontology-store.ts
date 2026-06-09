@@ -45,11 +45,15 @@ import type {
   GovernanceRole,
   GovernanceFieldPermission,
   GovernanceAgentPolicy,
+  DataMaskingPolicy,
+  ComplianceRule,
   DataSourcesModel,
   DataSourceDefinition,
   MetricsModel,
   BusinessMetric,
   TransactionBoundary,
+  EventSourcingConfig,
+  DeadLetterPolicy,
 } from '@/types/ontology';
 
 interface OntologyState {
@@ -124,6 +128,10 @@ interface OntologyState {
   addSubscription: (subscription: Subscription) => void;
   updateSubscription: (subId: string, subscription: Subscription) => void;
   deleteSubscription: (subId: string) => void;
+  updateEventSourcingConfig: (config: EventSourcingConfig) => void;
+  addDeadLetterPolicy: (policy: DeadLetterPolicy) => void;
+  updateDeadLetterPolicy: (policyId: string, policy: Partial<DeadLetterPolicy>) => void;
+  deleteDeadLetterPolicy: (policyId: string) => void;
 
   // 治理层
   ensureGovernanceModel: () => GovernanceModel;
@@ -137,6 +145,17 @@ interface OntologyState {
   addAgentPolicy: (policy: GovernanceAgentPolicy) => void;
   updateAgentPolicy: (policyId: string, policy: GovernanceAgentPolicy) => void;
   deleteAgentPolicy: (policyId: string) => void;
+  addDataMaskingPolicy: (policy: DataMaskingPolicy) => void;
+  updateDataMaskingPolicy: (policyId: string, policy: Partial<DataMaskingPolicy>) => void;
+  deleteDataMaskingPolicy: (policyId: string) => void;
+  addComplianceRule: (rule: ComplianceRule) => void;
+  updateComplianceRule: (ruleId: string, rule: Partial<ComplianceRule>) => void;
+  deleteComplianceRule: (ruleId: string) => void;
+
+  // S10: 枚举定义
+  addEnumDef: (enumDef: import('@/types/ontology').OntologyEnumDef) => void;
+  updateEnumDef: (enumDefId: string, enumDef: Partial<import('@/types/ontology').OntologyEnumDef>) => void;
+  deleteEnumDef: (enumDefId: string) => void;
 
   // 数据源层
   ensureDataSourcesModel: () => DataSourcesModel;
@@ -644,6 +663,7 @@ export const useOntologyStore = create<OntologyState>()(
             projects: [],
             businessScenarios: [],
             entities: [],
+            enumDefs: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
@@ -721,6 +741,7 @@ export const useOntologyStore = create<OntologyState>()(
             projects: [],
             businessScenarios: [],
             entities: [],
+            enumDefs: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
@@ -1300,6 +1321,7 @@ export const useOntologyStore = create<OntologyState>()(
             domain: state.project.domain.id,
             events: [],
             subscriptions: [],
+            deadLetterPolicies: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
@@ -1365,6 +1387,7 @@ export const useOntologyStore = create<OntologyState>()(
             domain: state.project.domain.id,
             events: [],
             subscriptions: [],
+            deadLetterPolicies: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
@@ -1411,6 +1434,76 @@ export const useOntologyStore = create<OntologyState>()(
               eventModel: {
                 ...state.project.eventModel,
                 subscriptions: state.project.eventModel.subscriptions.filter((s) => s.id !== subId),
+                updatedAt: new Date().toISOString(),
+              },
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+      },
+
+      updateEventSourcingConfig: (config) => {
+        set((state) => {
+          if (!state.project?.eventModel) return state;
+          return {
+            project: {
+              ...state.project,
+              eventModel: {
+                ...state.project.eventModel,
+                eventSourcingConfig: config,
+                updatedAt: new Date().toISOString(),
+              },
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+      },
+
+      addDeadLetterPolicy: (policy) => {
+        set((state) => {
+          if (!state.project?.eventModel) return state;
+          return {
+            project: {
+              ...state.project,
+              eventModel: {
+                ...state.project.eventModel,
+                deadLetterPolicies: [...(state.project.eventModel.deadLetterPolicies || []), policy],
+                updatedAt: new Date().toISOString(),
+              },
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+      },
+
+      updateDeadLetterPolicy: (policyId, policy) => {
+        set((state) => {
+          if (!state.project?.eventModel) return state;
+          return {
+            project: {
+              ...state.project,
+              eventModel: {
+                ...state.project.eventModel,
+                deadLetterPolicies: (state.project.eventModel.deadLetterPolicies || []).map((p) =>
+                  p.id === policyId ? { ...p, ...policy } : p
+                ),
+                updatedAt: new Date().toISOString(),
+              },
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+      },
+
+      deleteDeadLetterPolicy: (policyId) => {
+        set((state) => {
+          if (!state.project?.eventModel) return state;
+          return {
+            project: {
+              ...state.project,
+              eventModel: {
+                ...state.project.eventModel,
+                deadLetterPolicies: (state.project.eventModel.deadLetterPolicies || []).filter((p) => p.id !== policyId),
                 updatedAt: new Date().toISOString(),
               },
               updatedAt: new Date().toISOString(),
@@ -1619,6 +1712,175 @@ export const useOntologyStore = create<OntologyState>()(
                 agentPolicies: state.project.governanceModel.agentPolicies.filter(
                   (p) => p.id !== policyId
                 ),
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      addDataMaskingPolicy: (policy) => {
+        set((state) => {
+          if (!state.project?.governanceModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              governanceModel: {
+                ...state.project.governanceModel,
+                dataMaskingPolicies: [...(state.project.governanceModel.dataMaskingPolicies || []), policy],
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      updateDataMaskingPolicy: (policyId, policy) => {
+        set((state) => {
+          if (!state.project?.governanceModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              governanceModel: {
+                ...state.project.governanceModel,
+                dataMaskingPolicies: (state.project.governanceModel.dataMaskingPolicies || []).map((p) =>
+                  p.id === policyId ? { ...p, ...policy } : p
+                ),
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      deleteDataMaskingPolicy: (policyId) => {
+        set((state) => {
+          if (!state.project?.governanceModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              governanceModel: {
+                ...state.project.governanceModel,
+                dataMaskingPolicies: (state.project.governanceModel.dataMaskingPolicies || []).filter((p) => p.id !== policyId),
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      addComplianceRule: (rule) => {
+        set((state) => {
+          if (!state.project?.governanceModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              governanceModel: {
+                ...state.project.governanceModel,
+                complianceRules: [...(state.project.governanceModel.complianceRules || []), rule],
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      updateComplianceRule: (ruleId, rule) => {
+        set((state) => {
+          if (!state.project?.governanceModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              governanceModel: {
+                ...state.project.governanceModel,
+                complianceRules: (state.project.governanceModel.complianceRules || []).map((r) =>
+                  r.id === ruleId ? { ...r, ...rule } : r
+                ),
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      deleteComplianceRule: (ruleId) => {
+        set((state) => {
+          if (!state.project?.governanceModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              governanceModel: {
+                ...state.project.governanceModel,
+                complianceRules: (state.project.governanceModel.complianceRules || []).filter((r) => r.id !== ruleId),
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      // S10: 枚举定义 CRUD
+      addEnumDef: (enumDef) => {
+        set((state) => {
+          if (!state.project?.dataModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              dataModel: {
+                ...state.project.dataModel,
+                enumDefs: [...(state.project.dataModel.enumDefs || []), enumDef],
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      updateEnumDef: (enumDefId, enumDef) => {
+        set((state) => {
+          if (!state.project?.dataModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              dataModel: {
+                ...state.project.dataModel,
+                enumDefs: (state.project.dataModel.enumDefs || []).map((ed) =>
+                  ed.id === enumDefId ? { ...ed, ...enumDef } : ed
+                ),
+                updatedAt: now,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      deleteEnumDef: (enumDefId) => {
+        set((state) => {
+          if (!state.project?.dataModel) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              dataModel: {
+                ...state.project.dataModel,
+                enumDefs: (state.project.dataModel.enumDefs || []).filter((ed) => ed.id !== enumDefId),
                 updatedAt: now,
               },
               updatedAt: now,

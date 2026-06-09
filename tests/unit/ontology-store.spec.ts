@@ -112,6 +112,7 @@ function createProjectForEpcSync(): OntologyProject {
       domain: 'domain-1',
       events: [{ id: 'event-1', name: '合同已创建', nameEn: 'ContractCreated', entity: 'contract-1', trigger: 'create', payload: [{ field: 'id' }] }],
       subscriptions: [],
+      deadLetterPolicies: [],
       createdAt: '2026-04-02T00:00:00.000Z',
       updatedAt: '2026-04-02T00:00:00.000Z',
     },
@@ -145,6 +146,7 @@ describe('Ontology Store State Transitions', () => {
         projects: [{ id: 'module-1', name: '合同中心', nameEn: 'ContractCenter' }],
         businessScenarios: [{ id: 'scenario-1', name: '合同签订', nameEn: 'ContractSign', projectId: 'project-legacy' }],
         entities: [{
+        enumDefs: [],
           id: 'entity-1',
           name: '合同',
           nameEn: 'Contract',
