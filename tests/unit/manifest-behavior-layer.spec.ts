@@ -18,6 +18,8 @@ describe('compileBehavior golden test — all B04-B07 layers', () => {
         name: 'data',
         version: '1.0.0',
         domain: 'manufacturing',
+        projects: [],
+        businessScenarios: [],
         entities: [
           {
             id: 'e1',
@@ -71,7 +73,7 @@ describe('compileBehavior golden test — all B04-B07 layers', () => {
         ],
         createdAt: '2026-01-01T00:00:00Z',
         updatedAt: '2026-01-01T00:00:00Z',
-      } as unknown as OntologyProject['dataModel'],
+      } as unknown as OntologyProject['behaviorModel'],
       ruleModel: {
         id: 'rm1',
         name: 'rules',
@@ -92,7 +94,7 @@ describe('compileBehavior golden test — all B04-B07 layers', () => {
         ],
         createdAt: '2026-01-01T00:00:00Z',
         updatedAt: '2026-01-01T00:00:00Z',
-      } as unknown as OntologyProject['dataModel'],
+      } as unknown as OntologyProject['ruleModel'],
       eventModel: null,
       metricsModel: {
         id: 'mm1',
