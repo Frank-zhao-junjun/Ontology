@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 
 const SHEET_HEADERS: Record<string, string[]> = {
   '实体': ['实体名称(必填)', '英文名称(必填)', '实体角色', '父聚合ID', '项目名称', '业务场景', '描述', '业务含义', '同义词(逗号分隔)'],
-  '属性': ['实体英文名称(必填)', '属性名称(必填)', '英文名称(必填)', '数据类型(必填)', '必填', '唯一'],
+  '属性': ['实体英文名称(必填)', '属性名称(必填)', '英文名称(必填)', '数据类型(必填)', '必填', '唯一', '长度'],
   '关系': ['源实体英文名称(必填)', '关系名称(必填)', '关系类型(必填)', '目标实体英文名称(必填)'],
   '状态机': ['实体英文名称(必填)', '状态机名称(必填)', '状态字段', '状态名称(必填)'],
   '规则': ['实体英文名称(必填)', '规则名称(必填)', '规则类型(必填)', '字段', '条件类型', '条件值', '严重程度', '错误消息(必填)'],
@@ -166,5 +166,24 @@ describe('Excel import API', () => {
         errorType: 'invalid_type',
       }),
     ]);
+  });
+
+  it('parses native Excel boolean and numeric cells without crashing', async () => {
+    const result = await importWorkbook({
+      '实体': [['合同', 'Contract', 'aggregate_root', '', '合同中心', '合同签订']],
+      '属性': [['Contract', '合同编号', 'contractNo', 'string', true, false, 50]],
+      '事件': [['Contract', '合同已创建', 'ContractCreated', 'create', '', 'AFTER_COMMIT', true, 'id']],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.parsedData?.attributes[0]).toEqual(expect.objectContaining({
+      required: true,
+      unique: false,
+      length: 50,
+    }));
+    expect(result.parsedData?.events[0]).toEqual(expect.objectContaining({
+      isDomainEvent: true,
+      transactionPhase: 'AFTER_COMMIT',
+    }));
   });
 });

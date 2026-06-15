@@ -319,6 +319,11 @@ interface SheetData {
   rows: Record<string, string>[];
 }
 
+function cellString(row: Record<string, unknown>, key: string): string {
+  const value = row[key];
+  return value === null || value === undefined ? '' : String(value);
+}
+
 function parseExcelToModels(sheets: SheetData[]): ExcelParsedData {
   const entitySheet = sheets.find(s => s.name === '实体');
   const attrSheet = sheets.find(s => s.name === '属性');
@@ -328,50 +333,50 @@ function parseExcelToModels(sheets: SheetData[]): ExcelParsedData {
   const eventSheet = sheets.find(s => s.name === '事件');
 
   const entities = (entitySheet?.rows || []).map(row => ({
-    name: (row['实体名称(必填)'] || '').trim(),
-    nameEn: (row['英文名称(必填)'] || '').trim(),
-    role: ((row['实体角色'] || 'aggregate_root').trim() || 'aggregate_root') as 'aggregate_root' | 'child_entity',
-    parentAggregateId: (row['父聚合ID'] || '').trim() || undefined,
-    projectName: (row['项目名称'] || '').trim() || undefined,
-    businessScenario: (row['业务场景'] || '').trim() || undefined,
-    description: (row['描述'] || '').trim() || undefined,
-    businessMeaning: (row['业务含义'] || '').trim() || undefined,
-    aliases: (row['同义词(逗号分隔)'] || '').trim()
-      ? (row['同义词(逗号分隔)'] || '').split(/[,，]/).map((s: string) => s.trim()).filter(Boolean)
+    name: cellString(row, '实体名称(必填)').trim(),
+    nameEn: cellString(row, '英文名称(必填)').trim(),
+    role: (cellString(row, '实体角色').trim() || 'aggregate_root') as 'aggregate_root' | 'child_entity',
+    parentAggregateId: cellString(row, '父聚合ID').trim() || undefined,
+    projectName: cellString(row, '项目名称').trim() || undefined,
+    businessScenario: cellString(row, '业务场景').trim() || undefined,
+    description: cellString(row, '描述').trim() || undefined,
+    businessMeaning: cellString(row, '业务含义').trim() || undefined,
+    aliases: cellString(row, '同义词(逗号分隔)').trim()
+      ? cellString(row, '同义词(逗号分隔)').split(/[,，]/).map((s: string) => s.trim()).filter(Boolean)
       : undefined,
   }));
 
   const attributes = (attrSheet?.rows || []).map(row => ({
-    entityNameEn: (row['实体英文名称(必填)'] || '').trim(),
-    name: (row['属性名称(必填)'] || '').trim(),
-    nameEn: (row['英文名称(必填)'] || '').trim(),
-    dataType: (row['数据类型(必填)'] || 'string').trim() as AttributeDataType,
-    required: (row['必填'] || '').trim() === 'true',
-    unique: (row['唯一'] || '').trim() === 'true',
-    length: (row['长度'] || '').trim() ? Number(row['长度']) : undefined,
-    precision: (row['精度'] || '').trim() ? Number(row['精度']) : undefined,
-    scale: (row['小数位'] || '').trim() ? Number(row['小数位']) : undefined,
-    defaultValue: (row['默认值'] || '').trim() || undefined,
-    referencedEntityNameEn: (row['引用实体英文名'] || '').trim() || undefined,
-    referenceType: ((row['引用类型'] || '').trim() || undefined) as ExcelParsedData['attributes'][number]['referenceType'],
-    masterDataType: (row['主数据类型'] || '').trim() || undefined,
-    enumRef: (row['枚举引用'] || '').trim() || undefined,
-    description: (row['描述'] || '').trim() || undefined,
-    businessMeaning: (row['业务含义'] || '').trim() || undefined,
-    metadataTemplateName: (row['元数据模板名'] || '').trim() || undefined,
+    entityNameEn: cellString(row, '实体英文名称(必填)').trim(),
+    name: cellString(row, '属性名称(必填)').trim(),
+    nameEn: cellString(row, '英文名称(必填)').trim(),
+    dataType: (cellString(row, '数据类型(必填)').trim() || 'string') as AttributeDataType,
+    required: cellString(row, '必填').trim().toLowerCase() === 'true',
+    unique: cellString(row, '唯一').trim().toLowerCase() === 'true',
+    length: cellString(row, '长度').trim() ? Number(cellString(row, '长度')) : undefined,
+    precision: cellString(row, '精度').trim() ? Number(cellString(row, '精度')) : undefined,
+    scale: cellString(row, '小数位').trim() ? Number(cellString(row, '小数位')) : undefined,
+    defaultValue: cellString(row, '默认值').trim() || undefined,
+    referencedEntityNameEn: cellString(row, '引用实体英文名').trim() || undefined,
+    referenceType: (cellString(row, '引用类型').trim() || undefined) as ExcelParsedData['attributes'][number]['referenceType'],
+    masterDataType: cellString(row, '主数据类型').trim() || undefined,
+    enumRef: cellString(row, '枚举引用').trim() || undefined,
+    description: cellString(row, '描述').trim() || undefined,
+    businessMeaning: cellString(row, '业务含义').trim() || undefined,
+    metadataTemplateName: cellString(row, '元数据模板名').trim() || undefined,
   }));
 
   const relations = (relSheet?.rows || []).map(row => ({
-    sourceEntityNameEn: (row['源实体英文名称(必填)'] || '').trim(),
-    name: (row['关系名称(必填)'] || '').trim(),
-    type: (row['关系类型(必填)'] || 'one_to_many').trim() as 'one_to_one' | 'one_to_many' | 'many_to_many',
-    targetEntityNameEn: (row['目标实体英文名称(必填)'] || '').trim(),
-    foreignKey: (row['外键字段'] || '').trim() || undefined,
-    intermediateEntity: (row['中间实体'] || '').trim() || undefined,
-    cascade: (row['级联'] || 'none').trim() as 'none' | 'cascade' | 'set_null',
-    recursive: (row['递归关系'] || '').trim() === 'true',
-    directed: (row['方向性'] || '').trim() === 'directed',
-    description: (row['描述'] || '').trim() || undefined,
+    sourceEntityNameEn: cellString(row, '源实体英文名称(必填)').trim(),
+    name: cellString(row, '关系名称(必填)').trim(),
+    type: (cellString(row, '关系类型(必填)').trim() || 'one_to_many') as 'one_to_one' | 'one_to_many' | 'many_to_many',
+    targetEntityNameEn: cellString(row, '目标实体英文名称(必填)').trim(),
+    foreignKey: cellString(row, '外键字段').trim() || undefined,
+    intermediateEntity: cellString(row, '中间实体').trim() || undefined,
+    cascade: (cellString(row, '级联').trim() || 'none') as 'none' | 'cascade' | 'set_null',
+    recursive: cellString(row, '递归关系').trim().toLowerCase() === 'true',
+    directed: cellString(row, '方向性').trim() === 'directed',
+    description: cellString(row, '描述').trim() || undefined,
   }));
 
   const stateMachines = parseStateMachines(smSheet?.rows || []);
@@ -391,15 +396,15 @@ function parseStateMachines(rows: Record<string, string>[]) {
   }>();
 
   for (const row of rows) {
-    const entityNameEn = (row['实体英文名称(必填)'] || '').trim();
-    const smName = (row['状态机名称(必填)'] || '').trim();
+    const entityNameEn = cellString(row, '实体英文名称(必填)').trim();
+    const smName = cellString(row, '状态机名称(必填)').trim();
     const key = `${entityNameEn}:${smName}`;
 
     if (!groups.has(key)) {
       groups.set(key, {
         entityNameEn,
         name: smName,
-        statusField: (row['状态字段'] || 'status').trim(),
+        statusField: cellString(row, '状态字段').trim() || 'status',
         states: [],
         transitions: [],
       });
@@ -408,9 +413,9 @@ function parseStateMachines(rows: Record<string, string>[]) {
     const group = groups.get(key)!;
 
     // Parse states (semicolon-separated)
-    const stateNames = (row['状态名称(必填)'] || '').split(/[;；]/).map(s => s.trim()).filter(Boolean);
-    const isInitial = (row['是否初始状态'] || '').trim();
-    const isTerminal = (row['是否终止状态'] || '').trim();
+    const stateNames = cellString(row, '状态名称(必填)').split(/[;；]/).map(s => s.trim()).filter(Boolean);
+    const isInitial = cellString(row, '是否初始状态').trim();
+    const isTerminal = cellString(row, '是否终止状态').trim();
 
     for (const sn of stateNames) {
       if (!group.states.find(s => s.name === sn)) {
@@ -423,9 +428,9 @@ function parseStateMachines(rows: Record<string, string>[]) {
     }
 
     // Parse transitions (semicolon-separated)
-    const transNames = (row['转换名称'] || '').split(/[;；]/).map(s => s.trim()).filter(Boolean);
-    const transPaths = (row['转换从→到'] || '').split(/[;；]/).map(s => s.trim()).filter(Boolean);
-    const triggerTypes = (row['触发类型'] || '').split(/[;；]/).map(s => s.trim()).filter(Boolean);
+    const transNames = cellString(row, '转换名称').split(/[;；]/).map(s => s.trim()).filter(Boolean);
+    const transPaths = cellString(row, '转换从→到').split(/[;；]/).map(s => s.trim()).filter(Boolean);
+    const triggerTypes = cellString(row, '触发类型').split(/[;；]/).map(s => s.trim()).filter(Boolean);
 
     for (let i = 0; i < transNames.length; i++) {
       const path = transPaths[i] || '';
@@ -444,35 +449,35 @@ function parseStateMachines(rows: Record<string, string>[]) {
 
 function parseRules(rows: Record<string, string>[]) {
   return rows.map(row => ({
-    entityNameEn: (row['实体英文名称(必填)'] || '').trim(),
-    name: (row['规则名称(必填)'] || '').trim(),
-    type: ((row['规则类型(必填)'] || 'field_validation').trim() || 'field_validation') as RuleType,
-    field: (row['字段'] || '').trim() || undefined,
-    conditionType: (row['条件类型'] || '').trim(),
-    conditionValue: (row['条件值'] || '').trim() || undefined,
-    severity: ((row['严重程度'] || 'error').trim() || 'error') as 'error' | 'warning' | 'info',
-    errorMessage: (row['错误消息(必填)'] || '').trim(),
-    priority: (row['优先级'] || '').trim() ? Number(row['优先级']) : undefined,
-    enabled: (row['启用'] || 'true').trim() !== 'false',
-    description: (row['描述'] || '').trim() || undefined,
+    entityNameEn: cellString(row, '实体英文名称(必填)').trim(),
+    name: cellString(row, '规则名称(必填)').trim(),
+    type: (cellString(row, '规则类型(必填)').trim() || 'field_validation') as RuleType,
+    field: cellString(row, '字段').trim() || undefined,
+    conditionType: cellString(row, '条件类型').trim(),
+    conditionValue: cellString(row, '条件值').trim() || undefined,
+    severity: (cellString(row, '严重程度').trim() || 'error') as 'error' | 'warning' | 'info',
+    errorMessage: cellString(row, '错误消息(必填)').trim(),
+    priority: cellString(row, '优先级').trim() ? Number(cellString(row, '优先级')) : undefined,
+    enabled: cellString(row, '启用').trim().toLowerCase() !== 'false',
+    description: cellString(row, '描述').trim() || undefined,
   }));
 }
 
 function parseEvents(rows: Record<string, string>[]) {
   return rows.map(row => {
-    const domainEventValue = (row['领域事件'] || '').trim().toLowerCase();
+    const domainEventValue = cellString(row, '领域事件').trim().toLowerCase();
     return {
-      entityNameEn: (row['实体英文名称(必填)'] || '').trim(),
-      name: (row['事件名称(必填)'] || '').trim(),
-      nameEn: (row['英文名称'] || '').trim() || undefined,
-      trigger: ((row['触发时机(必填)'] || 'create').trim() || 'create') as 'create' | 'update' | 'delete' | 'state_change' | 'custom',
-      condition: (row['条件'] || '').trim() || undefined,
-      transactionPhase: ((row['事务阶段'] || '').trim() || 'AFTER_COMMIT') as 'BEFORE_COMMIT' | 'AFTER_COMMIT',
+      entityNameEn: cellString(row, '实体英文名称(必填)').trim(),
+      name: cellString(row, '事件名称(必填)').trim(),
+      nameEn: cellString(row, '英文名称').trim() || undefined,
+      trigger: (cellString(row, '触发时机(必填)').trim() || 'create') as 'create' | 'update' | 'delete' | 'state_change' | 'custom',
+      condition: cellString(row, '条件').trim() || undefined,
+      transactionPhase: (cellString(row, '事务阶段').trim() || 'AFTER_COMMIT') as 'BEFORE_COMMIT' | 'AFTER_COMMIT',
       isDomainEvent: domainEventValue ? domainEventValue === 'true' : true,
-      payloadFields: (row['载荷字段(逗号分隔)'] || '').trim()
-        ? (row['载荷字段(逗号分隔)'] || '').split(/[,，]/).map((s: string) => s.trim()).filter(Boolean)
+      payloadFields: cellString(row, '载荷字段(逗号分隔)').trim()
+        ? cellString(row, '载荷字段(逗号分隔)').split(/[,，]/).map((s: string) => s.trim()).filter(Boolean)
         : undefined,
-      description: (row['描述'] || '').trim() || undefined,
+      description: cellString(row, '描述').trim() || undefined,
     };
   });
 }
