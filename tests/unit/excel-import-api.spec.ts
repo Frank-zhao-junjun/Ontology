@@ -84,4 +84,32 @@ describe('Excel import API', () => {
       }),
     ]);
   });
+
+  it('rejects relation source and target references missing from the entity sheet', async () => {
+    const result = await importWorkbook({
+      '实体': [['合同', 'Contract', 'aggregate_root', '', '合同中心', '合同签订']],
+      '关系': [
+        ['MissingSource', '错误源关系', 'one_to_many', 'Contract'],
+        ['Contract', '错误目标关系', 'one_to_many', 'MissingTarget'],
+      ],
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.validation.errors).toEqual([
+      expect.objectContaining({
+        sheet: '关系',
+        row: 2,
+        column: '源实体英文名称(必填)',
+        value: 'MissingSource',
+        errorType: 'invalid_reference',
+      }),
+      expect.objectContaining({
+        sheet: '关系',
+        row: 3,
+        column: '目标实体英文名称(必填)',
+        value: 'MissingTarget',
+        errorType: 'invalid_reference',
+      }),
+    ]);
+  });
 });

@@ -184,10 +184,16 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // 跨Sheet引用校验: 非实体Sheet中引用的 entityNameEn 必须在实体Sheet中存在
+        // 跨Sheet引用校验: 非实体Sheet中引用的实体英文名必须在实体Sheet中存在
         if (sheetName !== '实体') {
-          const entityNameEnCol = Object.entries(colMap).find(([, s]) => s.key === 'entityNameEn')?.[0];
-          if (entityNameEnCol) {
+          const referenceKeys = sheetName === '关系'
+            ? ['sourceEntityNameEn', 'targetEntityNameEn']
+            : ['entityNameEn'];
+
+          for (const referenceKey of referenceKeys) {
+            const entityNameEnCol = Object.entries(colMap).find(([, s]) => s.key === referenceKey)?.[0];
+            if (!entityNameEnCol) continue;
+
             const colLabel = headers[Number(entityNameEnCol)];
             const refName = (row[colLabel] || '').toString().trim();
             if (refName && !entityNameEns.has(refName)) {

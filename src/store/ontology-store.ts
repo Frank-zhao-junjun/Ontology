@@ -2423,6 +2423,9 @@ export const useOntologyStore = create<OntologyState>()(
           trigger: ev.trigger,
           condition: ev.condition,
           payload: (ev.payloadFields || []).map(f => ({ field: f })),
+          transactionPhase: ev.transactionPhase === 'BEFORE_COMMIT' || ev.transactionPhase === 'AFTER_COMMIT' ? ev.transactionPhase : undefined,
+          isDomainEvent: ev.isDomainEvent,
+          payloadFields: ev.payloadFields,
           description: ev.description,
         }));
 

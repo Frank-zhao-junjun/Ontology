@@ -339,6 +339,48 @@ describe('Ontology Store State Transitions', () => {
     expect(state.versions[0].status).toBe('pending_review');
   });
 
+  it('createVersionFromParsedData 应保留 Excel 事件事务阶段与领域事件字段', () => {
+    const project = createMockProject();
+    useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
+
+    const version = useOntologyStore.getState().createVersionFromParsedData({
+      version: 'v2026-06-15',
+      name: 'Excel导入事件',
+      parsedData: {
+        entities: [{
+          name: '合同',
+          nameEn: 'Contract',
+          role: 'aggregate_root',
+        }],
+        attributes: [],
+        relations: [],
+        stateMachines: [],
+        rules: [],
+        events: [{
+          entityNameEn: 'Contract',
+          name: '合同已提交',
+          nameEn: 'ContractSubmitted',
+          trigger: 'state_change',
+          condition: 'status == submitted',
+          transactionPhase: 'BEFORE_COMMIT',
+          isDomainEvent: true,
+          payloadFields: ['id', 'status'],
+          description: '合同提交后触发',
+        }],
+      },
+    });
+
+    expect(version.metamodels.events?.events[0]).toEqual(expect.objectContaining({
+      name: '合同已提交',
+      nameEn: 'ContractSubmitted',
+      trigger: 'state_change',
+      transactionPhase: 'BEFORE_COMMIT',
+      isDomainEvent: true,
+      payloadFields: ['id', 'status'],
+      payload: [{ field: 'id' }, { field: 'status' }],
+    }));
+  });
+
   it('ensureEpcProfile 与 regenerateEpcDocument 应同步 EPC 派生信息', () => {
     const project = createProjectForEpcSync();
     useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
