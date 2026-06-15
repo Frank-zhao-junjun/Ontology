@@ -1,0 +1,67 @@
+import { describe, expect, it } from 'vitest';
+import { POST } from '@/app/api/excel-import/route';
+import type { ExcelImportResult } from '@/types/ontology';
+import * as XLSX from 'xlsx';
+
+const SHEET_HEADERS: Record<string, string[]> = {
+  '实体': ['实体名称(必填)', '英文名称(必填)', '实体角色', '父聚合ID', '项目名称', '业务场景', '描述', '业务含义', '同义词(逗号分隔)'],
+  '属性': ['实体英文名称(必填)', '属性名称(必填)', '英文名称(必填)', '数据类型(必填)', '必填', '唯一'],
+  '关系': ['源实体英文名称(必填)', '关系名称(必填)', '关系类型(必填)', '目标实体英文名称(必填)'],
+  '状态机': ['实体英文名称(必填)', '状态机名称(必填)', '状态字段', '状态名称(必填)'],
+  '规则': ['实体英文名称(必填)', '规则名称(必填)', '规则类型(必填)', '字段', '条件类型', '条件值', '严重程度', '错误消息(必填)'],
+  '事件': ['实体英文名称(必填)', '事件名称(必填)', '英文名称', '触发时机(必填)', '条件', '事务阶段', '领域事件', '载荷字段(逗号分隔)', '描述'],
+};
+
+function buildWorkbook(rowsBySheet: Record<string, unknown[][]>) {
+  const workbook = XLSX.utils.book_new();
+  for (const [sheetName, headers] of Object.entries(SHEET_HEADERS)) {
+    const rows = rowsBySheet[sheetName] || [];
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+  }
+  return XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+}
+
+async function importWorkbook(rowsBySheet: Record<string, unknown[][]>) {
+  const formData = new FormData();
+  const file = new File([buildWorkbook(rowsBySheet)], 'ontology.xlsx', {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  formData.append('file', file);
+
+  const response = await POST(new Request('http://localhost/api/excel-import', {
+    method: 'POST',
+    body: formData,
+  }) as never);
+
+  return response.json() as Promise<ExcelImportResult>;
+}
+
+describe('Excel import API', () => {
+  it('returns parsed events under the ExcelParsedData events contract', async () => {
+    const result = await importWorkbook({
+      '实体': [['合同', 'Contract', 'aggregate_root', '', '合同中心', '合同签订']],
+      '事件': [['Contract', '合同已创建', 'ContractCreated', 'create', '', '', 'true', 'id,contractNo']],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.parsedData?.events).toEqual([
+      expect.objectContaining({
+        entityNameEn: 'Contract',
+        name: '合同已创建',
+        nameEn: 'ContractCreated',
+        trigger: 'create',
+        payloadFields: ['id', 'contractNo'],
+      }),
+    ]);
+    expect((result.parsedData as unknown as { eventDefinitions?: unknown })?.eventDefinitions).toBeUndefined();
+  });
+
+  it('rejects a workbook with no real entity rows', async () => {
+    const result = await importWorkbook({});
+
+    expect(result.success).toBe(false);
+    expect(result.validation.errorCount).toBeGreaterThan(0);
+    expect(result.errorMessage).toContain('至少需要填写一个实体');
+  });
+});

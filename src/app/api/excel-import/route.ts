@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { ExcelImportResult, ExcelImportError, ExcelImportValidation } from '@/types/ontology';
+import type { AttributeDataType, ExcelImportResult, ExcelImportError, ExcelImportValidation, ExcelParsedData, RuleType } from '@/types/ontology';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -208,7 +208,27 @@ export async function POST(request: NextRequest) {
     // 解析成功 - 生成版本ID + 解析数据
     const versionId = `v-${Date.now()}`;
     const versionName = `v${new Date().toISOString().slice(0, 10)}`;
-    const parsedData = parseExcelToModels(sheetDataList, entityNameEns);
+    const parsedData = parseExcelToModels(sheetDataList);
+    if (parsedData.entities.length === 0) {
+      const emptyEntityError: ExcelImportError = {
+        sheet: '实体',
+        row: 2,
+        column: '实体名称(必填)',
+        value: '',
+        errorType: 'missing_required',
+        message: '至少需要填写一个实体',
+      };
+      return NextResponse.json({
+        success: false,
+        errorMessage: emptyEntityError.message,
+        validation: {
+          totalRows,
+          validRows: 0,
+          errorCount: 1,
+          errors: [emptyEntityError],
+        },
+      } as ExcelImportResult, { status: 200 });
+    }
 
     return NextResponse.json({
       success: true,
@@ -235,7 +255,7 @@ interface SheetData {
   rows: Record<string, string>[];
 }
 
-function parseExcelToModels(sheets: SheetData[], entityNameEns: Set<string>) {
+function parseExcelToModels(sheets: SheetData[]): ExcelParsedData {
   const entitySheet = sheets.find(s => s.name === '实体');
   const attrSheet = sheets.find(s => s.name === '属性');
   const relSheet = sheets.find(s => s.name === '关系');
@@ -261,7 +281,7 @@ function parseExcelToModels(sheets: SheetData[], entityNameEns: Set<string>) {
     entityNameEn: (row['实体英文名称(必填)'] || '').trim(),
     name: (row['属性名称(必填)'] || '').trim(),
     nameEn: (row['英文名称(必填)'] || '').trim(),
-    dataType: (row['数据类型(必填)'] || 'string').trim() as string,
+    dataType: (row['数据类型(必填)'] || 'string').trim() as AttributeDataType,
     required: (row['必填'] || '').trim() === 'true',
     unique: (row['唯一'] || '').trim() === 'true',
     length: (row['长度'] || '').trim() ? Number(row['长度']) : undefined,
@@ -269,7 +289,7 @@ function parseExcelToModels(sheets: SheetData[], entityNameEns: Set<string>) {
     scale: (row['小数位'] || '').trim() ? Number(row['小数位']) : undefined,
     defaultValue: (row['默认值'] || '').trim() || undefined,
     referencedEntityNameEn: (row['引用实体英文名'] || '').trim() || undefined,
-    referenceType: (row['引用类型'] || '').trim() || undefined,
+    referenceType: ((row['引用类型'] || '').trim() || undefined) as ExcelParsedData['attributes'][number]['referenceType'],
     masterDataType: (row['主数据类型'] || '').trim() || undefined,
     enumRef: (row['枚举引用'] || '').trim() || undefined,
     description: (row['描述'] || '').trim() || undefined,
@@ -294,7 +314,7 @@ function parseExcelToModels(sheets: SheetData[], entityNameEns: Set<string>) {
   const rules = parseRules(ruleSheet?.rows || []);
   const events = parseEvents(eventSheet?.rows || []);
 
-  return { entities, attributes, relations, stateMachines, rules, eventDefinitions: events };
+  return { entities, attributes, relations, stateMachines, rules, events };
 }
 
 function parseStateMachines(rows: Record<string, string>[]) {
@@ -362,7 +382,7 @@ function parseRules(rows: Record<string, string>[]) {
   return rows.map(row => ({
     entityNameEn: (row['实体英文名称(必填)'] || '').trim(),
     name: (row['规则名称(必填)'] || '').trim(),
-    type: (row['规则类型(必填)'] || 'field_validation').trim() as string,
+    type: ((row['规则类型(必填)'] || 'field_validation').trim() || 'field_validation') as RuleType,
     field: (row['字段'] || '').trim() || undefined,
     conditionType: (row['条件类型'] || '').trim(),
     conditionValue: (row['条件值'] || '').trim() || undefined,

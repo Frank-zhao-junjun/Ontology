@@ -229,6 +229,53 @@ describe('Ontology Store State Transitions', () => {
     expect(savedVersion?.metamodels.epc?.profiles.length).toBeGreaterThan(0);
   });
 
+  it('createVersionFromParsedData 应保留 Excel 项目场景归属并解析父聚合英文名', () => {
+    const project = createMockProject();
+    useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
+
+    const version = useOntologyStore.getState().createVersionFromParsedData({
+      version: 'v2026-06-15',
+      name: 'Excel导入',
+      parsedData: {
+        entities: [
+          {
+            name: '合同',
+            nameEn: 'Contract',
+            role: 'aggregate_root',
+            projectName: '合同中心',
+            businessScenario: '合同签订',
+          },
+          {
+            name: '合同明细',
+            nameEn: 'ContractLine',
+            role: 'child_entity',
+            parentAggregateId: 'Contract',
+            projectName: '合同中心',
+            businessScenario: '合同签订',
+          },
+        ],
+        attributes: [],
+        relations: [],
+        stateMachines: [],
+        rules: [],
+        events: [],
+      },
+    });
+
+    const dataModel = version.metamodels.data;
+    const importedProject = dataModel?.projects.find((item) => item.name === '合同中心');
+    const importedScenario = dataModel?.businessScenarios.find((item) => item.name === '合同签订');
+    const aggregate = dataModel?.entities.find((item) => item.nameEn === 'Contract');
+    const child = dataModel?.entities.find((item) => item.nameEn === 'ContractLine');
+
+    expect(importedScenario?.projectId).toBe(importedProject?.id);
+    expect(aggregate?.projectId).toBe(importedProject?.id);
+    expect(aggregate?.businessScenarioId).toBe(importedScenario?.id);
+    expect(child?.projectId).toBe(importedProject?.id);
+    expect(child?.businessScenarioId).toBe(importedScenario?.id);
+    expect(child?.parentAggregateId).toBe(aggregate?.id);
+  });
+
   it('ensureEpcProfile 与 regenerateEpcDocument 应同步 EPC 派生信息', () => {
     const project = createProjectForEpcSync();
     useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
