@@ -90,9 +90,29 @@ export async function POST(request: NextRequest) {
     const entitySheet = wb.Sheets['实体'];
     if (entitySheet) {
       const entityData = XLSX.utils.sheet_to_json<Record<string, string>>(entitySheet, { defval: '' });
-      for (const row of entityData) {
+      const seenEntityNameEns = new Set<string>();
+      for (let i = 0; i < entityData.length; i++) {
+        const row = entityData[i];
+        const firstVal = Object.values(row)[0] || '';
+        const firstStr = firstVal.toString();
+        if (firstStr.startsWith('#DESC#') || firstStr.startsWith('#EXAMPLE#')) continue;
+
         const nameEn = row['英文名称(必填)'] || '';
-        if (nameEn) entityNameEns.add(nameEn.trim());
+        const trimmedNameEn = nameEn.trim();
+        if (!trimmedNameEn) continue;
+        if (seenEntityNameEns.has(trimmedNameEn)) {
+          allErrors.push({
+            sheet: '实体',
+            row: i + 2,
+            column: '英文名称(必填)',
+            value: trimmedNameEn,
+            errorType: 'duplicate',
+            message: `第${i + 2}行: 英文名称"${trimmedNameEn}"重复`,
+          });
+          continue;
+        }
+        seenEntityNameEns.add(trimmedNameEn);
+        entityNameEns.add(trimmedNameEn);
       }
     }
 

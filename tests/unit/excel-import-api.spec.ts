@@ -64,4 +64,24 @@ describe('Excel import API', () => {
     expect(result.validation.errorCount).toBeGreaterThan(0);
     expect(result.errorMessage).toContain('至少需要填写一个实体');
   });
+
+  it('rejects duplicate entity English names before model parsing', async () => {
+    const result = await importWorkbook({
+      '实体': [
+        ['合同', 'Contract', 'aggregate_root', '', '合同中心', '合同签订'],
+        ['合同副本', 'Contract', 'aggregate_root', '', '合同中心', '合同签订'],
+      ],
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.validation.errors).toEqual([
+      expect.objectContaining({
+        sheet: '实体',
+        row: 3,
+        column: '英文名称(必填)',
+        value: 'Contract',
+        errorType: 'duplicate',
+      }),
+    ]);
+  });
 });

@@ -276,6 +276,69 @@ describe('Ontology Store State Transitions', () => {
     expect(child?.parentAggregateId).toBe(aggregate?.id);
   });
 
+  it('createVersionFromParsedData 应拒绝空实体的 Excel 解析数据', () => {
+    const project = createMockProject();
+    useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
+
+    expect(() => useOntologyStore.getState().createVersionFromParsedData({
+      version: 'v2026-06-15',
+      name: '空 Excel 导入',
+      parsedData: {
+        entities: [],
+        attributes: [],
+        relations: [],
+        stateMachines: [],
+        rules: [],
+        events: [],
+      },
+    })).toThrow('至少需要填写一个实体');
+
+    expect(useOntologyStore.getState().versions).toEqual([]);
+  });
+
+  it('approveVersion 不应应用空实体的历史 Excel 导入版本', () => {
+    const project = createMockProject();
+    useOntologyStore.setState({
+      project,
+      versions: [{
+        id: 'empty-excel-version',
+        projectId: project.id,
+        version: 'v2026-06-15',
+        name: '空 Excel 导入',
+        metamodels: {
+          data: {
+            id: 'empty-data',
+            name: '空数据模型',
+            version: '1.0.0',
+            domain: project.domain.name,
+            projects: [],
+            businessScenarios: [],
+            entities: [],
+            createdAt: '2026-06-15T00:00:00.000Z',
+            updatedAt: '2026-06-15T00:00:00.000Z',
+          },
+          behavior: null,
+          rules: null,
+          process: null,
+          events: null,
+          epc: null,
+          masterData: { definitions: [], records: {} },
+        },
+        createdAt: '2026-06-15T00:00:00.000Z',
+        status: 'pending_review',
+        source: 'excel_import',
+      }],
+      activeModelType: 'data',
+    });
+
+    useOntologyStore.getState().approveVersion('empty-excel-version');
+
+    const state = useOntologyStore.getState();
+    expect(state.project?.dataModel?.entities).toHaveLength(1);
+    expect(state.project?.dataModel?.entities[0].nameEn).toBe('Contract');
+    expect(state.versions[0].status).toBe('pending_review');
+  });
+
   it('ensureEpcProfile 与 regenerateEpcDocument 应同步 EPC 派生信息', () => {
     const project = createProjectForEpcSync();
     useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });

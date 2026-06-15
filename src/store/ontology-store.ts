@@ -2231,6 +2231,10 @@ export const useOntologyStore = create<OntologyState>()(
         }
 
         const { parsedData } = config;
+        if (parsedData.entities.length === 0) {
+          throw new Error('至少需要填写一个实体');
+        }
+
         const now = new Date().toISOString();
 
         // Collect project names and business scenarios from parsed data
@@ -2545,6 +2549,7 @@ export const useOntologyStore = create<OntologyState>()(
         const state = get();
         const version = state.versions.find((v) => v.id === versionId);
         if (!version || version.status !== 'pending_review') return;
+        if (version.source === 'excel_import' && version.metamodels.data?.entities.length === 0) return;
 
         // 将版本数据应用到工作区
         set((s) => ({
