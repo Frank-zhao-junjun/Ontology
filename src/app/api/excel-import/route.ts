@@ -46,6 +46,8 @@ const SHEET_HEADER_MAP: Record<string, Record<number, { key: string; required: b
     0: { key: 'entityNameEn', required: true, type: 'string' },
     1: { key: 'name', required: true, type: 'string' },
     3: { key: 'trigger', required: true, type: 'enum', enumValues: ['create', 'update', 'delete', 'state_change', 'custom'] },
+    5: { key: 'transactionPhase', required: false, type: 'enum', enumValues: ['BEFORE_COMMIT', 'AFTER_COMMIT'] },
+    6: { key: 'isDomainEvent', required: false, type: 'boolean' },
   },
 };
 
@@ -85,6 +87,7 @@ export async function POST(request: NextRequest) {
     const allErrors: ExcelImportError[] = [];
     let totalRows = 0;
     const entityNameEns = new Set<string>();
+    const entityRoles = new Map<string, 'aggregate_root' | 'child_entity'>();
 
     // 第一遍: 收集实体名
     const entitySheet = wb.Sheets['实体'];
@@ -113,6 +116,41 @@ export async function POST(request: NextRequest) {
         }
         seenEntityNameEns.add(trimmedNameEn);
         entityNameEns.add(trimmedNameEn);
+        entityRoles.set(trimmedNameEn, ((row['实体角色'] || 'aggregate_root').trim() || 'aggregate_root') as 'aggregate_root' | 'child_entity');
+      }
+
+      for (let i = 0; i < entityData.length; i++) {
+        const row = entityData[i];
+        const firstVal = Object.values(row)[0] || '';
+        const firstStr = firstVal.toString();
+        if (firstStr.startsWith('#DESC#') || firstStr.startsWith('#EXAMPLE#')) continue;
+
+        const role = ((row['实体角色'] || 'aggregate_root').trim() || 'aggregate_root') as 'aggregate_root' | 'child_entity';
+        if (role !== 'child_entity') continue;
+
+        const parentAggregateNameEn = (row['父聚合ID'] || '').trim();
+        if (!parentAggregateNameEn) {
+          allErrors.push({
+            sheet: '实体',
+            row: i + 2,
+            column: '父聚合ID',
+            value: '',
+            errorType: 'missing_required',
+            message: `第${i + 2}行: 子实体必须填写父聚合ID`,
+          });
+          continue;
+        }
+
+        if (!entityNameEns.has(parentAggregateNameEn) || entityRoles.get(parentAggregateNameEn) !== 'aggregate_root') {
+          allErrors.push({
+            sheet: '实体',
+            row: i + 2,
+            column: '父聚合ID',
+            value: parentAggregateNameEn,
+            errorType: 'invalid_reference',
+            message: `第${i + 2}行: 父聚合"${parentAggregateNameEn}"必须是实体Sheet中的聚合根`,
+          });
+        }
       }
     }
 
@@ -421,17 +459,20 @@ function parseRules(rows: Record<string, string>[]) {
 }
 
 function parseEvents(rows: Record<string, string>[]) {
-  return rows.map(row => ({
-    entityNameEn: (row['实体英文名称(必填)'] || '').trim(),
-    name: (row['事件名称(必填)'] || '').trim(),
-    nameEn: (row['英文名称'] || '').trim() || undefined,
-    trigger: ((row['触发时机(必填)'] || 'create').trim() || 'create') as 'create' | 'update' | 'delete' | 'state_change' | 'custom',
-    condition: (row['条件'] || '').trim() || undefined,
-    transactionPhase: (row['事务阶段'] || '').trim() || undefined,
-    isDomainEvent: (row['领域事件'] || '').trim() === 'true',
-    payloadFields: (row['载荷字段(逗号分隔)'] || '').trim()
-      ? (row['载荷字段(逗号分隔)'] || '').split(/[,，]/).map((s: string) => s.trim()).filter(Boolean)
-      : undefined,
-    description: (row['描述'] || '').trim() || undefined,
-  }));
+  return rows.map(row => {
+    const domainEventValue = (row['领域事件'] || '').trim().toLowerCase();
+    return {
+      entityNameEn: (row['实体英文名称(必填)'] || '').trim(),
+      name: (row['事件名称(必填)'] || '').trim(),
+      nameEn: (row['英文名称'] || '').trim() || undefined,
+      trigger: ((row['触发时机(必填)'] || 'create').trim() || 'create') as 'create' | 'update' | 'delete' | 'state_change' | 'custom',
+      condition: (row['条件'] || '').trim() || undefined,
+      transactionPhase: ((row['事务阶段'] || '').trim() || 'AFTER_COMMIT') as 'BEFORE_COMMIT' | 'AFTER_COMMIT',
+      isDomainEvent: domainEventValue ? domainEventValue === 'true' : true,
+      payloadFields: (row['载荷字段(逗号分隔)'] || '').trim()
+        ? (row['载荷字段(逗号分隔)'] || '').split(/[,，]/).map((s: string) => s.trim()).filter(Boolean)
+        : undefined,
+      description: (row['描述'] || '').trim() || undefined,
+    };
+  });
 }

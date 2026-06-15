@@ -2234,6 +2234,17 @@ export const useOntologyStore = create<OntologyState>()(
         if (parsedData.entities.length === 0) {
           throw new Error('至少需要填写一个实体');
         }
+        const parsedEntityByNameEn = new Map(parsedData.entities.map(entity => [entity.nameEn, entity]));
+        for (const entity of parsedData.entities) {
+          if (entity.role !== 'child_entity') continue;
+          if (!entity.parentAggregateId) {
+            throw new Error(`子实体"${entity.name}"必须填写父聚合`);
+          }
+          const parentAggregate = parsedEntityByNameEn.get(entity.parentAggregateId);
+          if (!parentAggregate || parentAggregate.role !== 'aggregate_root') {
+            throw new Error(`子实体"${entity.name}"的父聚合"${entity.parentAggregateId}"不存在或不是聚合根`);
+          }
+        }
 
         const now = new Date().toISOString();
 
@@ -2289,7 +2300,7 @@ export const useOntologyStore = create<OntologyState>()(
             businessMeaning: e.businessMeaning,
             aliases: e.aliases,
             entityRole: e.role,
-            parentAggregateId: e.parentAggregateId ? (entityMap.get(e.parentAggregateId) || e.parentAggregateId) : undefined,
+            parentAggregateId: e.parentAggregateId ? entityMap.get(e.parentAggregateId) : undefined,
             attributes: [],
             relations: [],
             computedProperties: [],

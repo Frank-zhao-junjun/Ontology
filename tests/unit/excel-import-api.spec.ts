@@ -112,4 +112,59 @@ describe('Excel import API', () => {
       }),
     ]);
   });
+
+  it('rejects child entities whose parent aggregate English name is invalid', async () => {
+    const result = await importWorkbook({
+      '实体': [
+        ['合同明细', 'ContractLine', 'child_entity', 'MissingContract', '合同中心', '合同签订'],
+      ],
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.validation.errors).toEqual([
+      expect.objectContaining({
+        sheet: '实体',
+        row: 2,
+        column: '父聚合ID',
+        value: 'MissingContract',
+        errorType: 'invalid_reference',
+      }),
+    ]);
+  });
+
+  it('defaults blank event optional fields and validates invalid event options', async () => {
+    const defaulted = await importWorkbook({
+      '实体': [['合同', 'Contract', 'aggregate_root', '', '合同中心', '合同签订']],
+      '事件': [['Contract', '合同已创建', 'ContractCreated', 'create', '', '', '', 'id']],
+    });
+
+    expect(defaulted.success).toBe(true);
+    expect(defaulted.parsedData?.events[0]).toEqual(expect.objectContaining({
+      transactionPhase: 'AFTER_COMMIT',
+      isDomainEvent: true,
+    }));
+
+    const invalid = await importWorkbook({
+      '实体': [['合同', 'Contract', 'aggregate_root', '', '合同中心', '合同签订']],
+      '事件': [['Contract', '合同已创建', 'ContractCreated', 'create', '', 'MIDDLE_COMMIT', 'yes', 'id']],
+    });
+
+    expect(invalid.success).toBe(false);
+    expect(invalid.validation.errors).toEqual([
+      expect.objectContaining({
+        sheet: '事件',
+        row: 2,
+        column: '事务阶段',
+        value: 'MIDDLE_COMMIT',
+        errorType: 'invalid_enum',
+      }),
+      expect.objectContaining({
+        sheet: '事件',
+        row: 2,
+        column: '领域事件',
+        value: 'yes',
+        errorType: 'invalid_type',
+      }),
+    ]);
+  });
 });

@@ -296,6 +296,31 @@ describe('Ontology Store State Transitions', () => {
     expect(useOntologyStore.getState().versions).toEqual([]);
   });
 
+  it('createVersionFromParsedData 应拒绝无效父聚合英文名的子实体', () => {
+    const project = createMockProject();
+    useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
+
+    expect(() => useOntologyStore.getState().createVersionFromParsedData({
+      version: 'v2026-06-15',
+      name: '无效父聚合导入',
+      parsedData: {
+        entities: [{
+          name: '合同明细',
+          nameEn: 'ContractLine',
+          role: 'child_entity',
+          parentAggregateId: 'MissingContract',
+        }],
+        attributes: [],
+        relations: [],
+        stateMachines: [],
+        rules: [],
+        events: [],
+      },
+    })).toThrow('父聚合');
+
+    expect(useOntologyStore.getState().versions).toEqual([]);
+  });
+
   it('approveVersion 不应应用空实体的历史 Excel 导入版本', () => {
     const project = createMockProject();
     useOntologyStore.setState({
