@@ -2231,14 +2231,35 @@ export const useOntologyStore = create<OntologyState>()(
         }
 
         const { parsedData } = config;
+        if (parsedData.entities.length === 0) {
+          throw new Error('至少需要填写一个实体');
+        }
+        const parsedEntityByNameEn = new Map(parsedData.entities.map(entity => [entity.nameEn, entity]));
+        for (const entity of parsedData.entities) {
+          if (entity.role !== 'child_entity') continue;
+          if (!entity.parentAggregateId) {
+            throw new Error(`子实体"${entity.name}"必须填写父聚合`);
+          }
+          const parentAggregate = parsedEntityByNameEn.get(entity.parentAggregateId);
+          if (!parentAggregate || parentAggregate.role !== 'aggregate_root') {
+            throw new Error(`子实体"${entity.name}"的父聚合"${entity.parentAggregateId}"不存在或不是聚合根`);
+          }
+        }
+
         const now = new Date().toISOString();
 
         // Collect project names and business scenarios from parsed data
         const projectNames = new Set<string>();
-        const scenarioNames = new Set<string>();
+        const scenarioEntries = new Map<string, { name: string; projectName?: string }>();
+        const scenarioKey = (projectName: string | undefined, scenarioName: string) => `${projectName || ''}\u0000${scenarioName}`;
         for (const e of parsedData.entities) {
           if (e.projectName) projectNames.add(e.projectName);
-          if (e.businessScenario) scenarioNames.add(e.businessScenario);
+          if (e.businessScenario) {
+            scenarioEntries.set(scenarioKey(e.projectName, e.businessScenario), {
+              name: e.businessScenario,
+              projectName: e.projectName,
+            });
+          }
         }
 
         // Build projects and scenarios from parsed data
@@ -2249,31 +2270,37 @@ export const useOntologyStore = create<OntologyState>()(
         }));
         const projectNameToId = new Map(projects.map(p => [p.name, p.id]));
 
-        const businessScenarios: BusinessScenario[] = Array.from(scenarioNames).map(name => ({
-          id: generateId(),
-          name,
-          nameEn: name,
-          description: '',
-          projectId: '',
-        }));
-        const scenarioNameToId = new Map(businessScenarios.map(s => [s.name, s.id]));
+        const scenarioKeyToId = new Map<string, string>();
+        const businessScenarios: BusinessScenario[] = Array.from(scenarioEntries.entries()).map(([key, entry]) => {
+          const id = generateId();
+          scenarioKeyToId.set(key, id);
+          return {
+            id,
+            name: entry.name,
+            nameEn: entry.name,
+            description: '',
+            projectId: entry.projectName ? (projectNameToId.get(entry.projectName) || '') : '',
+          };
+        });
 
         // Build DataModel from parsed entities/attributes/relations
         const entityMap = new Map<string, string>(); // nameEn → id
+        for (const e of parsedData.entities) {
+          entityMap.set(e.nameEn, generateId());
+        }
         const entities: Entity[] = parsedData.entities.map(e => {
-          const id = generateId();
-          entityMap.set(e.nameEn, id);
+          const id = entityMap.get(e.nameEn) as string;
           return {
             id,
             name: e.name,
             nameEn: e.nameEn,
             projectId: e.projectName ? (projectNameToId.get(e.projectName) || '') : '',
-            businessScenarioId: e.businessScenario ? (scenarioNameToId.get(e.businessScenario) || '') : '',
+            businessScenarioId: e.businessScenario ? (scenarioKeyToId.get(scenarioKey(e.projectName, e.businessScenario)) || '') : '',
             description: e.description,
             businessMeaning: e.businessMeaning,
             aliases: e.aliases,
             entityRole: e.role,
-            parentAggregateId: e.parentAggregateId,
+            parentAggregateId: e.parentAggregateId ? entityMap.get(e.parentAggregateId) : undefined,
             attributes: [],
             relations: [],
             computedProperties: [],
@@ -2407,6 +2434,9 @@ export const useOntologyStore = create<OntologyState>()(
           trigger: ev.trigger,
           condition: ev.condition,
           payload: (ev.payloadFields || []).map(f => ({ field: f })),
+          transactionPhase: ev.transactionPhase === 'BEFORE_COMMIT' || ev.transactionPhase === 'AFTER_COMMIT' ? ev.transactionPhase : undefined,
+          isDomainEvent: ev.isDomainEvent,
+          payloadFields: ev.payloadFields,
           description: ev.description,
         }));
 
@@ -2533,6 +2563,7 @@ export const useOntologyStore = create<OntologyState>()(
         const state = get();
         const version = state.versions.find((v) => v.id === versionId);
         if (!version || version.status !== 'pending_review') return;
+        if (version.source === 'excel_import' && version.metamodels.data?.entities.length === 0) return;
 
         // 将版本数据应用到工作区
         set((s) => ({

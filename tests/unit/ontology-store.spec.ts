@@ -229,6 +229,183 @@ describe('Ontology Store State Transitions', () => {
     expect(savedVersion?.metamodels.epc?.profiles.length).toBeGreaterThan(0);
   });
 
+  it('createVersionFromParsedData 应保留 Excel 项目场景归属并解析父聚合英文名', () => {
+    const project = createMockProject();
+    useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
+
+    const version = useOntologyStore.getState().createVersionFromParsedData({
+      version: 'v2026-06-15',
+      name: 'Excel导入',
+      parsedData: {
+        entities: [
+          {
+            name: '合同',
+            nameEn: 'Contract',
+            role: 'aggregate_root',
+            projectName: '合同中心',
+            businessScenario: '合同签订',
+          },
+          {
+            name: '合同明细',
+            nameEn: 'ContractLine',
+            role: 'child_entity',
+            parentAggregateId: 'Contract',
+            projectName: '合同中心',
+            businessScenario: '合同签订',
+          },
+        ],
+        attributes: [],
+        relations: [],
+        stateMachines: [],
+        rules: [],
+        events: [],
+      },
+    });
+
+    const dataModel = version.metamodels.data;
+    const importedProject = dataModel?.projects.find((item) => item.name === '合同中心');
+    const importedScenario = dataModel?.businessScenarios.find((item) => item.name === '合同签订');
+    const aggregate = dataModel?.entities.find((item) => item.nameEn === 'Contract');
+    const child = dataModel?.entities.find((item) => item.nameEn === 'ContractLine');
+
+    expect(importedScenario?.projectId).toBe(importedProject?.id);
+    expect(aggregate?.projectId).toBe(importedProject?.id);
+    expect(aggregate?.businessScenarioId).toBe(importedScenario?.id);
+    expect(child?.projectId).toBe(importedProject?.id);
+    expect(child?.businessScenarioId).toBe(importedScenario?.id);
+    expect(child?.parentAggregateId).toBe(aggregate?.id);
+  });
+
+  it('createVersionFromParsedData 应拒绝空实体的 Excel 解析数据', () => {
+    const project = createMockProject();
+    useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
+
+    expect(() => useOntologyStore.getState().createVersionFromParsedData({
+      version: 'v2026-06-15',
+      name: '空 Excel 导入',
+      parsedData: {
+        entities: [],
+        attributes: [],
+        relations: [],
+        stateMachines: [],
+        rules: [],
+        events: [],
+      },
+    })).toThrow('至少需要填写一个实体');
+
+    expect(useOntologyStore.getState().versions).toEqual([]);
+  });
+
+  it('createVersionFromParsedData 应拒绝无效父聚合英文名的子实体', () => {
+    const project = createMockProject();
+    useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
+
+    expect(() => useOntologyStore.getState().createVersionFromParsedData({
+      version: 'v2026-06-15',
+      name: '无效父聚合导入',
+      parsedData: {
+        entities: [{
+          name: '合同明细',
+          nameEn: 'ContractLine',
+          role: 'child_entity',
+          parentAggregateId: 'MissingContract',
+        }],
+        attributes: [],
+        relations: [],
+        stateMachines: [],
+        rules: [],
+        events: [],
+      },
+    })).toThrow('父聚合');
+
+    expect(useOntologyStore.getState().versions).toEqual([]);
+  });
+
+  it('approveVersion 不应应用空实体的历史 Excel 导入版本', () => {
+    const project = createMockProject();
+    useOntologyStore.setState({
+      project,
+      versions: [{
+        id: 'empty-excel-version',
+        projectId: project.id,
+        version: 'v2026-06-15',
+        name: '空 Excel 导入',
+        metamodels: {
+          data: {
+            id: 'empty-data',
+            name: '空数据模型',
+            version: '1.0.0',
+            domain: project.domain.name,
+            projects: [],
+            businessScenarios: [],
+            entities: [],
+            createdAt: '2026-06-15T00:00:00.000Z',
+            updatedAt: '2026-06-15T00:00:00.000Z',
+          },
+          behavior: null,
+          rules: null,
+          process: null,
+          events: null,
+          epc: null,
+          masterData: { definitions: [], records: {} },
+        },
+        createdAt: '2026-06-15T00:00:00.000Z',
+        status: 'pending_review',
+        source: 'excel_import',
+      }],
+      activeModelType: 'data',
+    });
+
+    useOntologyStore.getState().approveVersion('empty-excel-version');
+
+    const state = useOntologyStore.getState();
+    expect(state.project?.dataModel?.entities).toHaveLength(1);
+    expect(state.project?.dataModel?.entities[0].nameEn).toBe('Contract');
+    expect(state.versions[0].status).toBe('pending_review');
+  });
+
+  it('createVersionFromParsedData 应保留 Excel 事件事务阶段与领域事件字段', () => {
+    const project = createMockProject();
+    useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
+
+    const version = useOntologyStore.getState().createVersionFromParsedData({
+      version: 'v2026-06-15',
+      name: 'Excel导入事件',
+      parsedData: {
+        entities: [{
+          name: '合同',
+          nameEn: 'Contract',
+          role: 'aggregate_root',
+        }],
+        attributes: [],
+        relations: [],
+        stateMachines: [],
+        rules: [],
+        events: [{
+          entityNameEn: 'Contract',
+          name: '合同已提交',
+          nameEn: 'ContractSubmitted',
+          trigger: 'state_change',
+          condition: 'status == submitted',
+          transactionPhase: 'BEFORE_COMMIT',
+          isDomainEvent: true,
+          payloadFields: ['id', 'status'],
+          description: '合同提交后触发',
+        }],
+      },
+    });
+
+    expect(version.metamodels.events?.events[0]).toEqual(expect.objectContaining({
+      name: '合同已提交',
+      nameEn: 'ContractSubmitted',
+      trigger: 'state_change',
+      transactionPhase: 'BEFORE_COMMIT',
+      isDomainEvent: true,
+      payloadFields: ['id', 'status'],
+      payload: [{ field: 'id' }, { field: 'status' }],
+    }));
+  });
+
   it('ensureEpcProfile 与 regenerateEpcDocument 应同步 EPC 派生信息', () => {
     const project = createProjectForEpcSync();
     useOntologyStore.setState({ project, versions: [], activeModelType: 'data' });
