@@ -156,6 +156,7 @@ describe('Ontology Store State Transitions', () => {
             name: '客户主体',
             nameEn: 'customerSubject',
             type: 'reference',
+            businessMeaning: '记录合同客户主体的主数据来源',
             referenceTargetType: 'masterdata',
             masterDataId: 'md-customer',
             metadataId: 'meta-1',
@@ -186,6 +187,7 @@ describe('Ontology Store State Transitions', () => {
     expect(attribute?.referenceKind).toBe('masterData');
     expect(attribute?.isMasterDataRef).toBe(true);
     expect(attribute?.masterDataType).toBe('md-customer');
+    expect(attribute?.businessMeaning).toBe('记录合同客户主体的主数据来源');
     expect(attribute?.metadataTemplateId).toBe('meta-1');
     expect(attribute?.metadataTemplateName).toBe('客户模板');
   });

@@ -161,8 +161,13 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
       alert('引用实体时必须选择目标实体');
       return;
     }
+
+    const existingAttribute = editingAttributeId
+      ? selectedEntity.attributes.find((attribute) => attribute.id === editingAttributeId)
+      : undefined;
     
     const attrData: Attribute = {
+      ...existingAttribute,
       id: editingAttributeId || generateId(),
       name: editingAttribute.name || '新属性',
       nameEn: editingAttribute.nameEn,
@@ -555,6 +560,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                               dataType: editingAttribute.dataType === 'reference' ? 'string' : (editingAttribute.dataType || 'string'),
                               referenceKind: undefined,
                               referencedEntityId: undefined,
+                              referenceDisplayField: undefined,
                               isMasterDataRef: false,
                               masterDataType: undefined,
                               masterDataField: undefined,
@@ -580,6 +586,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                             dataType: 'reference',
                             referenceKind: 'masterData',
                             referencedEntityId: undefined,
+                              referenceDisplayField: undefined,
                             isMasterDataRef: true,
                             masterDataType: editingAttribute.masterDataType,
                             masterDataField: editingAttribute.masterDataField,
@@ -633,6 +640,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                               dataType: v as Attribute['dataType'],
                               referenceKind: undefined,
                               referencedEntityId: undefined,
+                              referenceDisplayField: undefined,
                               isMasterDataRef: false,
                               masterDataType: undefined,
                               masterDataField: undefined,
@@ -780,6 +788,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                                   isMasterDataRef: true,
                                   masterDataType: value === '_none' ? undefined : value,
                                   masterDataField: undefined,
+                                  referenceDisplayField: undefined,
                                   referencedEntityId: undefined,
                                 })}
                               >

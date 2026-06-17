@@ -214,4 +214,135 @@ describe('IT-ATTR-META: free modeling (no metadata template)', () => {
       expect(savedAttribute?.masterDataField).toBe('供应商名称');
     });
   });
+
+  describe('IT-ATTR-META-006 [REQ-ATTR-META-06]', () => {
+    it('编辑属性时应保留未在表单中展示的属性契约字段', async () => {
+      useOntologyStore.setState((state) => ({
+        project: state.project
+          ? {
+              ...state.project,
+              dataModel: state.project.dataModel
+                ? {
+                    ...state.project.dataModel,
+                    entities: state.project.dataModel.entities.map((entity) =>
+                      entity.id === 'entity-contract'
+                        ? {
+                            ...entity,
+                            attributes: [
+                              {
+                                id: 'attr-contract-no',
+                                name: '合同编号',
+                                nameEn: 'contractNo',
+                                dataType: 'reference',
+                                referenceKind: 'entity',
+                                referencedEntityId: 'entity-order',
+                                default: 'AUTO',
+                                enumRef: 'contract-no-rule',
+                                autoFill: 'sequence.contractNo',
+                                referenceDisplayField: 'displayName',
+                              },
+                            ],
+                          }
+                        : entity
+                    ),
+                  }
+                : state.project.dataModel,
+            }
+          : state.project,
+      }));
+
+      render(React.createElement(DataModelEditor, { mode: 'entity-detail', entityId: 'entity-contract' }));
+      const attributeRow = screen.getByText('合同编号').closest('.flex.items-center.justify-between');
+      const editButton = attributeRow?.querySelector('button');
+      expect(editButton).toBeTruthy();
+
+      fireEvent.click(editButton as HTMLButtonElement);
+      fireEvent.change(screen.getByLabelText('中文名称'), { target: { value: '合同编号（修订）' } });
+      fireEvent.click(screen.getByRole('button', { name: /保存修改/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('合同编号（修订）')).toBeInTheDocument();
+      });
+
+      const savedAttribute = useOntologyStore
+        .getState()
+        .project?.dataModel?.entities.find((entity) => entity.id === 'entity-contract')
+        ?.attributes.find((attribute) => attribute.id === 'attr-contract-no');
+
+      expect(savedAttribute).toEqual(
+        expect.objectContaining({
+          name: '合同编号（修订）',
+          dataType: 'reference',
+          referenceKind: 'entity',
+          referencedEntityId: 'entity-order',
+          default: 'AUTO',
+          enumRef: 'contract-no-rule',
+          autoFill: 'sequence.contractNo',
+          referenceDisplayField: 'displayName',
+        })
+      );
+    });
+
+    it('切换为主数据引用时应清除实体引用展示字段', async () => {
+      useOntologyStore.setState((state) => ({
+        project: state.project
+          ? {
+              ...state.project,
+              dataModel: state.project.dataModel
+                ? {
+                    ...state.project.dataModel,
+                    entities: state.project.dataModel.entities.map((entity) =>
+                      entity.id === 'entity-contract'
+                        ? {
+                            ...entity,
+                            attributes: [
+                              {
+                                id: 'attr-source-order',
+                                name: '来源订单',
+                                nameEn: 'sourceOrder',
+                                dataType: 'reference',
+                                referenceKind: 'entity',
+                                referencedEntityId: 'entity-order',
+                                referenceDisplayField: 'orderNo',
+                              },
+                            ],
+                          }
+                        : entity
+                    ),
+                  }
+                : state.project.dataModel,
+            }
+          : state.project,
+      }));
+
+      render(React.createElement(DataModelEditor, { mode: 'entity-detail', entityId: 'entity-contract' }));
+      const attributeRow = screen.getByText('来源订单').closest('.flex.items-center.justify-between');
+      const editButton = attributeRow?.querySelector('button');
+      expect(editButton).toBeTruthy();
+
+      fireEvent.click(editButton as HTMLButtonElement);
+      fireEvent.click(screen.getByLabelText('维护主数据引用'));
+      fireEvent.click(await screen.findByRole('combobox', { name: '主数据类型' }));
+      fireEvent.click(await screen.findByText('供应商主数据'));
+      fireEvent.click(await screen.findByRole('combobox', { name: '主数据字段（可选）' }));
+      fireEvent.click(await screen.findByText('供应商编码'));
+      fireEvent.click(screen.getByRole('button', { name: /保存修改/i }));
+
+      const savedAttribute = useOntologyStore
+        .getState()
+        .project?.dataModel?.entities.find((entity) => entity.id === 'entity-contract')
+        ?.attributes.find((attribute) => attribute.id === 'attr-source-order');
+
+      expect(savedAttribute).toEqual(
+        expect.objectContaining({
+          dataType: 'reference',
+          referenceKind: 'masterData',
+          referencedEntityId: undefined,
+          referenceDisplayField: undefined,
+          masterDataType: 'md-supplier',
+          masterDataField: '供应商编码',
+        })
+      );
+    });
+  });
 });
