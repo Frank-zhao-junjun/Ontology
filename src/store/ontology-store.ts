@@ -3431,17 +3431,19 @@ export const useOntologyStore = create<OntologyState>()(
         set((state) => {
           if (!state.project) return state;
 
+          const restoredProject = normalizeOntologyProject({
+            ...state.project,
+            dataModel: targetVersion.metamodels.data ? JSON.parse(JSON.stringify(targetVersion.metamodels.data)) : null,
+            behaviorModel: targetVersion.metamodels.behavior ? JSON.parse(JSON.stringify(targetVersion.metamodels.behavior)) : null,
+            ruleModel: targetVersion.metamodels.rules ? JSON.parse(JSON.stringify(targetVersion.metamodels.rules)) : null,
+            processModel: targetVersion.metamodels.process ? JSON.parse(JSON.stringify(targetVersion.metamodels.process)) : null,
+            eventModel: targetVersion.metamodels.events ? JSON.parse(JSON.stringify(targetVersion.metamodels.events)) : null,
+            epcModel: targetVersion.metamodels.epc ? JSON.parse(JSON.stringify(targetVersion.metamodels.epc)) : null,
+            updatedAt: new Date().toISOString(),
+          });
+
           return {
-            project: {
-              ...state.project,
-              dataModel: targetVersion.metamodels.data ? JSON.parse(JSON.stringify(targetVersion.metamodels.data)) : null,
-              behaviorModel: targetVersion.metamodels.behavior ? JSON.parse(JSON.stringify(targetVersion.metamodels.behavior)) : null,
-              ruleModel: targetVersion.metamodels.rules ? JSON.parse(JSON.stringify(targetVersion.metamodels.rules)) : null,
-              processModel: targetVersion.metamodels.process ? JSON.parse(JSON.stringify(targetVersion.metamodels.process)) : null,
-              eventModel: targetVersion.metamodels.events ? JSON.parse(JSON.stringify(targetVersion.metamodels.events)) : null,
-              epcModel: targetVersion.metamodels.epc ? JSON.parse(JSON.stringify(targetVersion.metamodels.epc)) : null,
-              updatedAt: new Date().toISOString(),
-            },
+            project: restoredProject,
             masterDataList: targetVersion.metamodels.masterData ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.definitions)) : [],
             masterDataRecords: targetVersion.metamodels.masterData ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.records)) : {},
           };
