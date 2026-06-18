@@ -3,6 +3,13 @@ set -Eeuo pipefail
 
 COZE_WORKSPACE_PATH="${COZE_WORKSPACE_PATH:-$(pwd)}"
 
+# If running from parent directory (Ontology as subdir), adjust path
+if [[ -f "Ontology/package.json" ]]; then
+  cd "Ontology"
+elif [[ -f "package.json" ]]; then
+  cd "${COZE_WORKSPACE_PATH}"
+fi
+
 PORT=5000
 DEPLOY_RUN_PORT="${DEPLOY_RUN_PORT:-$PORT}"
 
