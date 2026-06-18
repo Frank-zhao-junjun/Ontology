@@ -49,9 +49,14 @@ export async function POST(request: NextRequest) {
           break;
         }
         case 'pdf': {
-          const pdfParse = (await import('pdf-parse')) as unknown as (buf: Buffer) => Promise<{ text: string }>;
-          const result = await pdfParse(buffer);
-          extractedText = result.text;
+          const { PDFParse } = await import('pdf-parse');
+          const parser = new PDFParse({ data: buffer });
+          try {
+            const result = await parser.getText();
+            extractedText = result.text;
+          } finally {
+            await parser.destroy();
+          }
           break;
         }
         case 'xlsx': {
