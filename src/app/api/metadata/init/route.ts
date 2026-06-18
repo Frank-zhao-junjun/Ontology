@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { METADATA_LIST } from '@/lib/metadata-local';
-
-const generateId = () => Math.random().toString(36).substring(2, 10);
+import { createMetadataTemplateId } from '@/lib/metadata-utils';
 
 export async function GET() {
   try {
     const now = new Date().toISOString();
-    const metadata = METADATA_LIST.map((item, index) => ({
-      id: generateId() + index,
+    const metadata = METADATA_LIST.map((item) => ({
+      id: createMetadataTemplateId(item.nameEn),
       domain: item.domain,
       name: item.name,
       nameEn: item.nameEn,

@@ -102,4 +102,64 @@ describe('US-9.1 / MetadataManager CRUD and category filtering', () => {
     expect(screen.getByText('合同名称')).toBeInTheDocument();
     expect(screen.queryByText('采购组织')).not.toBeInTheDocument();
   });
+
+  it('旧元数据自动初始化时应补全领域并保留已有ID和用户自定义元数据', async () => {
+    vi.mocked(global.fetch).mockResolvedValue({
+      json: async () => ({
+        success: true,
+        data: [
+          {
+            id: 'new-standard-id',
+            domain: '合同管理',
+            name: '合同名称',
+            nameEn: 'ContractName',
+            description: '内置合同名称模板',
+            type: 'string',
+            createdAt: now,
+            updatedAt: now,
+          },
+        ],
+      }),
+    } as Response);
+
+    useOntologyStore.setState({
+      metadataList: [
+        {
+          id: 'old-linked-id',
+          domain: '',
+          name: '合同名称',
+          nameEn: 'ContractName',
+          description: '用户调整过的合同名称模板',
+          type: 'text',
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: 'user-custom-id',
+          domain: '',
+          name: '自定义字段',
+          nameEn: 'CustomField',
+          description: '用户自定义模板',
+          type: 'string',
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+    });
+
+    render(React.createElement(MetadataManager));
+
+    await waitFor(() => {
+      const metadata = useOntologyStore.getState().metadataList;
+      expect(metadata.find((item) => item.id === 'old-linked-id')).toMatchObject({
+        domain: '合同管理',
+        nameEn: 'ContractName',
+        description: '用户调整过的合同名称模板',
+        type: 'text',
+      });
+      expect(metadata.find((item) => item.id === 'user-custom-id')).toMatchObject({
+        name: '自定义字段',
+      });
+    });
+  });
 });

@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Metadata } from '@/types/ontology';
+import { mergeMetadataLists } from '@/lib/metadata-utils';
 
 const ATTRIBUTE_TYPES = [
   { value: 'string', label: '字符串 (String)' },
@@ -46,14 +47,14 @@ export function MetadataManager() {
       const result = await response.json();
 
       if (result.success && result.data) {
-        setMetadataList(result.data);
+        setMetadataList(mergeMetadataLists(metadataList, result.data));
       }
     } catch (error) {
       console.error('初始化元数据失败:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [setMetadataList]);
+  }, [metadataList, setMetadataList]);
 
   // 初始化时加载元数据
   useEffect(() => {
