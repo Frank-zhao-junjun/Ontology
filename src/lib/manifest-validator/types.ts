@@ -44,6 +44,11 @@ export interface ManifestValidationResult {
   warnings: ManifestValidationIssue[];
 }
 
+export interface OntologyManifestMetadataExtensions {
+  simplifiedChain?: unknown;
+  epcWarnings?: unknown[];
+}
+
 export interface OntologyManifestMetadata {
   id: string;
   version: string;
@@ -56,6 +61,7 @@ export interface OntologyManifestMetadata {
   compiledBy?: string;
   source?: 'ontology-designer' | 'ontology-platform';
   status?: string;
+  extensions?: OntologyManifestMetadataExtensions;
 }
 
 export interface ManifestProperty {

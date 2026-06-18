@@ -1788,6 +1788,123 @@ export interface ExtractedAttribute {
   source: string;
 }
 
+// ========== Simplified Ontology Model (US-S02, ADR) ==========
+
+export interface SemanticsBlock {
+  terms?: string[];
+  triggerPhrases?: string[];
+  synonyms?: string[];
+}
+
+export interface BusinessNodeBase {
+  id: string;
+  name: string;
+  nameEn?: string;
+  description?: string;
+  semantics?: SemanticsBlock;
+}
+
+/** A — 业务价值域 */
+export type ValueDomain = BusinessNodeBase;
+
+/** B — 业务能力 */
+export interface Capability extends BusinessNodeBase {
+  parentId: string;
+}
+
+/** C — 业务场景 */
+export interface Scenario extends BusinessNodeBase {
+  parentId: string;
+}
+
+export type MetaDimension = 'E1' | 'E2' | 'E3' | 'E4' | 'E5' | 'E6' | 'E7' | 'E8';
+
+export type VersionPin = 'latest_confirmed' | { version: string };
+
+export interface EpcStepElementRef {
+  dimension: MetaDimension;
+  elementId: string;
+  versionPin: VersionPin;
+  inlineNew?: boolean;
+  inlinePayload?: unknown;
+}
+
+export interface EpcStep {
+  id: string;
+  name: string;
+  elementRef?: EpcStepElementRef;
+}
+
+/** EPC — 业务流程（D），挂在 C 下 */
+export interface EpcProcess extends BusinessNodeBase {
+  parentId: string;
+  steps: EpcStep[];
+}
+
+export type ElementVisibility = 'project' | 'domain_scoped' | 'private_draft';
+
+/** 派生反向索引条目（rebuildUsageIndex 维护） */
+export interface ElementUsageRef {
+  epcId: string;
+  stepId: string;
+  scenarioId: string;
+  versionPin: VersionPin;
+}
+
+export interface MetaElementBase {
+  id: string;
+  name: string;
+  nameEn?: string;
+  dimension: MetaDimension;
+}
+
+export interface MetaElement extends MetaElementBase {
+  visibility?: ElementVisibility;
+  ownerModuleId?: string;
+  confirmedVersion?: string;
+  usageRefs?: ElementUsageRef[];
+}
+
+export type ModuleKind =
+  | 'A'
+  | 'B'
+  | 'C'
+  | 'EPC'
+  | 'E1'
+  | 'E2'
+  | 'E3'
+  | 'E4'
+  | 'E5'
+  | 'E6'
+  | 'E7'
+  | 'E8';
+
+export type ModuleStatus = 'draft' | 'confirmed' | 'archived';
+
+export interface RefPin {
+  moduleKind: ModuleKind;
+  moduleId: string;
+  pin: VersionPin;
+}
+
+export interface CrossModuleRef {
+  targetModuleKind: ModuleKind;
+  targetElementId: string;
+  pin: VersionPin;
+}
+
+export interface ModuleVersionRecord {
+  id: string;
+  moduleKind: ModuleKind;
+  moduleId: string;
+  status: ModuleStatus;
+  version?: string;
+  confirmedAt?: string;
+  createdAt: string;
+  snapshot: unknown;
+  parentVersionRefs?: RefPin[];
+}
+
 export interface OntologyProject {
   id: string;
   name: string;
@@ -1805,6 +1922,13 @@ export interface OntologyProject {
   organizationModel?: OrganizationModel | null;
   agentSemanticLayer?: AgentSemanticLayer | null;
   referenceDocuments?: ReferenceDocument[];
+  /** 简化架构扩展（双写，见 docs/adr-simplified-ontology-model.md） */
+  valueDomains?: ValueDomain[];
+  capabilities?: Capability[];
+  scenarios?: Scenario[];
+  epcProcesses?: EpcProcess[];
+  metaElements?: MetaElement[];
+  moduleVersionRecords?: ModuleVersionRecord[];
   createdAt: string;
   updatedAt: string;
 }

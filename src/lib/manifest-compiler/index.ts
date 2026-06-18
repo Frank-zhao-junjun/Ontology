@@ -2,7 +2,7 @@ import {
   ONTOLOGY_MANIFEST_KIND,
   type OntologyManifest,
 } from '@/lib/manifest-validator';
-import type { OntologyProject, Orchestration } from '@/types/ontology';
+import type { OntologyProject } from '@/types/ontology';
 import { compileBehavior } from './behavior';
 import { compileDataSources } from './dataSources';
 import { compileEvents } from './events';

@@ -109,6 +109,12 @@ describe('P0-12 manufacturing golden', () => {
       expect(result.valid).toBe(true);
     });
 
+    it('should attach extensions.simplifiedChain and epcWarnings without breaking validation', () => {
+      const manifest = compileManifest(project, compileOptions);
+      expect(manifest.metadata.extensions?.simplifiedChain).toBeDefined();
+      expect(Array.isArray(manifest.metadata.extensions?.epcWarnings)).toBe(true);
+    });
+
     it('manifest-export 端到端应可下载且 valid', () => {
       const bundle = buildManifestExportBundle(project, {
         ...compileOptions,

@@ -22,6 +22,9 @@ export default defineConfig({
     },
     testTimeout: 10000,
     hookTimeout: 10000,
+    // Windows: forks pool 易触发 spawn EBUSY；统一用 threads（US-P01-U02）
+    pool: 'threads',
+    fileParallelism: process.platform === 'win32' ? false : true,
   },
   resolve: {
     alias: {
