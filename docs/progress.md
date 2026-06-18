@@ -1,6 +1,6 @@
 # Ontology 项目开发进度
 
-> 最后更新：2026-06-16
+> 最后更新：2026-06-18
 > 当前版本：v2.0
 
 ---
@@ -99,10 +99,19 @@
 - [x] EPC v3.1: EpcModelRef 类型 + 21 条新校验规则 (VE-LC/VM-AS/VX) + 6 集成测试
 - [x] README 完善：修复端口/重复契约/测试表格 + 规格文档索引三组分类
 - [x] 测试覆盖：18(validator) + 20(store) + 77(api集成) = **129 用例**
+- [x] 关键缺陷修复：元数据初始化稳定 ID + 非破坏性合并；PDF 参考文档解析适配 pdf-parse v2 API
 
 ---
 
 ## 近期完成记录
+
+### 2026-06-18
+
+| 提交 | 说明 |
+|------|------|
+| — | fix: 元数据初始化改为稳定 ID，并在旧数据自动初始化/重载时合并保留用户元数据 |
+| — | fix: 参考文档 PDF 上传使用 pdf-parse v2 `PDFParse` API，恢复 PDF 文本解析 |
+| — | test: 新增 metadata/init、MetadataManager reload、reference PDF upload 回归测试 |
 
 ### 2026-06-16
 
