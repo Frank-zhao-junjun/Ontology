@@ -1,0 +1,12 @@
+[project]
+requires = ["nodejs-24"]
+
+[dev]
+build = ["bash", "./Ontology/scripts/prepare.sh"]
+run = ["bash", "./Ontology/scripts/dev.sh"]
+deps = ["git"]
+
+[deploy]
+build = ["bash", "./Ontology/scripts/build.sh"]
+run = ["bash", "./Ontology/scripts/start.sh"]
+deps = ["git"]
