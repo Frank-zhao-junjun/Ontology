@@ -2,11 +2,11 @@
 requires = ["nodejs-24"]
 
 [dev]
-build = ["bash", "-c", "cd Ontology && bash ./scripts/prepare.sh"]
-run = ["bash", "-c", "cd Ontology && bash ./scripts/dev.sh"]
+build = ["bash", "-c", "export HOME=${HOME:-/tmp} && cd Ontology && bash ./scripts/prepare.sh"]
+run = ["bash", "-c", "export HOME=${HOME:-/tmp} && cd Ontology && bash ./scripts/dev.sh"]
 deps = ["git"]
 
 [deploy]
-build = ["bash", "-c", "cd Ontology && bash ./scripts/build.sh"]
-run = ["bash", "-c", "cd Ontology && bash ./scripts/start.sh"]
+build = ["bash", "-c", "export HOME=${HOME:-/tmp} && cd Ontology && bash ./scripts/build.sh"]
+run = ["bash", "-c", "export HOME=${HOME:-/tmp} && cd Ontology && bash ./scripts/start.sh"]
 deps = ["git"]
