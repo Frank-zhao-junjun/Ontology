@@ -173,7 +173,7 @@ const Hero = () => {
 
           {/* Description */}
           <p ref={descRef} className="body-text text-[#171717]/70 max-w-2xl mx-auto mb-10">
-            覆盖<span className="text-[#ff6e00] font-medium">12大元模型</span>的可视化建模工具，
+            覆盖<span className="text-[#ff6e00] font-medium">8大元模型</span>的可视化建模工具，
             从数据、行为、规则到组织体系与Agent语义层，
             构建<span className="text-[#ff6e00] font-medium">"本体定义→EPC全域关联→Agent精准理解"</span>的完整闭环。
           </p>
