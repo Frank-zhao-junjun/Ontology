@@ -10,7 +10,17 @@ export function validateSaveEpcInput(epc: EpcProcess): void {
     throw new Error('EPC 必须归属业务场景 (parentId)');
   }
 
+  const stepIds = new Set<string>();
+
   for (const step of epc.steps) {
+    if (!step.id?.trim()) {
+      throw new Error('步骤 id 不能为空');
+    }
+    if (stepIds.has(step.id)) {
+      throw new Error(`步骤 id 重复: ${step.id}`);
+    }
+    stepIds.add(step.id);
+
     const ref = step.elementRef;
     if (!ref) continue;
 

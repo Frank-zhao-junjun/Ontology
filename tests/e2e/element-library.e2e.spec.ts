@@ -90,13 +90,21 @@ function createProject(): OntologyProject {
     eventModel: null,
     valueDomains: [],
     capabilities: [],
-    scenarios: [],
-    epcProcesses: [],
+    scenarios: [{ id: 'c1', name: '场景', nameEn: 'Scenario', parentId: 'b1' }],
+    epcProcesses: [{ id: 'e1', name: '主流程', parentId: 'c1', steps: [] }],
     metaElements: [
       { id: 'used', name: '已引用要素', dimension: 'E1', usageRefs: [{ epcId: 'e1', stepId: 's1', scenarioId: 'c1', versionPin: 'latest_confirmed' }] },
       { id: 'orphan', name: '孤儿要素', dimension: 'E1' },
     ],
-    moduleVersionRecords: [],
+    moduleVersionRecords: [{
+      id: 'mvr-epc-e1',
+      moduleKind: 'EPC',
+      moduleId: 'e1',
+      status: 'confirmed',
+      version: 'v1',
+      createdAt: now,
+      snapshot: { steps: [] },
+    }],
     createdAt: now,
     updatedAt: now,
   };
@@ -132,6 +140,25 @@ describe('E2E-ELEMENT-LIBRARY-001 @smoke', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('element-row-used')).not.toBeInTheDocument();
       expect(screen.getByTestId('element-row-orphan')).toBeInTheDocument();
+    });
+  });
+
+  it('@smoke 用户切换维度 Tab 并看到覆盖 Badge', async () => {
+    render(React.createElement(ModelingWorkspace, { project: createProject() }));
+
+    fireEvent.click(screen.getByRole('button', { name: /要素库/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('element-library')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('coverage-badge-orphan')).toHaveTextContent('未覆盖');
+    expect(screen.getByTestId('coverage-badge-used')).toHaveTextContent('已覆盖');
+
+    fireEvent.click(screen.getByRole('tab', { name: /E4 规则/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('element-library-panel-E4')).toBeInTheDocument();
     });
   });
 });

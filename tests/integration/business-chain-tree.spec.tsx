@@ -92,4 +92,28 @@ describe('business-chain tree UI (US-S04-U03)', () => {
 
     expect(screen.getByTestId('business-chain-path')).toHaveTextContent('生产域/计划能力');
   });
+
+  it('should sync tree selection with detail panel badge and path', () => {
+    const store = useOntologyStore.getState();
+    const a = store.addValueDomain({ name: '生产域' });
+    const b = store.addCapability(a.id, { name: '计划能力' });
+    store.confirmModuleValidated('B', b.id);
+
+    render(<ChainPanel />);
+
+    const aNode = screen.getByTestId(`business-chain-node-A-${a.id}`);
+    fireEvent.click(within(aNode).getByRole('button', { name: '展开' }));
+    fireEvent.click(screen.getByTestId(`business-chain-node-B-${b.id}`));
+
+    expect(screen.getByTestId('business-chain-path')).toHaveTextContent('生产域/计划能力');
+    expect(
+      within(screen.getByTestId(`business-chain-node-B-${b.id}`)).getByTestId(
+        'module-status-badge-confirmed',
+      ),
+    ).toBeInTheDocument();
+    expect(useOntologyStore.getState().selectedBusinessChainNode).toEqual({
+      kind: 'B',
+      id: b.id,
+    });
+  });
 });

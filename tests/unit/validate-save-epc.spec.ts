@@ -55,4 +55,21 @@ describe('validateSaveEpcInput (US-S05-U05)', () => {
       }],
     })).toThrow();
   });
+
+  it('should throw when step ids are duplicated', () => {
+    expect(() => validateSaveEpcInput({
+      ...base,
+      steps: [
+        { id: 'dup', name: 'S1', elementRef: undefined },
+        { id: 'dup', name: 'S2', elementRef: undefined },
+      ],
+    })).toThrow(/重复/);
+  });
+
+  it('should throw when step id is empty', () => {
+    expect(() => validateSaveEpcInput({
+      ...base,
+      steps: [{ id: '  ', name: 'S', elementRef: undefined }],
+    })).toThrow(/步骤 id 不能为空/);
+  });
 });

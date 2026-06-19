@@ -64,4 +64,15 @@ describe('ElementLibrary (US-S07-U03)', () => {
     fireEvent.click(within(row).getByTestId('element-usage-toggle-el-1'));
     expect(screen.getByTestId('element-usage-detail-el-1')).toHaveTextContent('主流程');
   });
+
+  it('should show coverage badge for referenced and unreferenced elements', () => {
+    const store = useOntologyStore.getState();
+    store.saveModuleDraft('EPC', 'epc1', { steps: [] });
+    store.confirmModule('EPC', 'epc1');
+    render(<ElementLibrary />);
+    expect(screen.getByTestId('coverage-badge-el-1')).toHaveTextContent('已覆盖');
+    expect(screen.getByTestId('coverage-badge-el-1')).toHaveAttribute('data-covered', 'true');
+    expect(screen.getByTestId('coverage-badge-el-2')).toHaveTextContent('未覆盖');
+    expect(screen.getByTestId('coverage-badge-el-2')).toHaveAttribute('data-covered', 'false');
+  });
 });

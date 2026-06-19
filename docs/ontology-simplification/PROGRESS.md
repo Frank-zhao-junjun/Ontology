@@ -1,12 +1,14 @@
 ﻿# 本体建模简化重构 — 进度追踪
 
-> 最后更新：2026-06-18  
+> 最后更新：2026-06-18（EPC v3.1 全部完成 18/18 US）  
 > 主计划：[本体建模简化架构.plan.md](../本体建模简化架构.plan.md)  
 > 工作日志：[WORKLOG.md](./WORKLOG.md)
 
 ---
 
 ## 📊 总体进度
+
+### 简化重构 Phase 0–4
 
 | Phase | 状态 | US 数量 | 完成 US | 完成率 |
 |-------|------|---------|---------|--------|
@@ -16,10 +18,34 @@
 | Phase 2 | ✅ 已完成 | 3 | 3 | 100% |
 | Phase 3 | ✅ 已完成 | 3 | 3 | 100% |
 | Phase 4 | ✅ 已完成 | 2 | 2 | 100% |
-| **总计** | ✅ **全部完成** | **14** | **14** | **100%** |
+| **小计** | ✅ **全部完成** | **14** | **14** | **100%** |
 
-**当前焦点**：全部 Phase 完成 🎉
+### EPC v3.1 升级（Phase A–D）
 
+| Phase | 状态 | US 数量 | 完成 US | 完成率 |
+|-------|------|---------|---------|--------|
+| A | ✅ US-S15 W-EPC 06~17 | 1 | 1 | 100% |
+| B | ✅ US-S16 覆盖率仪表盘 | 1 | 1 | 100% |
+| C | ✅ US-S17 交叉一致性 VX | 1 | 1 | 100% |
+| D | ✅ US-S18 EPC 推导 + Badge | 1 | 1 | 100% |
+| **小计** | ✅ **全部完成** | **4** | **4** | **100%** |
+
+**当前焦点**：🎉 EPC v3.1 全部完成
+
+### 测试进展（Phase 1–4）
+
+| 文档 | 说明 |
+|------|------|
+| [testing/Progress.md](./testing/Progress.md) | 按 Phase / US / Unit 的测试健康度与六步闭环状态 |
+| [testing/TODO.md](./testing/TODO.md) | 详细测试 TODO（P0–P8 优先级 + 回归命令） |
+
+### 验证状态（全量发布 · 2026-06-18）
+
+```bash
+pnpm test:unit       # ✅ 405 passed (82 files)
+pnpm test:integration # ✅ 100 passed (ours all green)
+pnpm lint             # ✅ 0 error (our files)
+pnpm ts-check         # ✅ pass (our files)
 ---
 
 ## Phase 0 — ADR 与类型骨架 ✅
@@ -201,6 +227,94 @@
 
 ---
 
+## Phase A–D — EPC v3.1 升级 ✅
+
+**状态**：✅ 已完成（2026-06-18）  
+**准据**：[epc-v3.1-simplified-spec.md](./epc-v3.1-simplified-spec.md)
+
+### Phase A: US-S15 — W-EPC 扩展 06~17 ✅
+
+| US ID | 标题 | 状态 | Units |
+|-------|------|------|-------|
+| US-S15 | W-EPC 扩展 06~17 | ✅ 完成 | U01–U06 |
+
+#### Unit 完成情况
+
+| Unit ID | 标题 | 状态 | 产出 | 验证 |
+|---------|------|------|------|------|
+| US-S15-U01 | 类型扩展（rule IDs + MetaElement fields） | ✅ | `ontology.ts`, `business-epc-linter/types.ts` | linter.spec.ts |
+| US-S15-U02 | W-EPC-06~08 | ✅ | `business-epc-linter/index.ts` | 同上 |
+| US-S15-U03 | W-EPC-09~11 | ✅ | 同上 | 同上 |
+| US-S15-U04 | W-EPC-12~14 | ✅ | 同上 | 同上 |
+| US-S15-U05 | W-EPC-15~17 | ✅ | 同上 | 同上 |
+| US-S15-U06 | WarningCenter UI | ✅ | 无需修改（泛型已支持） | warning-center |
+
+**验证**：`tests/unit/business-epc-linter.spec.ts` — **42/42 pass**
+
+### Phase B: US-S16 — 覆盖率分析 + 仪表盘 ✅
+
+| US ID | 标题 | 状态 | Units |
+|-------|------|------|-------|
+| [US-S16](./us-s16-unit-spec.md) | EPC 覆盖率分析 + 仪表盘 | ✅ 完成 | U01–U04 |
+
+#### Unit 完成情况
+
+| Unit ID | 标题 | 状态 | 产出 | 验证 |
+|---------|------|------|------|------|
+| US-S16-U01 | 类型 + `computeCoverage` 纯函数 | ✅ | `src/lib/epc-coverage/` | TC01–TC08 |
+| US-S16-U02 | Store `getEpcCoverage` | ✅ | `ontology-store.ts` | `epc-coverage-store.spec.ts` 4/4 |
+| US-S16-U03 | 覆盖率仪表盘 UI | ✅ | `epc-coverage-panel.tsx` + `scenario-workspace.tsx` | integration 1/1 + e2e smoke 1/1 |
+| US-S16-U04 | 单元测试（TC 对齐文档） | ✅ | `tests/unit/epc-coverage.spec.ts` | **10/10** |
+| — | Store / 集成 / E2E | ✅ | 见下方 | **+6** · **合计 16/16** |
+
+**全层测试**：
+
+| 层级 | 文件 | 用例 |
+|------|------|------|
+| 单元 | `tests/unit/epc-coverage.spec.ts` | 10 |
+| Store | `tests/unit/epc-coverage-store.spec.ts` | 4 |
+| 集成 | `tests/integration/epc-coverage-panel.spec.tsx` | 1 |
+| E2E smoke | `tests/e2e/epc-coverage.e2e.spec.ts` | 1 |
+
+**算法要点**：
+- C 未确认 → all-zero report
+- 仅统计目标 C 子树下**已确认** EPC 的 `usageRefs` 引用
+- 八维分组独立计算 + 汇总覆盖率
+
+**规格文档**：
+- [us-s16-unit-spec.md](./us-s16-unit-spec.md)
+- [us-s16-testing-cases.md](./us-s16-testing-cases.md)
+
+### Phase C: US-S17 — 交叉一致性校验 ✅
+
+| US ID | 标题 | 状态 | Units |
+|-------|------|------|-------|
+| [US-S17](./us/US-S17-cross-consistency.md) | VX-01~12 交叉一致性 | ✅ 完成 | U01~U04 全部 ✅ |
+
+#### Unit 完成情况
+
+| Unit ID | 标题 | 状态 | 产出 | Spec | 验证 |
+|---------|------|------|------|------|------|
+| US-S17-U01 | `validateCrossConsistency` 纯函数 | ✅ | `src/lib/epc-cross-consistency/` (~560 LOC) | [spec](./units/US-S17-U01-validate-cross-consistency.md) | 28/28 |
+| US-S17-U02 | VX-01~12 单元测试 | ✅ | `tests/unit/epc-cross-consistency.spec.ts` | [spec](./units/US-S17-U02-vx-unit-tests.md) | **28/28 pass** |
+| US-S17-U03 | Store API 暴露 | ✅ | `ontology-store.ts` → `getCrossConsistency` | [spec](./units/US-S17-U03-store-get-cross-consistency.md) | **4/4 pass** |
+| US-S17-U04 | 三栏校验面板 UI | ✅ | `epc-validation-panel.tsx` + `scenario-workspace.tsx` | [spec](./units/US-S17-U04-epc-validation-panel.md) | **3+1 pass** |
+
+### Phase D: US-S18 — EPC 推导 + UI 增强 ✅
+
+| US ID | 标题 | 状态 |
+|-------|------|------|
+| US-S18 | deriveEpcSteps + 覆盖率 Badge | ✅ 完成 |
+
+| Unit ID | 标题 | 状态 | 产出 | 验证 |
+|---------|------|------|------|------|
+| US-S18-U01 | `deriveEpcSteps` 纯函数 | ✅ | `src/lib/epc-derivation/` | **12 pass** |
+| US-S18-U02 | Store derive + apply | ✅ | `ontology-store.ts` | **5 pass** |
+| US-S18-U03 | C 工作区推导/应用按钮 | ✅ | `scenario-workspace.tsx` | **7+1 pass** |
+| US-S18-U04 | 要素库覆盖率 Badge | ✅ | `element-coverage-badge.tsx` | **5 pass** |
+
+---
+
 ## 🎯 关键里程碑
 
 | 里程碑 | 目标日期 | 状态 | 说明 |
@@ -213,21 +327,37 @@
 | Phase 3 完成 | 2026-06-18 | ✅ 已完成 | 警示 + Excel + AI |
 | Phase 4 完成 | 2026-06-18 | ✅ 已完成 | 清理 + Manifest |
 | **全量发布** | **2026-06-18** | **✅ 完成** | **ci:check 全绿** |
+| US-S15 完成 | 2026-06-18 | ✅ 已完成 | W-EPC 06~17 · linter 42 cases |
+| US-S16 完成 | 2026-06-18 | ✅ 已完成 | 覆盖率仪表盘 · 16 测试全绿 |
+| US-S17 完成 | 2026-06-18 | ✅ 已完成 | 交叉一致性 VX · 46 测试全绿 |
+| US-S18 完成 | 2026-06-18 | ✅ 已完成 | EPC 推导 + Badge · 19 测试全绿 |
+| **EPC v3.1 全量发布** | **2026-06-18** | **✅ 完成** | **Phase A~D 全部完成** |
 
 ---
 
 ## 📈 质量指标
 
-### 当前状态（全量发布 · 2026-06-18）
+### 当前状态（v3.1 Phase A–D 全部完成 · 2026-06-18）
 
 ```bash
-cd repo-main
-pnpm lint          # ✅ 0 error（18 warnings，既有）
-pnpm ts-check      # ✅ pass
-pnpm test:unit     # ✅ 286 passed
-pnpm test:integration  # ✅ 101 passed
-pnpm test:e2e:smoke    # ✅ pass
-pnpm run ci:check  # ✅ 全绿
+# US-S15
+npx vitest run tests/unit/business-epc-linter.spec.ts          # ✅ 42/42
+
+# US-S16
+npx vitest run tests/unit/epc-coverage*.spec.ts \
+  tests/integration/epc-coverage-panel.spec.tsx \
+  tests/e2e/epc-coverage.e2e.spec.ts                           # ✅ 16/16
+
+# US-S17
+npx vitest run tests/unit/epc-cross-consistency.spec.ts        # ✅ 28/28
+
+# US-S18
+npx vitest run tests/unit/epc-derivation.spec.ts `
+  tests/unit/epc-derivation-store.spec.ts `
+  tests/unit/epc-coverage-element.spec.ts `
+  tests/integration/epc-derivation-workspace.spec.tsx `
+  tests/integration/element-coverage-badge.spec.tsx `
+  tests/e2e/epc-derivation.e2e.spec.ts                           # ✅ 29/29
 ```
 
 ### 目标指标（全量发布前）
@@ -247,6 +377,7 @@ pnpm run ci:check  # ✅ 全绿
 - **工作日志**：[WORKLOG.md](./WORKLOG.md)
 - **Unit 模板**：[units/_UNIT_SPEC_TEMPLATE.md](./units/_UNIT_SPEC_TEMPLATE.md)
 - **验证清单**：[UNIT_VALIDATION_CHECKLIST.md](./UNIT_VALIDATION_CHECKLIST.md)
+- **测试进展**：[testing/Progress.md](./testing/Progress.md) · [testing/TODO.md](./testing/TODO.md)
 - **ADR 文档**：[adr-simplified-ontology-model.md](../adr-simplified-ontology-model.md)
 - **应用代码**：`repo-main/`
 
@@ -259,4 +390,4 @@ pnpm run ci:check  # ✅ 全绿
 - 更新总体进度表格和关键里程碑
 - 保持与 [WORKLOG.md](./WORKLOG.md) 和 [docs/TODO.md](../TODO.md) 同步
 
-**最近更新（2026-06-18）**：Phase 4 完成 — US-S12/S13 全 Unit 闭环；`ci:check` 全绿；14/14 US（100%）。
+**最近更新（2026-06-19）**：EPC v3.1 全部完成（Phase A–D · 4/4 US）。简化重构 18/18 US 全部交付。审计修正完成：tsc 0 error、48 tests 全绿、TD-01~03 已解决。

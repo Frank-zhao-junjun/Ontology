@@ -148,4 +148,27 @@ describe('E2E-SCENARIO-WORKSPACE-001 @smoke', () => {
     expect(screen.getByTestId('scenario-child-epc-list')).toHaveTextContent('主流程');
     expect(screen.getByTestId('scenario-ref-union-el-1')).toHaveTextContent('订单实体');
   });
+
+  it('@smoke 已确认场景显示 EPC 校验面板', async () => {
+    const store = useOntologyStore.getState();
+    const a = store.addValueDomain({ name: '生产域' });
+    const b = store.addCapability(a.id, { name: '计划能力' });
+    const c = store.addScenario(b.id, { name: 'MTS场景' });
+    const epc = store.addEpcProcess(c.id, { name: '主流程' });
+    store.confirmModule('C', c.id);
+    store.confirmModule('EPC', epc.id);
+
+    useOntologyStore.setState({
+      selectedBusinessChainNode: { kind: 'C', id: c.id },
+    });
+
+    render(React.createElement(ModelingWorkspace, { project: useOntologyStore.getState().project! }));
+    fireEvent.click(screen.getByRole('button', { name: /业务链/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('scenario-workspace')).toBeInTheDocument();
+      expect(screen.getByTestId('epc-validation-panel')).toBeInTheDocument();
+      expect(screen.getByTestId('vp-tab-ve')).toBeInTheDocument();
+    });
+  });
 });

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const sdkState = vi.hoisted(() => ({
@@ -70,8 +70,7 @@ describe('Metadata Init Route', () => {
     const request = new NextRequest('http://localhost/api/metadata/init', {
       headers: { 'x-forwarded-for': '10.0.0.3' },
     });
-
-    const response = await GET(request);
+    const response = await GET();
     const payload = await response.json();
 
     expect(response.status).toBe(200);
@@ -97,8 +96,7 @@ describe('Metadata Init Route', () => {
       status_message: 'fetch failed',
       content: [],
     };
-
-    const response = await GET(new NextRequest('http://localhost/api/metadata/init'));
+    const response = await GET();
     const payload = await response.json();
 
     expect(response.status).toBe(500);
@@ -107,8 +105,7 @@ describe('Metadata Init Route', () => {
 
   it('抓取过程抛错时应返回 500', async () => {
     sdkState.fetchError = new Error('sdk exploded');
-
-    const response = await GET(new NextRequest('http://localhost/api/metadata/init'));
+    const response = await GET();
     const payload = await response.json();
 
     expect(response.status).toBe(500);

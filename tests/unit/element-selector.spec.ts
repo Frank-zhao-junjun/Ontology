@@ -30,6 +30,12 @@ describe('element-selector lib (US-S06-U01)', () => {
     expect(filterMetaElements(sample, '订单', 'E4')).toHaveLength(0);
   });
 
+  it('should return empty list for empty library or no matches', () => {
+    expect(filterMetaElements([], '订单')).toHaveLength(0);
+    expect(filterMetaElements(sample, '不存在')).toHaveLength(0);
+    expect(filterMetaElements(sample, '', 'E8')).toHaveLength(0);
+  });
+
   it('should group elements by dimension', () => {
     const grouped = groupMetaElementsByDimension(sample);
     expect(grouped.E1).toHaveLength(2);

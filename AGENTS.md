@@ -377,6 +377,29 @@ coze start
 - `assets/系统架构设计文档.md` - 系统架构设计
 - `assets/2100测试通过.md` - 功能验收清单
 
+### Subagent 测试团队
+
+多 Unit 测试阶段可启用 **6 角色 Subagent 测试团队**（Spec 六步 ③→⑥）：
+
+- 编排索引：`.claude/skills/testing-team/README.md`
+- 角色：Test Lead · Test Designer · Unit/Store · Integration/UI · E2E Smoke · Domain Rule
+- 门禁：`docs/ontology-simplification/UNIT_VALIDATION_CHECKLIST.md`
+- **进展看板**：`docs/ontology-simplification/testing/Progress.md`
+- **测试 TODO**：`docs/ontology-simplification/testing/TODO.md`
+
+#### Phase 回归命令
+
+按精简架构 Phase 1–4 跑 scoped 回归（见 `scripts/test-phase.sh`）：
+
+```bash
+pnpm run test:phase1      # S03–S05 模块版本 + 业务链 + saveEpc
+pnpm run test:phase1.5    # S14 模块确认/归档 UI
+pnpm run test:phase2      # S06–S08 要素选择器 + 库 + C 工作区
+pnpm run test:phase3      # S09–S11 linter + Excel + AI draft
+pnpm run test:phase4      # S12–S13 遗留清理 + compiler golden
+pnpm run test:phase:all   # 以上全部
+```
+
 ---
 
 ## 开发规范 (Development Standards)

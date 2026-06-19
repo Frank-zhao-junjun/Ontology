@@ -1827,6 +1827,7 @@ export interface EpcStepElementRef {
   versionPin: VersionPin;
   inlineNew?: boolean;
   inlinePayload?: unknown;
+  elementName?: string;  // US-S15-U02: cached element name at reference time, for W-EPC-06 name consistency check
 }
 
 export interface EpcStep {
@@ -1856,6 +1857,12 @@ export interface MetaElementBase {
   name: string;
   nameEn?: string;
   dimension: MetaDimension;
+  // US-S15: EPC v3.1 linter rule context fields
+  entityId?: string;           // W-EPC-10: bound Entity ID (E1 elements)
+  stateMachineId?: string;     // W-EPC-15/17: bound StateMachine ID (E2 elements)
+  constraintType?: string;     // W-EPC-17: constraint type (E7: 'guard' | 'transaction' | 'compensation')
+  hasPolicy?: boolean;         // W-EPC-14: has AgentPolicy (E5 elements)
+  eventId?: string;            // W-EPC-16: bound EventDefinition ID (E3 elements)
 }
 
 export interface MetaElement extends MetaElementBase {

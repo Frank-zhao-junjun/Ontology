@@ -28,8 +28,12 @@
 | 3 | [US-S11](./us/US-S11-ai-draft-fill.md) AI 仅 draft 填充 | ✅ |
 | 4 | [US-S12](./us/US-S12-legacy-removal.md) 遗留删除 | ✅ |
 | 4 | [US-S13](./us/US-S13-compiler-golden.md) compiler golden | ✅ |
+| A | [US-S15](./us/US-S15-epc-wepc-ext.md) W-EPC 扩展 06~17 | ✅ |
+| B | US-S16 覆盖率分析 + 仪表盘 | ✅ |
+| C | US-S17 交叉一致性校验 (VX) | ✅ |
+| D | US-S18 EPC 推导 + UI | ✅ |
 
-**🎉 本体建模简化重构全部完成（14/14 US · 2026-06-18）**。
+**🎉 全部完成（18/18 US · 2026-06-18）**：简化重构 14 + EPC v3.1 升级 4。
 
 ---
 
@@ -282,6 +286,61 @@ pnpm test:unit  → 42 files, 159 tests pass（Phase 0 结束时）
 | `repo-main/src/store/ontology-store.ts` | 修改 |
 | `repo-main/tests/unit/module-version.spec.ts` | 新增 |
 | `repo-main/tests/unit/module-version-store.spec.ts` | 新增 |
+
+---
+
+## 2026-06-18 — US-S15 W-EPC 扩展 06~17 ✅
+
+| Unit | 产出 | 测试 |
+|------|------|------|
+| U01 | `types.ts` — EpcWarningRuleId 17 规则 + MetaElementBase 扩展字段 | business-epc-linter.spec.ts |
+| U02 | W-EPC-06/07/08（名称一致性、维度匹配、行为密度） | 7 tests |
+| U03 | W-EPC-09/10/11（E1 数据绑定、实体绑定、E5 角色策略） | 9 tests |
+| U04 | W-EPC-12/13/14（事件起止、E2 状态机绑定、E3 事件绑定） | 9 tests |
+| U05 | W-EPC-15/16/17（E7 约束类型、Transition-Event 配对、Guard-Action 绑定） | 9 tests |
+| U06 | WarningCenter UI 泛型适配（自动包含新规则 ID） | 无需修改 |
+
+**验证**：356 unit · lint 0 error (our files) · ts-check (our files) pass
+
+**六步闭环**：每 Unit ③ Testing case 先于 ④ Coding，全部绿灯。
+
+---
+
+## 2026-06-18 — US-S16 覆盖率分析 + 仪表盘 ✅
+
+| Unit | 产出 | 测试 |
+|------|------|------|
+| U01 | `lib/epc-coverage/` — `computeCoverage` 纯函数 | epc-coverage.spec.ts 10/10 |
+| U02 | Store `getEpcCoverage(scenarioId)` | epc-coverage-store.spec.ts |
+| U03 | `epc-coverage-panel.tsx` + C 工作区仪表盘 | epc-coverage-panel.spec.tsx |
+| U04 | 边界 + 集成 | 覆盖 10 cases |
+
+**验证**：`ci:check` 全绿。
+
+---
+
+## 2026-06-18 — US-S17 交叉一致性校验 ✅
+
+| Unit | 产出 | 测试 |
+|------|------|------|
+| U01 | `lib/epc-cross-consistency/` — VX-01~12 (560 LOC) | epc-cross-consistency.spec.ts 25/25 |
+| U02 | Store `getCrossConsistency(scenarioId)` | store 已有 |
+| U03 | `EpcValidationPanel` 三栏 (VE/VM/VX) | 已有 |
+
+**六步闭环**：③ TDD 先于 ④，全部绿灯。
+
+---
+
+## 2026-06-18 — US-S18 EPC 推导 + UI ✅
+
+| Unit | 产出 | 测试 |
+|------|------|------|
+| U01 | `lib/epc-derivation/index.ts` — `deriveEpcSteps` 纯函数 (72 LOC) | epc-derivation.spec.ts 10/10 |
+| U02 | Store `deriveEpcStepsFromScenario(scenarioId)` | epc-derivation-store.spec.ts 3/3 |
+| U03 | ScenarioWorkspace「从模型推导」按钮 + business-chain-detail 集成 | epc-derivation-workspace.spec.tsx 6/6 |
+| U04 | EPC 覆盖率 Badge（可选增强，不在最小范围） | — |
+
+**验证**：unit 405/405 · integration (ours 6/6) · lint 0 error · ts-check pass
 
 ---
 

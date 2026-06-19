@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -8,6 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { sortModuleVersionsForDisplay } from '@/lib/module-version';
 import type { BusinessChainNodeKind } from '@/lib/business-chain/tree';
 import type { ModuleVersionRecord } from '@/types/ontology';
 import { Star } from 'lucide-react';
@@ -33,6 +35,11 @@ export function VersionHistoryPanel({
   latestConfirmedVersion,
   onViewSnapshot,
 }: VersionHistoryPanelProps) {
+  const sortedVersions = useMemo(
+    () => sortModuleVersionsForDisplay(versions),
+    [versions],
+  );
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md" data-testid="version-history-panel">
@@ -40,11 +47,11 @@ export function VersionHistoryPanel({
           <SheetTitle>版本历史</SheetTitle>
           <SheetDescription>列出 draft / confirmed / archived 记录（不含 diff）</SheetDescription>
         </SheetHeader>
-        <div className="mt-4 space-y-2">
-          {versions.length === 0 && (
+        <div className="mt-4 space-y-2" data-testid="version-history-list">
+          {sortedVersions.length === 0 && (
             <p className="text-sm text-muted-foreground">暂无版本记录</p>
           )}
-          {versions.map((record) => {
+          {sortedVersions.map((record) => {
             const rowId = record.version
               ? `version-history-row-${record.version}`
               : `version-history-row-${record.status}`;

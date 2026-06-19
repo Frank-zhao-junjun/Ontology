@@ -71,4 +71,44 @@ describe('ScenarioWorkspace (US-S08-U03)', () => {
     fireEvent.click(screen.getByTestId(`scenario-epc-link-${epc.id}`));
     expect(useOntologyStore.getState().selectedBusinessChainNode).toEqual({ kind: 'EPC', id: epc.id });
   });
+
+  it('should mount EpcValidationPanel alongside child epc and ref union sections', () => {
+    const store = useOntologyStore.getState();
+    const a = store.addValueDomain({ name: '域' });
+    const b = store.addCapability(a.id, { name: '能力' });
+    const scenario = store.addScenario(b.id, { name: 'MTS场景' });
+    const epc = store.addEpcProcess(scenario.id, { name: '主流程' });
+    store.confirmModule('C', scenario.id);
+    store.confirmModule('EPC', epc.id);
+
+    const project = useOntologyStore.getState().project!;
+    useOntologyStore.setState({
+      project: {
+        ...project,
+        epcProcesses: [{
+          ...epc,
+          steps: [{
+            id: 's1',
+            name: '步',
+            elementRef: { dimension: 'E1', elementId: 'el-1', versionPin: 'latest_confirmed' },
+          }],
+        }],
+        metaElements: [{ id: 'el-1', name: '订单', dimension: 'E1' }],
+      },
+    });
+
+    render(
+      <ScenarioWorkspace
+        scenario={scenario as Scenario}
+        childEpcs={useOntologyStore.getState().getScenarioChildEpcs(scenario.id)}
+        referenceUnion={useOntologyStore.getState().getScenarioReferenceUnion(scenario.id)}
+        onSelectEpc={() => {}}
+      />,
+    );
+
+    expect(screen.getByTestId('scenario-workspace')).toBeInTheDocument();
+    expect(screen.getByTestId('scenario-child-epc-list')).toBeInTheDocument();
+    expect(screen.getByTestId('scenario-ref-union-el-1')).toBeInTheDocument();
+    expect(screen.getByTestId('epc-validation-panel')).toBeInTheDocument();
+  });
 });

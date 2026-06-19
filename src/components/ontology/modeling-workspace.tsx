@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { useOntologyStore } from '@/store/ontology-store';
@@ -23,7 +23,7 @@ import { ElementLibrary } from './element-library';
 import { WarningCenter } from './warning-center';
 import { ExcelImportExportDialog } from './excel-import-export-dialog';
 import { updateProject, deleteProject } from '@/services/project-service';
-import type { OntologyProject } from '@/types/ontology';
+import type { MetaDimension, OntologyProject } from '@/types/ontology';
 
 interface ModelingWorkspaceProps {
   project: OntologyProject;
@@ -54,8 +54,15 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   const getBusinessEpcWarnings = useOntologyStore((s) => s.getBusinessEpcWarnings);
   const setSelectedBusinessChainNode = useOntologyStore((s) => s.setSelectedBusinessChainNode);
   const epcWarnings = getBusinessEpcWarnings();
+  const getCrossConsistency = useOntologyStore((s) => s.getCrossConsistency);
+  const selectedNode = useOntologyStore((s) => s.selectedBusinessChainNode);
+  const vxIssues = (selectedNode?.kind === 'C') ? getCrossConsistency(selectedNode.id) : [];
 
   const [workspaceScope, setWorkspaceScope] = useState<WorkspaceScope>('businessChain');
+  const [elementLibraryFocus, setElementLibraryFocus] = useState<{
+    elementId: string;
+    dimension: MetaDimension;
+  } | null>(null);
   const [showManual, setShowManual] = useState(false);
   const [showMetadata, setShowMetadata] = useState(false);
   const [showMasterData, setShowMasterData] = useState(false);
@@ -266,6 +273,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
           <div className="flex-1 overflow-auto p-6">
             <WarningCenter
               warnings={epcWarnings}
+              vxIssues={vxIssues}
               onNavigate={(kind, id) => {
                 if (kind === 'A' || kind === 'B' || kind === 'C' || kind === 'EPC') {
                   setSelectedBusinessChainNode({ kind, id });
@@ -277,7 +285,10 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
         )}
         {workspaceScope === 'elementLibrary' && (
           <div className="flex-1 overflow-auto p-6">
-            <ElementLibrary />
+            <ElementLibrary
+              focusTarget={elementLibraryFocus}
+              onFocusConsumed={() => setElementLibraryFocus(null)}
+            />
           </div>
         )}
         {workspaceScope === 'businessChain' && (
@@ -285,7 +296,12 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
             <div className="w-80 flex flex-col shrink-0">
               <BusinessChainTree />
             </div>
-            <BusinessChainDetail />
+            <BusinessChainDetail
+              onNavigateToElement={(elementId, dimension) => {
+                setElementLibraryFocus({ elementId, dimension });
+                setWorkspaceScope('elementLibrary');
+              }}
+            />
           </>
         )}
         {workspaceScope === 'metrics' && (
@@ -346,3 +362,4 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
     </div>
   );
 }
+

@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { VersionHistoryPanel } from '@/components/ontology/version-history-panel';
 import type { ModuleVersionRecord } from '@/types/ontology';
 
@@ -70,5 +70,27 @@ describe('VersionHistoryPanel (US-S14-U03)', () => {
     expect(onViewSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({ version: 'v1', status: 'archived' }),
     );
+  });
+
+  it('should sort rows draft → confirmed → archived after second confirm', () => {
+    render(
+      <VersionHistoryPanel
+        open
+        onOpenChange={() => undefined}
+        kind="A"
+        moduleId="a1"
+        versions={versions}
+        latestConfirmedVersion="v2"
+      />,
+    );
+
+    const rows = within(screen.getByTestId('version-history-list'))
+      .getAllByTestId(/^version-history-row-/)
+      .filter((row) => !row.getAttribute('data-testid')!.endsWith('-star'));
+    expect(rows.map((row) => row.getAttribute('data-testid'))).toEqual([
+      'version-history-row-draft',
+      'version-history-row-v2',
+      'version-history-row-v1',
+    ]);
   });
 });

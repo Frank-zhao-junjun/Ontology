@@ -103,4 +103,24 @@ describe('module-version lib (US-S03-U01)', () => {
   it('confirmModule should throw when no draft exists', () => {
     expect(() => confirmModule([], 'A', 'a-1', NOW)).toThrow(/No draft/);
   });
+
+  it('should resolve latest_confirmed to confirmed not draft when both exist', () => {
+    let records = draftRecord({ a: 1 });
+    records = confirmModule(records, 'EPC', 'epc-1', NOW);
+    records = forkConfirmedToDraft(records, {
+      moduleKind: 'EPC',
+      moduleId: 'epc-1',
+      snapshot: { a: 2 },
+      now: NOW,
+    });
+
+    const latest = resolveModuleRef(records, {
+      targetModuleKind: 'EPC',
+      targetElementId: 'epc-1',
+      pin: 'latest_confirmed',
+    });
+    expect(latest?.status).toBe('confirmed');
+    expect(latest?.version).toBe('v1');
+    expect(latest?.snapshot).toEqual({ a: 1 });
+  });
 });

@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useOntologyStore } from '@/store/ontology-store';
+import { filterUnreferencedElements, isUnreferencedElement } from '@/lib/element-library';
 import type { Domain, EpcProcess } from '@/types/ontology';
 
 const domain: Domain = {
@@ -85,5 +86,51 @@ describe('saveEpc store (US-S05-U04)', () => {
     const refs = useOntologyStore.getState().getElementUsageRefs(elementId!);
     expect(refs).toHaveLength(1);
     expect(refs[0].epcId).toBe(epc.id);
+  });
+
+  it('should sync usageRefs with element-library unreferenced filter', () => {
+    const store = useOntologyStore.getState();
+    const epc = store.project?.epcProcesses?.[0];
+    if (!epc) throw new Error('missing epc');
+
+    store.saveEpc(epc.id, {
+      ...epc,
+      steps: [{
+        id: 's1',
+        name: 'S',
+        elementRef: {
+          dimension: 'E1',
+          elementId: '',
+          versionPin: 'latest_confirmed',
+          inlineNew: true,
+          inlinePayload: { name: '已引用要素' },
+        },
+      }],
+    });
+
+    const project = useOntologyStore.getState().project!;
+    const referencedFresh = project.metaElements!.find((el) => el.name === '已引用要素')!;
+    expect(referencedFresh.usageRefs).toHaveLength(1);
+
+    useOntologyStore.setState({
+      project: {
+        ...project,
+        metaElements: [
+          ...(project.metaElements ?? []),
+          {
+            id: 'orphan-el',
+            name: '未引用',
+            dimension: 'E1' as const,
+            usageRefs: [],
+          },
+        ],
+      },
+    });
+
+    const elements = useOntologyStore.getState().project!.metaElements!;
+    const referencedInStore = elements.find((el) => el.name === '已引用要素')!;
+    expect(isUnreferencedElement(referencedInStore)).toBe(false);
+    expect(filterUnreferencedElements(elements, true)).toHaveLength(1);
+    expect(filterUnreferencedElements(elements, true)[0].id).toBe('orphan-el');
   });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useOntologyStore } from '@/store/ontology-store';
 import {
@@ -11,18 +11,27 @@ import {
   filterMetaElementsByDimension,
   filterUnreferencedElements,
   getUsageCount,
-  isUnreferencedElement,
   resolveEpcName,
 } from '@/lib/element-library';
 import type { MetaDimension } from '@/types/ontology';
-import { Badge } from '@/components/ui/badge';
+import { ElementCoverageBadge } from '@/components/ontology/element-coverage-badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { E1EntityPanel } from './e1-entity-panel';
 
-export function ElementLibrary() {
+export interface ElementLibraryFocusTarget {
+  elementId: string;
+  dimension: MetaDimension;
+}
+
+export interface ElementLibraryProps {
+  focusTarget?: ElementLibraryFocusTarget | null;
+  onFocusConsumed?: () => void;
+}
+
+export function ElementLibrary({ focusTarget, onFocusConsumed }: ElementLibraryProps = {}) {
   const project = useOntologyStore((s) => s.project);
   const getElementUsageRefs = useOntologyStore((s) => s.getElementUsageRefs);
   const [onlyUnreferenced, setOnlyUnreferenced] = useState(false);
@@ -40,6 +49,18 @@ export function ElementLibrary() {
     const byDim = filterMetaElementsByDimension(metaElements, activeDimension);
     return filterUnreferencedElements(byDim, onlyUnreferenced);
   }, [metaElements, activeDimension, onlyUnreferenced]);
+
+  // focusTarget is an imperative signal from parent to focus on a specific element.
+  // The state updates here are the intended response to the parent signal.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!focusTarget) return;
+    setActiveDimension(focusTarget.dimension);
+    setOnlyUnreferenced(false);
+    setExpandedId(focusTarget.elementId);
+    onFocusConsumed?.();
+  }, [focusTarget, onFocusConsumed]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <div className="space-y-4" data-testid="element-library">
@@ -105,11 +126,7 @@ export function ElementLibrary() {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-medium truncate">{el.name}</span>
-                      {isUnreferencedElement(el) && (
-                        <Badge variant="outline" className="shrink-0">
-                          未引用
-                        </Badge>
-                      )}
+                      <ElementCoverageBadge element={el} />
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs text-muted-foreground">

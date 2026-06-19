@@ -59,4 +59,9 @@ describe('module-version store (US-S03-U02)', () => {
     expect(history.some((h) => h.version === 'v1' && h.status === 'archived')).toBe(true);
     expect(history.some((h) => h.version === 'v2' && h.status === 'confirmed')).toBe(true);
   });
+
+  it('should throw when confirming module without draft', () => {
+    const store = useOntologyStore.getState();
+    expect(() => store.confirmModule('C', 'missing-c')).toThrow(/No draft/);
+  });
 });

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -37,6 +37,7 @@ import { resolveBusinessChainModuleStatus } from '@/lib/business-chain/module-st
 import { rebuildUsageIndex as rebuildUsageIndexFromProject } from '@/lib/epc-pipeline/rebuild-usage-index';
 import { runSaveEpcPipeline } from '@/lib/epc-pipeline/save-epc';
 import { migrateBusinessScenariosToChain } from '@/lib/migration/business-scenario-to-chain';
+import { deriveEpcSteps, derivedStepsToEpcSteps, filterConfirmedMetaElements } from '@/lib/epc-derivation';
 import type {
   OntologyProject,
   Domain,
@@ -113,6 +114,8 @@ import {
   getChildEpcProcesses,
   type ScenarioReferenceUnionItem,
 } from '@/lib/scenario-workspace';
+import { computeCoverage, emptyCoverageReport, type EpcCoverageReport } from '@/lib/epc-coverage';
+import { validateCrossConsistency, type CrossConsistencyIssue } from '@/lib/epc-cross-consistency';
 import { lintBusinessEpc, type EpcWarning } from '@/lib/business-epc-linter';
 import {
   mergeAiDraftSuggestion,
@@ -360,6 +363,13 @@ interface OntologyState {
   getUnreferencedElements: () => MetaElement[];
   getScenarioChildEpcs: (scenarioId: string) => EpcProcess[];
   getScenarioReferenceUnion: (scenarioId: string) => ScenarioReferenceUnionItem[];
+  getEpcCoverage: (scenarioId: string) => EpcCoverageReport;
+  getCrossConsistency: (scenarioId: string) => CrossConsistencyIssue[];
+  deriveEpcStepsFromScenario: (scenarioId: string) => import('@/lib/epc-derivation').DerivedEpcStep[];
+  applyDerivedStepsToScenarioEpc: (
+    scenarioId: string,
+    targetEpcId?: string,
+  ) => { ok: true; epcId: string; stepCount: number } | { ok: false; error: string };
   getBusinessEpcWarnings: () => EpcWarning[];
 
   // 简化架构 — AI draft 填充 (US-S11)
@@ -4065,6 +4075,72 @@ export const useOntologyStore = create<OntologyState>()(
           project?.epcProcesses,
           project?.metaElements,
         );
+      },
+
+      getEpcCoverage: (scenarioId) => {
+        const project = get().project;
+        if (!project) return emptyCoverageReport(scenarioId);
+        return computeCoverage({
+          scenarioId,
+          scenarios: project.scenarios ?? [],
+          epcProcesses: project.epcProcesses ?? [],
+          metaElements: project.metaElements ?? [],
+          moduleVersionRecords: project.moduleVersionRecords ?? [],
+        });
+      },
+
+      getCrossConsistency: (scenarioId) => {
+        const project = get().project;
+        if (!project) return [];
+        return validateCrossConsistency({
+          scenarioId,
+          scenarios: project.scenarios ?? [],
+          capabilities: project.capabilities ?? [],
+          valueDomains: project.valueDomains ?? [],
+          epcProcesses: project.epcProcesses ?? [],
+          metaElements: project.metaElements ?? [],
+          moduleVersionRecords: project.moduleVersionRecords ?? [],
+          behaviorModel: project.behaviorModel ?? null,
+          eventModel: project.eventModel ?? null,
+          ruleModel: project.ruleModel ?? null,
+          metricsModel: project.metricsModel ?? null,
+          dataSourcesModel: project.dataSourcesModel ?? null,
+          governanceModel: project.governanceModel ?? null,
+        });
+      },
+
+      deriveEpcStepsFromScenario: (scenarioId) => {
+        const project = get().project;
+        if (!project) return [];
+        if (!getLatestConfirmed(project.moduleVersionRecords ?? [], 'C', scenarioId)) return [];
+        const confirmed = filterConfirmedMetaElements(
+          project.metaElements ?? [],
+          project.moduleVersionRecords ?? [],
+        );
+        return deriveEpcSteps({ metaElements: confirmed });
+      },
+
+      applyDerivedStepsToScenarioEpc: (scenarioId, targetEpcId) => {
+        const state = get();
+        if (!state.project) return { ok: false, error: '没有活动项目' };
+
+        const derived = get().deriveEpcStepsFromScenario(scenarioId);
+        if (derived.length === 0) {
+          return { ok: false, error: '无可推导步骤，请先确认八维要素' };
+        }
+
+        const childEpcs = get().getScenarioChildEpcs(scenarioId);
+        let epc = targetEpcId
+          ? state.project.epcProcesses?.find((e) => e.id === targetEpcId)
+          : childEpcs[0];
+
+        if (!epc) {
+          epc = get().addEpcProcess(scenarioId, { name: '推导流程' });
+        }
+
+        const steps = derivedStepsToEpcSteps(derived, generateId);
+        get().saveEpc(epc.id, { ...epc, steps });
+        return { ok: true, epcId: epc.id, stepCount: steps.length };
       },
 
       getBusinessEpcWarnings: () => {

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import type { ExcelImportResult, ExcelImportError, ExcelImportValidation } from '@/types/ontology';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -73,15 +73,15 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File | null;
 
     if (!file) {
-      return NextResponse.json({ success: false, errorMessage: '未上传文件' } as ExcelImportResult, { status: 400 });
+      return NextResponse.json({ success: false, errorMessage: '未上传文件' } as unknown as ExcelImportResult, { status: 400 });
     }
 
     if (!file.name.endsWith('.xlsx')) {
-      return NextResponse.json({ success: false, errorMessage: '仅支持 .xlsx 格式文件' } as ExcelImportResult, { status: 400 });
+      return NextResponse.json({ success: false, errorMessage: '仅支持 .xlsx 格式文件' } as unknown as ExcelImportResult, { status: 400 });
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ success: false, errorMessage: `文件大小超过5MB限制(当前${(file.size / 1024 / 1024).toFixed(1)}MB)` } as ExcelImportResult, { status: 400 });
+      return NextResponse.json({ success: false, errorMessage: `文件大小超过5MB限制(当前${(file.size / 1024 / 1024).toFixed(1)}MB)` } as unknown as ExcelImportResult, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
         success: false,
         errorMessage: `缺少必需的Sheet: ${missingSheets.join(', ')}`,
         validation: { totalRows: 0, validRows: 0, errorCount: 0, errors: [] },
-      } as ExcelImportResult, { status: 400 });
+      } as unknown as ExcelImportResult, { status: 400 });
     }
 
     const allSheetNames = [...EXPECTED_SHEETS, ...OPTIONAL_SHEETS];
@@ -291,7 +291,7 @@ export async function POST(request: NextRequest) {
         success: false,
         errorMessage: `校验发现${allErrors.length}个错误`,
         validation,
-      } as ExcelImportResult, { status: 200 });
+      } as unknown as ExcelImportResult, { status: 200 });
     }
 
     // 解析成功 - 生成版本ID + 解析数据
@@ -305,14 +305,14 @@ export async function POST(request: NextRequest) {
       versionId,
       versionName,
       parsedData,
-    } as ExcelImportResult, { status: 200 });
+    } as unknown as ExcelImportResult, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : '未知错误';
     return NextResponse.json({
       success: false,
       errorMessage: `导入失败: ${message}`,
       validation: { totalRows: 0, validRows: 0, errorCount: 0, errors: [] },
-    } as ExcelImportResult, { status: 500 });
+    } as unknown as ExcelImportResult, { status: 500 });
   }
 }
 

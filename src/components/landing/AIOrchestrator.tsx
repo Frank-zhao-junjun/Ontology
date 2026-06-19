@@ -105,7 +105,7 @@ const AIOrchestrator = () => {
           Agent语义层<span className="text-[#ff6e00]">架构</span>
         </h2>
         <p className="text-center text-[#b7b7b7] mb-16 max-w-2xl mx-auto">
-          让 AI Agent 精准理解企业语义，从"这是什么"到"我该做什么"的完整映射
+          让 AI Agent 精准理解企业语义，从&ldquo;这是什么&rdquo;到&ldquo;我该做什么&rdquo;的完整映射
         </p>
 
         {/* Orchestrator Diagram */}

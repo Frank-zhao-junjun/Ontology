@@ -147,8 +147,10 @@ pnpm run ci:check
 | `pnpm test:unit` | 单元测试 | ✅ |
 | `pnpm test:integration` | 集成测试 | ✅ |
 | `pnpm test:e2e:smoke` | E2E 冒烟测试 | ✅ |
+| `pnpm test:phase1` … `test:phase4` | 精简架构分 Phase 回归 | 改相关 US 时 |
+| `pnpm test:phase:all` | Phase 1–4 全量回归 | 发布前可选 |
 
-**只有全部通过才能提交和推送。**
+**只有 `ci:check` 全绿才能提交和推送。** 若改动落在某 Phase US，额外跑对应 `test:phaseN`。
 
 ---
 

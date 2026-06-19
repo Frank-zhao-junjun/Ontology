@@ -1,7 +1,7 @@
 # Ontology 项目开发进度
 
-> 最后更新：2026-06-16
-> 当前版本：v2.0
+> 最后更新：2026-06-18
+> 当前版本：v2.1（简化重构 + EPC v3.1 升级中）
 
 ---
 
@@ -15,6 +15,8 @@
 | P4 | 组织体系与岗位模型 | ✅ 已完成 | 100% | 部门树+结构化职责+HR 同步+Excel 导入 |
 | P5 | 语义增强（Lifecycle + Agent Semantic Layer） | ✅ 已完成 | 100% | 实体生命周期+Agent 语义层+完备性评估 |
 | P6 | 持续增强 | ✅ 已完成 | 100% | 类型+Store+API+校验+UI+参考文档+测试全覆盖 |
+| P7 | 本体建模简化重构 | ✅ 已完成 | 100% | 14/14 US · A→B→C→EPC + E1–E8 · ci:check 全绿 |
+| P8 | EPC v3.1 升级 | 🟡 进行中 | 50% | S15 ✅ · S16 ✅ · **S17 U02 待修复** · S18 ⬜ |
 
 ---
 
@@ -100,9 +102,37 @@
 - [x] README 完善：修复端口/重复契约/测试表格 + 规格文档索引三组分类
 - [x] 测试覆盖：18(validator) + 20(store) + 77(api集成) = **129 用例**
 
+### P7: 本体建模简化重构 ✅
+
+- [x] Phase 0–4 全部 14 个 User Story（US-S01~S13 + US-S14）
+- [x] 业务链 A→B→C→EPC + 八维要素 E1–E8
+- [x] 模块版本 draft/confirmed/archived + saveEpc 流水线
+- [x] 要素库 + C 工作区 + business-epc-linter + Excel 分模块 + AI draft
+- [x] 遗留清理 + compileSimplifiedChain Manifest golden
+- [x] 全量 `ci:check` 绿灯（286 unit + 101 integration + e2e smoke）
+
+### P8: EPC v3.1 升级 🟡
+
+- [x] **US-S15**: W-EPC 扩展 06~17（U01–U06 ✅ · `business-epc-linter.spec.ts` 42/42）
+- [x] **US-S16**: EPC 覆盖率分析 + 仪表盘（**16/16** 全层测试）
+  - `src/lib/epc-coverage/` · Store `getEpcCoverage` · `EpcCoveragePanel`
+  - unit 10 + store 4 + integration 1 + e2e 1
+- [ ] **US-S17**: 交叉一致性校验 VX-01~12（U01 ✅ · U02 草稿 28 cases 语法阻塞 · U03/U04 ⬜）
+- [ ] **US-S18**: EPC 推导 + 覆盖率 Badge
+
 ---
 
 ## 近期完成记录
+
+### 2026-06-18
+
+| 工作项 | 说明 |
+|--------|------|
+| 文档同步 | `TODO.md` + `PROGRESS.md` 对齐 v3.1 Phase C 状态 |
+| US-S17 启动 | `validateCrossConsistency` 纯函数完成；测试草稿 28 cases 待修复 |
+| US-S15 完成 | W-EPC 06~17 · `business-epc-linter.spec.ts` 42/42 |
+| US-S16 测试补全 | store 4 + integration 1 + e2e 1；TC06/TC07 对齐 Testing Cases |
+| US-S16 U01–U04 | 覆盖率：`computeCoverage` + `getEpcCoverage` + 仪表盘 UI |
 
 ### 2026-06-16
 
@@ -158,7 +188,10 @@
 | `docs/Entity-Lifecycle-Spec.md` | v2.0 | 实体生命周期增强 + 审计追溯 + 15 条校验 |
 | `docs/Agent-Semantic-Layer-Spec.md` | v1.0 | Agent 语义层 9 大子模型 + 完备性评估 |
 | `docs/Reference-Doc-Upload-Spec.md` | v1.0 | 参考文档上传辅助 AI 建模 |
-| `docs/TODO.md` | v1.0 | 项目待办清单（5模块×27任务） |
+| `docs/TODO.md` | v1.1 | 项目待办清单（含 EPC v3.1 Phase A–D） |
+| `docs/ontology-simplification/PROGRESS.md` | — | 简化重构 + v3.1 升级进度追踪 |
+| `docs/ontology-simplification/us-s16-unit-spec.md` | — | US-S16 覆盖率分析 Unit Spec |
+| `docs/ontology-simplification/epc-v3.1-simplified-spec.md` | v3.1 | EPC 简化架构准据（44 条规则） |
 | `assets/ontology-ai-driven-system-specification-v2.0.md` | v2.0 | 系统完整需求规格说明书 |
 
 ---
@@ -176,7 +209,25 @@
 
 ## 下一步计划
 
-### P2 — EPC v3.1 UI 升级
+### P8 — EPC v3.1 执行路线（严格顺序）
+
+```mermaid
+flowchart LR
+  U02["① S17-U02<br/>修复 VX 测试"] --> U34["② S17-U03/U04<br/>Store + 校验面板"]
+  U34 --> S18["③ S18<br/>推导 + Badge"]
+  S16["S16 覆盖率 ✅"] -.-> S18
+```
+
+| 步骤 | 任务 | 关键产出 | 门禁 |
+|:----:|------|----------|------|
+| **①** | S17-U02 修复 | `epc-cross-consistency.spec.ts` 28/28 | 全绿后方可进入 ② |
+| **②** | S17-U03 | Store `getCrossConsistency` | ✅ 4/4 store 测试 |
+| **②** | S17-U04 | `EpcValidationPanel` 三栏 UI | ✅ 3+1 测试 |
+| **③** | S18-U01~U04 | `deriveEpcSteps` + 推导按钮 + Badge | ✅ **29/29** |
+
+**当前**：EPC v3.1 Phase A–D 全部完成 ✅
+
+### P2 — EPC v3.1 UI 升级（遗留 · S18 之后可选）
 
 1. **EPC-T4: EPC 画布 UI 增强**
    - 节点展示 Lifecycle/Semantic 关联信息

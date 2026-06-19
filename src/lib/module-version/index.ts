@@ -67,18 +67,24 @@ export function getConfirmedByVersion(
   );
 }
 
-export function getModuleVersions(
-  records: ModuleVersionRecord[],
-  kind: ModuleKind,
-  moduleId: string,
+export function sortModuleVersionsForDisplay(
+  versions: ModuleVersionRecord[],
 ): ModuleVersionRecord[] {
-  return filterByModule(records, kind, moduleId).slice().sort((a, b) => {
+  return versions.slice().sort((a, b) => {
     const order = (s: ModuleVersionRecord['status']) =>
       s === 'draft' ? 3 : s === 'confirmed' ? 2 : 1;
     const byStatus = order(b.status) - order(a.status);
     if (byStatus !== 0) return byStatus;
     return parseVersionNumber(b.version) - parseVersionNumber(a.version);
   });
+}
+
+export function getModuleVersions(
+  records: ModuleVersionRecord[],
+  kind: ModuleKind,
+  moduleId: string,
+): ModuleVersionRecord[] {
+  return sortModuleVersionsForDisplay(filterByModule(records, kind, moduleId));
 }
 
 export function saveModuleDraft(

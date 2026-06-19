@@ -12,7 +12,7 @@ Ontology 是一个面向业务架构师、系统设计师和交付工程师的�
 
 ### 建模工作台
 
-- 项目与业务场景管理：实体必须归属于具体项目和业务场景，工作台按当前业务场景过滤实体。
+- 项目与业务场景管理：实体必须归属于具体业务场景，工作台按当前业务场景过滤实体。
 - DDD 实体角色：支持 `aggregate_root` 聚合根与 `child_entity` 聚合内子实体，聚合根可承载 EPC 与领域事件链路。
 - 数据模型：维护实体、属性、关系、指标、指标计算属性、指标数据来源映射等结构。
 - 行为模型：维护状态机、状态、状态流转、触发器、动作和副作用。
@@ -20,35 +20,64 @@ Ontology 是一个面向业务架构师、系统设计师和交付工程师的�
 - 事件模型：维护领域事件、订阅、事务阶段、幂等键和处理策略。
 - 流程模型：维护业务流程编排、步骤定义和决策点。
 
+### 本体建模简化重构（Phase 0–4 ✅）
+
+> 2026-06-18 完成 | 14/14 User Story | `ci:check` 全绿
+
+将原有的 12 大模型混合架构收敛为清晰的业务树 + 八维要素体系：
+
+```
+A (ValueDomain) → B (Capability) → C (Scenario) → EPC (EpcProcess)
+                                                      └── steps[].elementRef → E1–E8
+```
+
+- **A/B/C 三层业务树**：业务价值域 → 业务能力 → 业务场景，严格父子关系
+- **E1–E8 八维要素库**：数据模型 / 行为模型 / 事件模型 / 规则模型 / 岗位角色 / 指标模型 / 约束模型 / 接口模型
+- **EPC 步骤内联引用**为权威数据源，要素库维护派生反向索引
+- **模块三态**：draft → confirmed → archived，confirmed 可跨模块引用
+- **W-EPC 警示规则**：5 条 warning only 规则，不阻断导出
+
+核心新增模块见 `src/lib/` 下的 `business-chain/`、`element-library/`、`element-selector/`、`epc-pipeline/`、`module-version/`、`scenario-workspace/`、`business-epc-linter/`、`excel/`、`ai-draft/`、`legacy-audit/`、`migration/`。
+
 ### EPC 全域关联层
 
-EPC 不是第六个模型，而是将所有模型串联为一体的**复合关联视图**。
+EPC 不是独立的第六个模型，而是通过 **A→B→C→EPC 业务树** 将八维要素（E1–E8）串联为完整业务流程的视图。
 
-- 链路建模：在聚合根实体下创建 EPC 链路（EpcChain），由节点（EpcNode）和边（EpcEdge）构成。
-- 5 种节点类型：Event（六边形）、Function（圆角矩形）、Connector（菱形）、InfoObject（矩形）、OrgUnit（椭圆）。
-- 全域关联：每个节点通过 `refs: EpcModelRef[]` 同时引用多个模型元素，覆盖 12 大模型（含 Lifecycle + Semantic Layer）。
-- 推导生成：从已有 EventModel / BehaviorModel / ProcessModel 自动推导 EPC 链路骨架，10 步推导算法。
-- 流程图渲染：基于 @xyflow/react 自定义 5 种节点形状，支持拖拽编排。
-- 反向引用：各模型编辑器显示"出现在哪些 EPC 中"的覆盖 Badge。
+- 业务链导航：选择 A（业务价值域）→ B（业务能力）→ C（业务场景）→ 管理 EPC 流程
+- EPC 编辑器：通过步骤序列（`EpcStep`）构建流程，每步可引用八维要素库中的元素
+- 要素选择器（US-S06）：在 EPC 步骤中按维度筛选、选择或内联新建 E1–E8 要素
+- 要素库（US-S07）：全局查看 E1–E8 所有要素，筛选未被 EPC 引用的要素
+- saveEpc 流水线（US-S05）：保存 EPC 时自动 upsert 内联要素 + 重建 usageRefs 索引
+- 模块确认（US-S14）：draft → confirmed → archived 三态，confirmed 可被跨模块引用
+- 警示中心（US-S09）：W-EPC-01~05 检查要素引用一致性，warning only 不阻断
 
-#### 全域关联矩阵
+#### 八维要素库（E1–E8）
 
-| EPC 节点 | 可关联的模型 |
-|---------|----------|
-| Event | 事件定义 + 触发实体 + 状态转换 + 触发规则 + 订阅 + 权限角色 + 指标 + 数据源 + 主数据 + 元数据 + 处理岗位 + State.entry/exitActions + Intent(触发类) + BusinessTerm + TemporalValidity |
-| Function | 动作/转换 + 输入输出实体 + 前后置规则 + 产生事件 + 流程步骤 + 执行角色 + 指标 + 数据源 + 主数据 + 元数据 + 责任岗位 + State.availableActions + guardCondition + compensationAction + Intent(操作类) + SlotFillingStrategy + ErrorRecovery + AgentPolicy |
-| Connector | 分支规则 + 角色权限 + Transition.guardCondition + Intent.contextConstraints |
-| InfoObject | 实体/属性 + 校验规则 + 变更事件 + 字段权限 + 质量指标 + 数据源 + 主数据 + 元数据 + State.dataVisibility + SemanticFieldMapping + BusinessTerm + TemporalValidity |
-| OrgUnit | 治理角色 + 权限 + 行为约束 + 部门 + 岗位 + State.allowedRoles + notifyRoleIds + approvalRoleIds + AgentPolicy |
+| 维度 | 名称 | 包含内容 |
+|------|------|----------|
+| E1 | 数据模型 | Entity、Attribute、Relation |
+| E2 | 行为模型 | StateMachine、Action、Transition |
+| E3 | 事件模型 | EventDefinition、Subscription |
+| E4 | 规则模型 | 字段/跨字段/跨实体/聚合/时序校验规则 |
+| E5 | 岗位角色 | Department、Position、GovernanceRole |
+| E6 | 指标模型 | BusinessMetric |
+| E7 | 约束模型 | guard condition、transaction boundary、compensation |
+| E8 | 接口模型 | DataSource、Integration、Webhook |
 
-#### 双向校验体系（71 条规则）
+#### 校验体系（W-EPC 警示规则）
 
-| 方向 | 编号前缀 | 规则数 | 核心问题 |
-|------|---------|--------|---------|
-| EPC → 模型 | VE | 17 | EPC 引用的模型元素是否真实有效、一致、合法？ |
-| 模型 → EPC | VM | 39 | 模型定义的元素是否被 EPC 覆盖？（10 大模型 + 组织 + Lifecycle + Semantic） |
-| 交叉一致性 | VX | 15 | EPC 关联声明与模型内部定义是否矛盾？ |
-- EPC 事件说明书：面向聚合根生成只读 EPC 文档，并支持 Markdown、JSON 、YAML 和整包导出。
+| # | 条件 | 作用范围 |
+|---|------|----------|
+| W-EPC-01 | 引用要素已确认但非最新确认版 | EPC confirmed |
+| W-EPC-02 | 已确认要素 usageRefs 为空 | E* confirmed |
+| W-EPC-03 | 引用要素仅有草稿 | 跨模块 ref |
+| W-EPC-04 | C 已确认但无 EPC 子节点 | C confirmed |
+| W-EPC-05 | elementId 在库中不存在 | confirmed |
+
+> EPC v3.1 升级（US-S15~S17）将扩展至 44 条规则：W-EPC-06~17 + VM 22 条 + VX 10 条。参见 [docs/ontology-simplification/epc-v3.1-simplified-spec.md](./ontology-simplification/epc-v3.1-simplified-spec.md)。
+
+- Manifest 编译（US-S13）：`compileSimplifiedChain` 将业务树 + EPC 映射到 platform Manifest 格式
+- 业务场景迁移（US-S12）：旧 `BusinessScenario` → A/B/C 一键迁移
 
 ### 平台级模型
 
@@ -177,10 +206,12 @@ lint -> ts-check -> unit -> integration -> e2e smoke
 
 | 层 | 用例数 | 文件 |
 |---|:---:|---|
-| Validator (V-LC + V-AS + EPC) | 18 | `src/lib/__tests__/ontology-validator.test.ts` |
-| Store (Lifecycle + Semantic + Org) | 20 | `tests/unit/ontology-store-extended.spec.ts` |
-| API 集成 | 77 | `src/test/integration/api.test.ts` |
-| **合计** | **129** | |
+| Unit 测试（简化重构 + validator + store） | 286 | `tests/unit/` (~70 文件) |
+| Integration 测试 | 101 | `tests/integration/` (~30 文件) |
+| E2E smoke | 7+ | `tests/e2e/` (7 文件) |
+| **合计** | **394+** | |
+
+`pnpm run ci:check` 全绿（2026-06-18）：lint 0 error · ts-check pass · unit 286 · integration 101 · e2e smoke pass
 
 ## 环境变量
 
@@ -217,10 +248,23 @@ src/
 │   ├── landing/                  # 产品介绍页组件
 │   └── ontology/                 # 建模工作台组件 (20+ 组件)
 ├── lib/
-│   ├── epc-generator/            # EPC 生成器
-│   ├── metadata-local.ts         # 本地元数据 (57 条)
-│   ├── ontology-validator.ts     # 校验引擎 (51 条规则)
-│   └── ontology-normalizer.ts    # 模型规范化
+│   ├── business-chain/            # US-S04: A/B/C 业务链树（tree.ts）
+│   ├── element-library/           # US-S07: 要素库 + 未引用查询
+│   ├── element-selector/          # US-S06: EPC 要素选择器
+│   ├── epc-pipeline/              # US-S05: saveEpc（upsert-inline/rebuildUsageIndex）
+│   ├── module-version/            # US-S03+S14: 模块版本管理（confirm-flow）
+│   ├── scenario-workspace/        # US-S08: C 工作区逻辑
+│   ├── business-epc-linter/       # US-S09: W-EPC 警示规则 + 待扩展
+│   ├── excel/                     # US-S10: Excel 分模块导入导出
+│   ├── ai-draft/                  # US-S11: AI 仅 draft 填充
+│   ├── legacy-audit/              # US-S12: 遗留代码审计
+│   ├── migration/                 # US-S12: BusinessScenario → A/B/C
+│   ├── manifest-compiler/         # US-S13: compileSimplifiedChain
+│   ├── e1-entity/                 # US-S06: E1 实体创建
+│   ├── epc-generator/             # EPC 生成器 (旧)
+│   ├── metadata-local.ts          # 本地元数据 (57 条)
+│   ├── ontology-validator.ts      # 校验引擎
+│   └── ontology-normalizer.ts     # 模型规范化
 ├── storage/database/             # Supabase / 数据库适配
 ├── store/ontology-store.ts       # 全局状态 (50+ actions, Zustand persist)
 └── types/ontology.ts             # 核心类型定义 (70+ 类型, 1700+ 行)
@@ -291,7 +335,13 @@ POST   /api/hr-sync/resolve-conflict
 - `EntityLifecycle` / `LifecycleAuditEntry` / `StateTimeout` / `StateDataVisibility`
 - `OrganizationModel` / `Department` / `Position` / `PositionResponsibility` / `HRSyncConfig` / `HRSyncResult`
 - `ReferenceDocument` / `ExtractedEntity` / `ExtractedAttribute`
-- `EpcChain` / `EpcNode` / `EpcEdge` / `EpcModelRef`
+- **简化重构新增**：
+  - `ValueDomain` / `Capability` / `Scenario` / `EpcProcess` / `EpcStep` — A→B→C→EPC 业务树
+  - `MetaElement` / `MetaDimension` (E1–E8) — 八维要素库
+  - `ElementUsageRef` / `VersionPin` — 引用索引与版本锁定
+  - `ModuleVersionRecord` / `ModuleKind` — 模块版本管理（draft/confirmed/archived）
+  - `SemanticsBlock` — A/B/C.semantics（terms/triggerPhrases）
+- `EpcChain` / `EpcNode` / `EpcEdge` / `EpcModelRef`（旧 EPC v3.0，逐步淘汰）
 - `EpcValidationSummary` / `EpcModelCoverage`
 - `IntentSlot` / `SlotFillingStrategy` / `DialogContext`
 - `TemporalValidity` / `ExtractedAttribute`

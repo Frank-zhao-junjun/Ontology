@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useOntologyStore } from '@/store/ontology-store';
-import { getBusinessChainDisplayPath } from '@/lib/business-chain/tree';
+import { getBusinessChainDisplayPath, type BusinessChainNodeKind } from '@/lib/business-chain/tree';
 import { ModuleStatusBadge } from '@/components/ontology/module-status-badge';
 import { ModuleDetailActions } from '@/components/ontology/module-detail-actions';
 import { VersionHistoryPanel } from '@/components/ontology/version-history-panel';
@@ -20,11 +20,15 @@ import { getLatestConfirmed, getModuleDraft } from '@/lib/module-version';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { EpcProcess, ModuleVersionRecord, Scenario } from '@/types/ontology';
+import type { EpcProcess, MetaDimension, ModuleVersionRecord, Scenario } from '@/types/ontology';
 
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
-export function BusinessChainDetail() {
+export interface BusinessChainDetailProps {
+  onNavigateToElement?: (elementId: string, dimension: MetaDimension) => void;
+}
+
+export function BusinessChainDetail({ onNavigateToElement }: BusinessChainDetailProps = {}) {
   const project = useOntologyStore((s) => s.project);
   const selected = useOntologyStore((s) => s.selectedBusinessChainNode);
   const getStatus = useOntologyStore((s) => s.getBusinessChainModuleStatus);
@@ -41,8 +45,11 @@ export function BusinessChainDetail() {
   const forkModuleToDraft = useOntologyStore((s) => s.forkModuleToDraft);
   const applyAiModuleDraft = useOntologyStore((s) => s.applyAiModuleDraft);
   const getModuleVersions = useOntologyStore((s) => s.getModuleVersions);
+  const deriveEpcStepsFromScenario = useOntologyStore((s) => s.deriveEpcStepsFromScenario);
+  const applyDerivedStepsToScenarioEpc = useOntologyStore((s) => s.applyDerivedStepsToScenarioEpc);
 
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [derivedSteps, setDerivedSteps] = useState<import('@/lib/epc-derivation').DerivedEpcStep[] | null>(null);
   const [fieldErrors, setFieldErrors] = useState<string[]>([]);
   const [archivedPreview, setArchivedPreview] = useState<ModuleVersionRecord | null>(null);
 
@@ -221,7 +228,27 @@ export function BusinessChainDetail() {
           scenario={node as Scenario}
           childEpcs={getScenarioChildEpcs(selected.id)}
           referenceUnion={getScenarioReferenceUnion(selected.id)}
+          canApplyDerivedSteps={Boolean(latestConfirmed)}
           onSelectEpc={(epcId) => setSelectedBusinessChainNode({ kind: 'EPC', id: epcId })}
+          onNavigateToElement={onNavigateToElement}
+          onNavigateToChain={(kind, id) => setSelectedBusinessChainNode({ kind: kind as BusinessChainNodeKind, id })}
+          derivedSteps={derivedSteps ?? []}
+          onDeriveSteps={() => {
+            const steps = deriveEpcStepsFromScenario(selected.id);
+            setDerivedSteps(steps);
+            if (steps.length === 0) {
+              toast.message('无可推导步骤，请先确认八维要素');
+            }
+          }}
+          onApplyDerivedSteps={() => {
+            const result = applyDerivedStepsToScenarioEpc(selected.id);
+            if (!result.ok) {
+              toast.error(result.error);
+              return;
+            }
+            toast.success(`已生成 ${result.stepCount} 个步骤到 EPC 草稿`);
+            setSelectedBusinessChainNode({ kind: 'EPC', id: result.epcId });
+          }}
         />
       )}
       {selected.kind === 'EPC' && !archivedPreview && (

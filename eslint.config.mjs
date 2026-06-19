@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
   ...nextTs,
   // Override default ignores of eslint-config-next.
   globalIgnores([
+    '.pytest_cache/**',
+    '.coverage/**',
     // Default ignores of eslint-config-next:
     '.next/**',
     'out/**',
@@ -57,6 +59,9 @@ const eslintConfig = defineConfig([
     '.vibe/**',
     '.windsurf/**',
     '.zencoder/**',
+    '.adal/**',
+    '.cortex/**',
+    'frontend-react/**',
     'skills/**',
     'Cursor/**',
   ]),

@@ -1,0 +1,162 @@
+import React from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { ModelingWorkspace } from '@/components/ontology/modeling-workspace';
+import { useOntologyStore } from '@/store/ontology-store';
+import type { Domain, MetaElement, OntologyProject } from '@/types/ontology';
+
+vi.mock('@/hooks/use-project-sync', () => ({
+  useProjectSync: vi.fn(),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+}));
+
+vi.mock('@/services/project-service', () => ({
+  updateProject: vi.fn(),
+  deleteProject: vi.fn(),
+}));
+
+vi.mock('@/components/ontology/data-model-editor', () => ({
+  DataModelEditor: () => React.createElement('div', { 'data-testid': 'data-model-editor' }),
+}));
+vi.mock('@/components/ontology/behavior-model-editor', () => ({
+  BehaviorModelEditor: () => React.createElement('div', { 'data-testid': 'behavior-model-editor' }),
+}));
+vi.mock('@/components/ontology/rule-model-editor', () => ({
+  RuleModelEditor: () => React.createElement('div', { 'data-testid': 'rule-model-editor' }),
+}));
+vi.mock('@/components/ontology/event-model-editor', () => ({
+  EventModelEditor: () => React.createElement('div', { 'data-testid': 'event-model-editor' }),
+}));
+vi.mock('@/components/ontology/epc-tab', () => ({
+  EpcTab: () => React.createElement('div', { 'data-testid': 'epc-tab' }),
+}));
+vi.mock('@/components/ontology/manual-generator', () => ({
+  ManualGenerator: () => React.createElement('div', { 'data-testid': 'manual-generator' }),
+}));
+vi.mock('@/components/ontology/metadata-manager', () => ({
+  MetadataManager: () => React.createElement('div', { 'data-testid': 'metadata-manager' }),
+}));
+vi.mock('@/components/ontology/masterdata-manager', () => ({
+  MasterDataManager: () => React.createElement('div', { 'data-testid': 'masterdata-manager' }),
+}));
+vi.mock('@/components/ontology/publish-dialog', () => ({
+  PublishDialog: () => React.createElement('div', { 'data-testid': 'publish-dialog' }),
+}));
+vi.mock('@/components/ontology/manifest-export-dialog', () => ({
+  ManifestExportDialog: () => React.createElement('div', { 'data-testid': 'manifest-export-dialog' }),
+}));
+vi.mock('@/components/ontology/governance-editor', () => ({
+  GovernanceEditor: () => React.createElement('div', { 'data-testid': 'governance-editor' }),
+}));
+vi.mock('@/components/ontology/data-source-editor', () => ({
+  DataSourceEditor: () => React.createElement('div', { 'data-testid': 'data-source-editor' }),
+}));
+vi.mock('@/components/ontology/metrics-editor', () => ({
+  MetricsEditor: () => React.createElement('div', { 'data-testid': 'metrics-editor' }),
+}));
+
+const now = '2026-06-18T12:00:00.000Z';
+
+function createProject(): OntologyProject {
+  return {
+    id: 'proj-derive',
+    name: '推导 E2E',
+    description: '',
+    domain: {
+      id: 'domain-1',
+      name: '离散制造',
+      nameEn: 'Mfg',
+      description: '',
+      icon: 'factory',
+      color: '#3b82f6',
+    },
+    dataModel: {
+      id: 'dm-1',
+      name: '数据模型',
+      version: '1',
+      domain: 'domain-1',
+      projects: [{ id: 'ep-1', name: '默认', nameEn: 'Default', color: '#3b82f6', createdAt: now, updatedAt: now }],
+      businessScenarios: [],
+      entities: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    behaviorModel: null,
+    ruleModel: null,
+    processModel: null,
+    eventModel: null,
+    valueDomains: [],
+    capabilities: [],
+    scenarios: [],
+    epcProcesses: [],
+    metaElements: [],
+    moduleVersionRecords: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function confirmMetaElements(elements: MetaElement[]) {
+  const store = useOntologyStore.getState();
+  for (const el of elements) {
+    store.saveModuleDraft(el.dimension, el.id, el);
+    store.confirmModule(el.dimension, el.id);
+  }
+}
+
+describe('E2E-EPC-DERIVATION-001 @smoke', () => {
+  beforeEach(() => {
+    useOntologyStore.setState({
+      project: createProject(),
+      metadataList: [],
+      masterDataList: [],
+      masterDataRecords: {},
+      versions: [],
+      activeModelType: 'data',
+      selectedBusinessChainNode: null,
+    });
+  });
+
+  it('@smoke 用户可在 C 工作区推导并应用 EPC 步骤', async () => {
+    const store = useOntologyStore.getState();
+    const a = store.addValueDomain({ name: '生产域' });
+    const b = store.addCapability(a.id, { name: '计划能力' });
+    const c = store.addScenario(b.id, { name: 'MTS场景' });
+    store.confirmModule('C', c.id);
+
+    const elements: MetaElement[] = [
+      { id: 'ev-1', name: '创建事件', dimension: 'E3' },
+      { id: 'act-1', name: '审批', dimension: 'E2', stateMachineId: 'sm-1' },
+    ];
+    useOntologyStore.setState({
+      project: { ...useOntologyStore.getState().project!, metaElements: elements },
+    });
+    confirmMetaElements(elements);
+
+    useOntologyStore.setState({
+      selectedBusinessChainNode: { kind: 'C', id: c.id },
+    });
+
+    render(React.createElement(ModelingWorkspace, { project: useOntologyStore.getState().project! }));
+    fireEvent.click(screen.getByRole('button', { name: /业务链/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('derive-epc-steps-btn')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('derive-epc-steps-btn'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('derive-epc-steps-list')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('apply-derived-steps-btn'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('epc-steps-editor')).toBeInTheDocument();
+    });
+  });
+});
