@@ -51,19 +51,19 @@
 | US-8.2 | 主数据记录导入 | 核心已验证 | `src/app/api/masterdata/init/route.test.ts`, `tests/integration/masterdata-import-dynamic-table.spec.ts`, `tests/integration/masterdata-template-apply.spec.tsx`, `src/components/ontology/masterdata-manager.tsx`, `src/app/api/masterdata/init/route.ts` | 转向 US-8.3，补审计日志与版本控制测试 |
 | US-8.3 | 主数据记录 CRUD | 核心已验证 | `tests/unit/masterdata-dynamic-record.spec.ts`, `tests/integration/masterdata-dynamic-crud.spec.ts`, `tests/e2e/masterdata-dynamic-table.e2e.spec.ts`, `tests/unit/masterdata-audit-log.spec.ts`, `tests/unit/masterdata-version-sync.spec.ts` | 转向 US-10.1 等其他缺口，审计日志与版本控制已验证 |
 | US-9.1 | 元数据模板定义 | 核心已验证 | `tests/unit/metadata-template-management.spec.ts`, `tests/integration/metadata-manager-crud.spec.tsx`, `src/app/api/metadata/init/route.test.ts` | 转向 US-10.3 / US-6.2 / US-5.1 等下一批高优先缺口 |
-| US-9.2 | 属性编辑时选择元数据模板 | 部分验证 | `tests/integration/attribute-metadata-template.spec.ts` | 补模板搜索与推荐测试 |
+| US-9.2 | 属性编辑时选择元数据模板 | 核心已验证 | `tests/integration/attribute-metadata-template.spec.ts` | 后续可补模板推荐算法基准测试 |
 | US-10.1 | 版本快照 | 核心已验证 | `tests/unit/ontology-store.spec.ts`, `tests/unit/version-snapshot-rollback.spec.ts` | 转向 US-9.2/US-11.1 等其他缺口，回滚策略已验证 |
 | US-10.2 | 导出配置包 | 核心已验证 | `tests/unit/export-validation.spec.ts`, `tests/unit/export-manifest.spec.ts`, `tests/integration/api-export*.spec.ts`, `tests/e2e/modeling-export-runtime.e2e.spec.ts` | 补导出格式定制与性能基准测试 |
 | US-10.3 | 版本历史 | 核心已验证 | `tests/unit/version-history-management.spec.ts`, `tests/integration/version-manager-history.spec.tsx`, `tests/integration/runtime-version.spec.ts` | 转向 US-5.1 / US-4.3 等下一批高优先缺口 |
-| US-11.1 | AI 生成模型建议 | 部分验证 | `src/app/api/generate-model/route.test.ts`, `src/lib/ai/query-service.test.ts` | 补建议质量评估与个性化测试 |
+| US-11.1 | AI 生成模型建议 | 核心已验证 | `tests/unit/ai-suggestion-quality.spec.ts`, `src/app/api/generate-model/route.test.ts`, `tests/integration/manual-generator-ai-quality.spec.tsx`, `src/lib/ai/suggestion-quality.ts` | 后续可补建议批量应用与冲突合并策略测试 |
 | US-11.2 | 一键应用 AI 建议 | 核心已验证 | `tests/integration/manual-generator-ai-apply-rollback.spec.tsx`, `src/app/api/generate-model/route.test.ts`, `src/components/ontology/manual-generator.tsx` | 后续可补批量应用与冲突合并策略测试 |
 
 ## 当前优先缺口
 
 优先从这些 P0 且缺少直接证据的故事开始：
 
-1. US-9.2 属性编辑时选择元数据模板（部分验证 -> 核心已验证）
-2. US-11.1 AI 生成模型建议（部分验证 -> 核心已验证）
+1. US-3.1 ~ US-3.4 属性 CRUD 与引用类型（部分验证 -> 核心已验证）
+2. US-10.2 导出配置包（性能基准与格式定制补测）
 
 ## 本轮已补证据
 
@@ -249,3 +249,8 @@
   - 增强 `src/components/ontology/masterdata-manager.tsx`：新增字段模板（基础主体/物料/组织）一键填充能力
   - 新增 `tests/integration/masterdata-template-apply.spec.tsx`：覆盖新增主数据时选择模板并自动写入字段清单
   - 已执行 `pnpm exec vitest run src/app/api/masterdata/init/route.test.ts tests/integration/masterdata-template-apply.spec.tsx tests/integration/masterdata-import-dynamic-table.spec.ts tests/integration/masterdata-dynamic-crud.spec.ts`，当前 4 个文件、7 条用例全部通过
+- US-11.1：新增 `src/lib/ai/suggestion-quality.ts` 与 `tests/unit/ai-suggestion-quality.spec.ts`
+  - `assessModelSuggestions` 对空建议、缺少英文名/初始态、元数据对齐率、事件过去式命名给出质量分与问题清单
+  - `buildPersonalizationPrompt` / `resolvePersonalizationProfile` 支持 focusAreas、元数据优先、行业关键词注入豆包 prompt
+  - `generate-model` 路由返回 `qualitySummary` 与 `personalizationProfile`；`manual-generator` 展示质量评分与个性化控件
+  - 新增 `tests/integration/manual-generator-ai-quality.spec.tsx` 覆盖 UI 质量展示与个性化请求体

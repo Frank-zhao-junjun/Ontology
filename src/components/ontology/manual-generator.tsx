@@ -9,6 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import type { Entity, Attribute, Relation, StateMachine, State, Transition, Rule, EventDefinition, Subscription } from '@/types/ontology';
+import type {
+  ModelSuggestionFocusArea,
+  ModelSuggestionQualitySummary,
+} from '@/lib/ai/suggestion-quality';
 
 interface RelatedModels {
   entity?: Entity;
@@ -48,6 +52,10 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
   const { project, updateEntity, addStateMachine, addRule, addEventDefinition, addSubscription, metadataList, masterDataList } = useOntologyStore();
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestions | null>(null);
+  const [qualitySummary, setQualitySummary] = useState<ModelSuggestionQualitySummary | null>(null);
+  const [focusAreas, setFocusAreas] = useState<ModelSuggestionFocusArea[]>(['data', 'behavior', 'rule', 'event']);
+  const [preferMetadataMatch, setPreferMetadataMatch] = useState(true);
+  const [industryKeywords, setIndustryKeywords] = useState('');
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [appliedItems, setAppliedItems] = useState<Set<string>>(new Set());
   const rollbackHandlersRef = useRef(new Map<string, () => void>());
@@ -72,6 +80,7 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
     
     setIsGenerating(true);
     setGenerateError(null);
+    setQualitySummary(null);
     setAppliedItems(new Set());
     rollbackHandlersRef.current = new Map();
 
@@ -105,6 +114,14 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
           },
           metadataList: metadataList, // 传递元数据列表，AI生成时优先匹配
           masterDataList: masterDataList, // 传递主数据列表，AI生成时参考业务数据
+          personalization: {
+            focusAreas,
+            preferMetadataMatch,
+            industryKeywords: industryKeywords
+              .split(/[,，、]/)
+              .map((keyword) => keyword.trim())
+              .filter(Boolean),
+          },
         }),
       });
 
@@ -115,13 +132,24 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
       }
 
       setAiSuggestions(result.data);
+      setQualitySummary(result.qualitySummary ?? null);
     } catch (error) {
       console.error('AI generation error:', error);
       setGenerateError(error instanceof Error ? error.message : '生成失败');
     } finally {
       setIsGenerating(false);
     }
-  }, [masterDataList, metadataList, project, projects, relatedModels]);
+  }, [focusAreas, industryKeywords, masterDataList, metadataList, preferMetadataMatch, project, projects, relatedModels]);
+
+  const toggleFocusArea = (area: ModelSuggestionFocusArea) => {
+    setFocusAreas((current) => {
+      if (current.includes(area)) {
+        const next = current.filter((item) => item !== area);
+        return next.length > 0 ? next : current;
+      }
+      return [...current, area];
+    });
+  };
 
   // 自动生成AI建议（如果是实体模式）
   useEffect(() => {
@@ -529,6 +557,65 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 space-y-3 rounded-lg border bg-white/60 p-3 dark:bg-black/20">
+            <div className="text-sm font-medium">个性化偏好</div>
+            <div className="flex flex-wrap gap-2">
+              {(['data', 'behavior', 'rule', 'event'] as ModelSuggestionFocusArea[]).map((area) => (
+                <Button
+                  key={area}
+                  size="sm"
+                  variant={focusAreas.includes(area) ? 'default' : 'outline'}
+                  onClick={() => toggleFocusArea(area)}
+                  disabled={isGenerating}
+                >
+                  {area === 'data' && '数据'}
+                  {area === 'behavior' && '行为'}
+                  {area === 'rule' && '规则'}
+                  {area === 'event' && '事件'}
+                </Button>
+              ))}
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={preferMetadataMatch}
+                onChange={(event) => setPreferMetadataMatch(event.target.checked)}
+                disabled={isGenerating}
+              />
+              优先匹配元数据字典
+            </label>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="业务关键词（逗号分隔），如：合同审批,供应链"
+              value={industryKeywords}
+              onChange={(event) => setIndustryKeywords(event.target.value)}
+              disabled={isGenerating}
+            />
+            <Button size="sm" variant="outline" onClick={handleGenerateAI} disabled={isGenerating}>
+              重新生成建议
+            </Button>
+          </div>
+          {qualitySummary && (
+            <div className="mb-4 rounded-lg border bg-white/70 p-3 dark:bg-black/20">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium">建议质量评分</span>
+                <Badge variant={qualitySummary.score >= 80 ? 'default' : 'secondary'}>
+                  {qualitySummary.score} / 100
+                </Badge>
+              </div>
+              {qualitySummary.issues.length > 0 ? (
+                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {qualitySummary.issues.map((issue) => (
+                    <li key={issue.code}>
+                      [{issue.severity}] {issue.message}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-xs text-muted-foreground">建议结构完整，可直接预览并应用。</p>
+              )}
+            </div>
+          )}
           {isGenerating ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
@@ -557,7 +644,8 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
                           <div className="flex-1">
                             <div className="font-medium">{attr.name}</div>
                             <div className="text-sm text-muted-foreground">
-                              {attr.dataType} {attr.required && '• 必填'} {attr.description && `• ${attr.description}`}
+                              {(attr as { type?: string; dataType?: string }).type || (attr as { dataType?: string }).dataType}{' '}
+                              {attr.required && '• 必填'} {attr.description && `• ${attr.description}`}
                             </div>
                           </div>
                           <Button 

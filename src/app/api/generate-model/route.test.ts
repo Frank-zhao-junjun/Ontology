@@ -153,6 +153,48 @@ describe('Generate Model Route', () => {
     expect(userPrompt).toContain('可用元数据字典');
     expect(userPrompt).toContain('供应商主数据');
     expect(userPrompt).toContain("referenceKind = 'masterData'");
+    expect(userPrompt).toContain('个性化生成偏好');
+    expect(payload.qualitySummary).toEqual(expect.objectContaining({
+      score: expect.any(Number),
+      issues: expect.any(Array),
+      suggestionCounts: expect.objectContaining({ attributes: 1 }),
+    }));
+    expect(payload.personalizationProfile.focusAreas).toEqual(['data', 'behavior', 'rule', 'event']);
+  });
+
+  it('应注入个性化偏好并返回质量评估结果', async () => {
+    sdkState.streamChunks = [
+      JSON.stringify({
+        dataModel: { suggestedAttributes: [{ name: '合同编号', nameEn: 'contractNo', type: 'string' }] },
+        behaviorModel: { suggestedStates: [{ name: '草稿', isInitial: true }] },
+        ruleModel: { suggestedRules: [] },
+        eventModel: { suggestedEvents: [{ name: '合同已创建', nameEn: 'ContractCreated' }] },
+      }),
+    ];
+
+    const request = new NextRequest('http://localhost/api/generate-model', {
+      method: 'POST',
+      body: JSON.stringify({
+        entity: { id: 'entity-contract', name: '合同', nameEn: 'Contract', attributes: [] },
+        domain: { name: '合同管理', description: '合同领域' },
+        personalization: {
+          focusAreas: ['data', 'event'],
+          preferMetadataMatch: true,
+          industryKeywords: ['审批流'],
+        },
+      }),
+      headers: { 'content-type': 'application/json' },
+    });
+
+    const response = await POST(request);
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    const userPrompt = sdkState.lastMessages?.[1]?.content || '';
+    expect(userPrompt).toContain('事件模型');
+    expect(userPrompt).toContain('审批流');
+    expect(payload.personalizationProfile.focusAreas).toEqual(['data', 'event']);
+    expect(payload.qualitySummary.score).toBeGreaterThanOrEqual(70);
   });
 
   it('AI 返回无法解析的内容时应返回 500', async () => {
