@@ -1,6 +1,6 @@
-# 精简架构 — 测试进展（Testing Progress）
+﻿# 精简架构 — 测试进展（Testing Progress）
 
-> 最后更新：2026-06-18  
+> 最后更新：2026-06-19  
 > 配套清单：[TODO.md](./TODO.md) · 六步门禁：[UNIT_VALIDATION_CHECKLIST.md](../UNIT_VALIDATION_CHECKLIST.md)  
 > Subagent 团队：`.claude/skills/testing-team/README.md`
 
@@ -340,6 +340,31 @@ npx vitest run tests/unit/legacy-*.spec.ts tests/unit/compile-simplified-chain.s
 
 **验证**：`epc-derivation*.spec.*` — **29/29 pass**
 
+
+---
+
+## Q-T3 — 测试覆盖率提升（覆盖率攻坚）🟡
+
+**目标**：补齐 `manifest-compiler/mappers/*` 和 `module-version/*` 单元测试
+
+| 指标 | 初始 | 当前 | 备注 |
+|------|------|------|------|
+| `mappers/*` 语句覆盖 | 0% | **96.47%** | 11/11 文件已覆盖 |
+| `module-references.ts` | 0% | **94.73%** | 新增 13 tests |
+| `module-version/*` 综合 | ~49% | **77.89%** | 仍有 confirm-flow 可深化 |
+| 全量语句覆盖 | 2.78% | **6.61%** | 受 store/API 大模块制约 |
+
+**新增测试文件**：
+- `tests/unit/manifest-compiler-mappers.spec.ts` — 64 tests ✅
+- `tests/unit/module-references.spec.ts` — 13 tests ✅
+
+**验证**：
+```bash
+# 19 files · 225 tests · all pass
+npx vitest run tests/unit/manifest-compiler-mappers.spec.ts tests/unit/module-references.spec.ts ... (19 files)
+# tsc --noEmit: 0 errors
+```
+
 ---
 
 ## 变更日志
@@ -351,6 +376,8 @@ npx vitest run tests/unit/legacy-*.spec.ts tests/unit/compile-simplified-chain.s
 | 2026-06-18 | **Phase 1.5 复测**：Test Lead 17/17 PASS |
 | 2026-06-18 | **Phase 1 复测**：Test Lead 38/38 PASS，TC 29/29 全覆盖 |
 | 2026-06-18 | 初版：Phase 1–4 测试 Progress 基线 |
+
+| 2026-06-19 | **Q-T3 覆盖率攻坚**：新增 `manifest-compiler-mappers.spec.ts`（64 tests）+ `module-references.spec.ts`（13 tests），mappers 覆盖 0%→96.47%，全量 2.78%→6.61% |
 | 2026-06-18 | EPC v3.1 纳入追踪 · Item 1-4 完成 · 96% 健康度 · Golden Path E2E |
 
 ---
@@ -361,3 +388,4 @@ npx vitest run tests/unit/legacy-*.spec.ts tests/unit/compile-simplified-chain.s
 2. Item 3: 闭环 6 🟡 Unit（S04-U04 · S07-U04 · S08-U04 · S09-U03/U04 · S11-U04）
 3. Item 4: P7 黄金路径 E2E
 4. 测试健康度目标：91% → 95%+
+

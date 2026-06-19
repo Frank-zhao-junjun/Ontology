@@ -1,4 +1,4 @@
-# 精简架构 — 测试 TODO List
+﻿# 精简架构 — 测试 TODO List
 
 > 最后更新：2026-06-18  
 > 进展追踪：[Progress.md](./Progress.md)  
@@ -271,6 +271,28 @@
 - [x] **T-V31-S17** cross-consistency + validation panel · 35/35 pass
 - [x] **T-V31-S18** derivation + badge · 29/29 pass
 
+
+---
+
+## Q-T3 — 测试覆盖率提升至 80%+
+
+> 目标：`manifest-compiler/mappers/*` 和 `module-version/*` 单元测试覆盖
+
+- [x] **Q-T3-01** `manifest-compiler-mappers.spec.ts` — 64 tests，覆盖 utils/enums/rules/metrics/transaction-boundaries/business-scenarios/domain-events/actions/side-effects/state-machines/object-types 共 11 个 mapper 文件
+- [x] **Q-T3-02** `module-references.spec.ts` — 13 tests，覆盖 listIncomingModuleReferences / listOutgoingModuleReferences
+- [x] **Q-T3-03** `manifest-compiler/mappers/*` 语句覆盖率：0% → **96.47%**（行覆盖率 96.87%）
+- [x] **Q-T3-04** `module-version/module-references.ts` 语句覆盖率：0% → **94.73%**（行覆盖率 97.91%）
+- [x] **Q-T3-05** `module-version/*` 综合语句覆盖率：49% → **77.89%**（行覆盖率 50% → 77.45%）
+- [x] **Q-T3-06** 全量语句覆盖率：2.78% → **6.61%**（行覆盖率 3.04% → 7.05%），新增 2 个测试文件，77 tests
+
+> 注：全量 80%+ 目标受 `ontology-store.ts`（4,236 行 0% 覆盖）、`epc-generator/index.ts`（1,065 行）、API routes 等大模块制约。下一步建议拆分 store 或专项攻坚。
+
+### Q-T3 文件清单
+
+- `tests/unit/manifest-compiler-mappers.spec.ts` — 新增 · 64 tests · 覆盖 11/11 mapper 文件
+- `tests/unit/module-references.spec.ts` — 新增 · 13 tests · 覆盖 module-references.ts
+
+
 ---
 
 ## 完成标准
@@ -280,3 +302,4 @@
 | Phase 测试完成 | 该 Phase 所有 Unit 六步 ✅ + 回归命令全绿 |
 | 文档完成 | 10 份 US 级 testing-cases 或 Spec §5 审计签字 |
 | 发布门禁 | T-REG-01 + T-REG-03 黄金路径 E2E 通过 |
+
