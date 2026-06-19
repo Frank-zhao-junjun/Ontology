@@ -289,6 +289,35 @@ pnpm test:unit  → 42 files, 159 tests pass（Phase 0 结束时）
 
 ---
 
+## 2026-06-19 — 技术债务清零 + 测试体系完善 ✅
+
+**TD 清缴**：
+| ID | 项 | 处理 |
+|----|----|------|
+| TD-01 | Next.js workspace root | 解除 `outputFileTracingRoot` 注释 |
+| TD-02 | url.parse() deprecation | 确认 Next.js 内部，非项目代码 |
+| TD-03 | 首页组件质量 | 0 `any` · 12 file 2231 line |
+| TD-04 | README.md | 已同步 18 US |
+| TD-05 | TODO.md | 已同步 |
+
+**测试体系 Item 1–4**：
+- EPC v3.1 纳入 Progress.md（Phase A–D 4 节）
+- ③ Testing Case 文档 9 份（S06–S13 + S14）
+- 6 🟡 Unit → ✅（S04-U04 to S11-U04）
+- Golden Path E2E：`tests/e2e/golden-path.e2e.spec.ts` 1/1
+
+**最终验证**：
+```bash
+pnpm run ci:check  # 全绿
+pnpm lint          # 0 error · 66 warnings (既有)
+pnpm ts-check      # 0 error
+pnpm test:unit     # 84 files · 432 tests
+pnpm test:integration # 41 files · 121 tests
+pnpm test:e2e:smoke   # 11 files · 15 passed
+```
+
+---
+
 ## 2026-06-18 — US-S15 W-EPC 扩展 06~17 ✅
 
 | Unit | 产出 | 测试 |
