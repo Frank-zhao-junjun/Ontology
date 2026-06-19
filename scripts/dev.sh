@@ -10,7 +10,8 @@ DEPLOY_RUN_PORT="${DEPLOY_RUN_PORT:-${PORT}}"
 if [[ -f "Ontology/package.json" ]]; then
   cd "Ontology"
 elif [[ -f "package.json" ]]; then
-  cd "${COZE_WORKSPACE_PATH}"
+  # Already in Ontology directory, stay here
+  :
 fi
 
 kill_port_if_listening() {

@@ -7,7 +7,8 @@ COZE_WORKSPACE_PATH="${COZE_WORKSPACE_PATH:-$(pwd)}"
 if [[ -f "Ontology/package.json" ]]; then
   cd "Ontology"
 elif [[ -f "package.json" ]]; then
-  cd "${COZE_WORKSPACE_PATH}"
+  # Already in Ontology directory, stay here
+  :
 fi
 
 echo "Installing dependencies..."
