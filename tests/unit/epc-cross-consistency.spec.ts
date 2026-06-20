@@ -524,6 +524,26 @@ describe('epc-cross-consistency (US-S17-U02)', () => {
   });
 
   describe('VX-11: Compensation-Action 一致', () => {
+    it('handles legacy state machines without states while checking compensation actions', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '补偿', 'E7', 'c1')])],
+        metaElements: [makeMeta('c1', 'E7', { name: '补偿约束', constraintType: 'compensation' })],
+        behaviorModel: {
+          ...emptyBehaviorModel(),
+          stateMachines: [{
+            id: 'sm-legacy', name: 'Legacy SM', entity: 'Order', statusField: 'status', transitions: [],
+          } as never],
+          transactionBoundaries: [{
+            id: 'tb-1', name: '边界', nameEn: 'TB', actionIds: [], aggregateRootIds: [],
+            isolation: 'read_committed', compensationActionId: 'missing-act',
+          }],
+        },
+      });
+
+      expect(() => validateCrossConsistency(input)).not.toThrow();
+      expect(validateCrossConsistency(input).filter((i) => i.code === 'VX-11')).toHaveLength(1);
+    });
+
     it('flags E7 compensation referencing missing action', () => {
       const input = baseInput({
         epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '补偿', 'E7', 'c1')])],

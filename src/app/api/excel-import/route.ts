@@ -387,7 +387,7 @@ function parseExcelToModels(sheets: SheetData[], entityNameEns: Set<string>) {
   const departments = parseDepartments(deptSheet?.rows || []);
   const positions = parsePositions(posSheet?.rows || []);
 
-  return { entities, attributes, relations, stateMachines, rules, eventDefinitions: events, departments, positions };
+  return { entities, attributes, relations, stateMachines, rules, events, departments, positions };
 }
 
 function parseStateMachines(rows: Record<string, string>[]) {

@@ -475,7 +475,7 @@ export function validateCrossConsistency(
       for (const action of sm.actions ?? []) {
         if (action.id) actionIds.add(action.id);
       }
-      for (const state of sm.states) {
+      for (const state of sm.states ?? []) {
         for (const aId of state.availableActions ?? []) {
           actionIds.add(aId);
         }
