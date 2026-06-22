@@ -4117,7 +4117,10 @@ export const useOntologyStore = create<OntologyState>()(
           project.metaElements ?? [],
           project.moduleVersionRecords ?? [],
         );
-        return deriveEpcSteps({ metaElements: confirmed });
+        const scoped = confirmed.filter((element) =>
+          !element.ownerModuleId || element.ownerModuleId === scenarioId,
+        );
+        return deriveEpcSteps({ metaElements: scoped });
       },
 
       applyDerivedStepsToScenarioEpc: (scenarioId, targetEpcId) => {
@@ -4130,15 +4133,26 @@ export const useOntologyStore = create<OntologyState>()(
         }
 
         const childEpcs = get().getScenarioChildEpcs(scenarioId);
+        if (!targetEpcId && childEpcs.length > 1) {
+          return { ok: false, error: '存在多个EPC流程，请选择目标流程' };
+        }
+
         let epc = targetEpcId
-          ? state.project.epcProcesses?.find((e) => e.id === targetEpcId)
+          ? childEpcs.find((e) => e.id === targetEpcId)
           : childEpcs[0];
+
+        if (targetEpcId && !epc) {
+          return { ok: false, error: '目标EPC流程不存在或不属于当前场景' };
+        }
 
         if (!epc) {
           epc = get().addEpcProcess(scenarioId, { name: '推导流程' });
         }
 
-        const steps = derivedStepsToEpcSteps(derived, generateId);
+        const steps = [
+          ...(epc.steps ?? []),
+          ...derivedStepsToEpcSteps(derived, generateId),
+        ];
         get().saveEpc(epc.id, { ...epc, steps });
         return { ok: true, epcId: epc.id, stepCount: steps.length };
       },

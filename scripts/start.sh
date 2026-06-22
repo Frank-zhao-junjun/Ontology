@@ -10,6 +10,7 @@ elif [[ -f "package.json" ]]; then
   # Already in Ontology directory, stay here
   :
 fi
+COZE_WORKSPACE_PATH="$(pwd)"
 
 PORT=5000
 DEPLOY_RUN_PORT="${DEPLOY_RUN_PORT:-$PORT}"
