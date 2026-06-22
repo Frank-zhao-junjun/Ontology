@@ -35,7 +35,7 @@ function mkdtempPath(): string {
 }
 
 function scriptEnv(): NodeJS.ProcessEnv {
-  const env = { ...process.env, DEPLOY_RUN_PORT: '5999' };
+  const env: NodeJS.ProcessEnv = { ...process.env, DEPLOY_RUN_PORT: '5999' };
   delete env.COZE_WORKSPACE_PATH;
   return env;
 }
