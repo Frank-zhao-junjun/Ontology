@@ -2,11 +2,11 @@
 requires = ["nodejs-24"]
 
 [dev]
-build = ["bash", "-c", "export HOME=${HOME:-/tmp} && pwd && ls -la && bash ./scripts/prepare.sh"]
-run = ["bash", "-c", "export HOME=${HOME:-/tmp} && pwd && ls -la && bash ./scripts/dev.sh"]
+build = ["bash", "-c", "export HOME=${HOME:-/tmp} && export COZE_WORKSPACE_PATH=${COZE_WORKSPACE_PATH:-$(pwd)} && if [ -f \"$COZE_WORKSPACE_PATH/package.json\" ]; then cd \"$COZE_WORKSPACE_PATH\"; elif [ -f \"$COZE_WORKSPACE_PATH/Ontology/package.json\" ]; then cd \"$COZE_WORKSPACE_PATH/Ontology\"; else cd \"$COZE_WORKSPACE_PATH\"; fi && bash ./scripts/prepare.sh"]
+run = ["bash", "-c", "export HOME=${HOME:-/tmp} && export COZE_WORKSPACE_PATH=${COZE_WORKSPACE_PATH:-$(pwd)} && if [ -f \"$COZE_WORKSPACE_PATH/package.json\" ]; then cd \"$COZE_WORKSPACE_PATH\"; elif [ -f \"$COZE_WORKSPACE_PATH/Ontology/package.json\" ]; then cd \"$COZE_WORKSPACE_PATH/Ontology\"; else cd \"$COZE_WORKSPACE_PATH\"; fi && bash ./scripts/dev.sh"]
 deps = ["git"]
 
 [deploy]
-build = ["bash", "-c", "export HOME=${HOME:-/tmp} && echo \"Current dir: $(pwd)\" && ls -la && bash ./scripts/build.sh"]
-run = ["bash", "-c", "export HOME=${HOME:-/tmp} && echo \"Current dir: $(pwd)\" && ls -la && bash ./scripts/start.sh"]
+build = ["bash", "-c", "export HOME=${HOME:-/tmp} && export COZE_WORKSPACE_PATH=${COZE_WORKSPACE_PATH:-$(pwd)} && if [ -f \"$COZE_WORKSPACE_PATH/package.json\" ]; then cd \"$COZE_WORKSPACE_PATH\"; elif [ -f \"$COZE_WORKSPACE_PATH/Ontology/package.json\" ]; then cd \"$COZE_WORKSPACE_PATH/Ontology\"; else cd \"$COZE_WORKSPACE_PATH\"; fi && bash ./scripts/build.sh"]
+run = ["bash", "-c", "export HOME=${HOME:-/tmp} && export COZE_WORKSPACE_PATH=${COZE_WORKSPACE_PATH:-$(pwd)} && if [ -f \"$COZE_WORKSPACE_PATH/package.json\" ]; then cd \"$COZE_WORKSPACE_PATH\"; elif [ -f \"$COZE_WORKSPACE_PATH/Ontology/package.json\" ]; then cd \"$COZE_WORKSPACE_PATH/Ontology\"; else cd \"$COZE_WORKSPACE_PATH\"; fi && bash ./scripts/start.sh"]
 deps = ["git"]

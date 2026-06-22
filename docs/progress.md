@@ -1,6 +1,6 @@
 # Ontology 项目开发进度
 
-> 最后更新：2026-06-18
+> 最后更新：2026-06-22
 > 当前版本：v2.1（简化重构 + EPC v3.1 升级中）
 
 ---
@@ -17,6 +17,14 @@
 | P6 | 持续增强 | ✅ 已完成 | 100% | 类型+Store+API+校验+UI+参考文档+测试全覆盖 |
 | P7 | 本体建模简化重构 | ✅ 已完成 | 100% | 14/14 US · A→B→C→EPC + E1–E8 · ci:check 全绿 |
 | P8 | EPC v3.1 升级 | 🟡 进行中 | 50% | S15 ✅ · S16 ✅ · **S17 U02 待修复** · S18 ⬜ |
+
+---
+
+## 2026-06-22 高危缺陷修复
+
+- [x] 修复 Coze 部署启动路径回退问题：`scripts/start.sh` 在父目录 `Ontology/` 布局下保持在真实项目目录启动 `dist/server.js`，`.coze` 恢复工作区定位保护。
+- [x] 修复 EPC 推导应用数据丢失风险：多 EPC 场景要求显式目标，目标 EPC 仅追加推导步骤并保留已有手工步骤，推导时过滤其他场景拥有的要素。
+- [x] 验证：`pnpm vitest run tests/unit/epc-derivation-store.spec.ts tests/unit/coze-scripts.spec.ts`（9/9 passed）。
 
 ---
 
