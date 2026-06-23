@@ -4138,9 +4138,25 @@ export const useOntologyStore = create<OntologyState>()(
           epc = get().addEpcProcess(scenarioId, { name: '推导流程' });
         }
 
-        const steps = derivedStepsToEpcSteps(derived, generateId);
+        const existingSteps = epc.steps ?? [];
+        const existingDerivedKeys = new Set(
+          existingSteps
+            .map((step) =>
+              step.elementRef
+                ? `${step.elementRef.dimension}:${step.elementRef.elementId}:${step.name}`
+                : null,
+            )
+            .filter((key): key is string => Boolean(key)),
+        );
+        const missingDerived = derived.filter(
+          (step) => !existingDerivedKeys.has(`${step.dimension}:${step.elementId}:${step.name}`),
+        );
+        const steps = [
+          ...existingSteps,
+          ...derivedStepsToEpcSteps(missingDerived, generateId),
+        ];
         get().saveEpc(epc.id, { ...epc, steps });
-        return { ok: true, epcId: epc.id, stepCount: steps.length };
+        return { ok: true, epcId: epc.id, stepCount: missingDerived.length };
       },
 
       getBusinessEpcWarnings: () => {
