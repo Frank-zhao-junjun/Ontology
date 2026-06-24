@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-// ===================================================================
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ElementFields = Record<string, any>;
 // Types
 // ===================================================================
 
@@ -11,6 +12,7 @@ export interface ElementDraftSuggestion {
   nameEn?: string;
   description: string;
   dimension: ElementDimension;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fields: Record<string, any>;
 }
 

@@ -71,8 +71,11 @@ describe('US-S19-Task2: applyAiElementDrafts', () => {
     expect(newEl1.id).toBeTruthy();
     expect(newEl1.dimension).toBe('E1');
     expect(newEl1.visibility).toBe('project');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((newEl1 as any).status).toBe('draft');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((newEl1 as any).createdAt).toBe('2026-06-24T12:00:00.000Z');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((newEl1 as any).updatedAt).toBe('2026-06-24T12:00:00.000Z');
 
     const newEl2 = project.metaElements.find((m) => m.name === '权限校验')!;
