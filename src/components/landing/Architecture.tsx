@@ -95,7 +95,7 @@ const Architecture = () => {
                 <Database className="w-7 h-7 text-[#ff6e00]" />
               </div>
               <div>
-                <h3 className="heading-4 text-[#171717]">系统A：建模工具</h3>
+                <h3 className="heading-4 text-[#171717]">系统功能：本体建模工具</h3>
                 <p className="text-sm text-[#b7b7b7]">Ontology Modeling Tool</p>
               </div>
             </div>
