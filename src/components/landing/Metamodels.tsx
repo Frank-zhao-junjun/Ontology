@@ -4,16 +4,12 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { 
   Database, 
   Workflow, 
-  ShieldCheck, 
   Zap,
-  GitBranch,
+  ShieldCheck,
   Users,
   BarChart3,
-  Building2,
-  RefreshCw,
-  Brain,
-  Network,
-  FileSpreadsheet
+  Lock,
+  Plug
 } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -70,109 +66,80 @@ const Metamodels = () => {
   const metamodels = [
     {
       icon: Database,
-      title: '数据模型',
-      category: '核心',
-      description: '实体属性定义、关系定义、唯一约束',
-      features: ['属性定义', '关系定义', '唯一约束', '索引定义'],
-      color: '#ff6e00',
+      title: 'E1 数据模型',
+      category: 'E1',
+      description: '实体、属性、关系、元数据管理，构建领域核心数据视图',
+      features: ['实体定义', '属性约束', '关系建模', '元数据'],
+      color: '#3B82F6',
     },
     {
       icon: Workflow,
-      title: '行为模型',
-      category: '核心',
-      description: '状态机设计，支持状态定义、转换规则、触发器',
-      features: ['状态定义', '状态转换', '触发方式', '前置条件'],
-      color: '#171717',
-    },
-    {
-      icon: ShieldCheck,
-      title: '规则模型',
-      category: '核心',
-      description: '字段验证、跨字段验证、业务约束规则',
-      features: ['字段校验', '跨字段校验', '跨实体校验', '时序规则'],
+      title: 'E2 行为模型',
+      category: 'E2',
+      description: '状态机、状态转换、动作定义，描述实体的动态行为',
+      features: ['状态机', '状态转换', '动作定义', '生命周期'],
       color: '#10B981',
     },
     {
       icon: Zap,
-      title: '事件模型',
-      category: '核心',
-      description: '事件定义、事件订阅、触发器配置',
-      features: ['事件定义', '事件订阅', 'DDD领域事件', '幂等性'],
+      title: 'E3 事件模型',
+      category: 'E3',
+      description: '事件定义、订阅管理、触发时机，支撑领域事件驱动',
+      features: ['事件定义', '事件订阅', '触发时机', '幂等性'],
       color: '#EF4444',
     },
     {
-      icon: GitBranch,
-      title: '流程模型',
-      category: '核心',
-      description: '流程编排、步骤定义、可视化流程预览',
-      features: ['流程编排', '10种步骤', '流程预览', '步骤依赖'],
-      color: '#8B5CF6',
+      icon: ShieldCheck,
+      title: 'E4 规则模型',
+      category: 'E4',
+      description: '字段校验、跨字段/实体校验、聚合与时序规则',
+      features: ['字段校验', '跨实体', '聚合规则', '时序规则'],
+      color: '#F97316',
     },
     {
       icon: Users,
-      title: '治理模型',
-      category: '治理',
-      description: '角色定义、权限管理、数据Owner',
-      features: ['角色定义', '权限管理', '数据Owner', '操作授权'],
-      color: '#F59E0B',
-    },
-    {
-      icon: Building2,
-      title: '组织与岗位',
-      category: '治理',
-      description: '部门树、结构化岗位职责、HR系统定时同步',
+      title: 'E5 岗位角色',
+      category: 'E5',
+      description: '部门树、岗位定义、职责结构化，映射组织治理结构',
       features: ['部门树', '岗位职责', 'HR同步', '职责委托'],
       color: '#0EA5E9',
     },
     {
       icon: BarChart3,
-      title: '指标体系',
-      category: '治理',
-      description: '度量指标定义、数据源绑定、阈值告警',
+      title: 'E6 指标模型',
+      category: 'E6',
+      description: '度量指标定义、数据源绑定、阈值告警与聚合计算',
       features: ['指标定义', '数据源', '阈值告警', '聚合计算'],
       color: '#EC4899',
     },
     {
-      icon: RefreshCw,
-      title: '实体生命周期',
-      category: '增强',
-      description: 'State增强、转换守卫、审计追溯、超时管理',
-      features: ['State增强', '守卫条件', '补偿动作', '审计追溯'],
+      icon: Lock,
+      title: 'E7 约束模型',
+      category: 'E7',
+      description: '业务约束、合规规则、数据质量治理与访问控制',
+      features: ['业务约束', '合规规则', '数据质量', '访问控制'],
+      color: '#8B5CF6',
+    },
+    {
+      icon: Plug,
+      title: 'E8 接口模型',
+      category: 'E8',
+      description: '系统接口、协议契约、集成点定义，打通内外系统边界',
+      features: ['接口定义', '协议契约', '集成点', '版本管理'],
       color: '#14B8A6',
-    },
-    {
-      icon: Brain,
-      title: 'Agent语义层',
-      category: '增强',
-      description: '意图映射、槽位填充、术语词典、语义关系',
-      features: ['意图映射', '槽位填充', '术语词典', 'Agent策略'],
-      color: '#6366F1',
-    },
-    {
-      icon: Network,
-      title: 'EPC全域关联',
-      category: '关联',
-      description: '12模型全域关联、71条双向校验规则',
-      features: ['EPC流程图', '全域关联', '双向校验', '覆盖率报告'],
-      color: '#D946EF',
-    },
-    {
-      icon: FileSpreadsheet,
-      title: 'Excel导入导出',
-      category: '协作',
-      description: '8 Sheet模板、版本审核、组织数据导入',
-      features: ['模板下载', '数据校验', '版本审核', '批量导入'],
-      color: '#84CC16',
     },
   ];
 
   const getCategoryLabel = (category: string) => {
     switch (category) {
-      case '核心': return 'bg-[#ff6e00]/10 text-[#ff6e00]';
-      case '治理': return 'bg-[#10B981]/10 text-[#10B981]';
-      case '增强': return 'bg-[#6366F1]/10 text-[#6366F1]';
-      case '关联': return 'bg-[#D946EF]/10 text-[#D946EF]';
-      case '协作': return 'bg-[#84CC16]/10 text-[#84CC16]';
+      case 'E1': return 'bg-[#ff6e00]/10 text-[#ff6e00]';
+      case 'E2': return 'bg-[#F59E0B]/10 text-[#F59E0B]';
+      case 'E3': return 'bg-[#10B981]/10 text-[#10B981]';
+      case 'E4': return 'bg-[#06B6D4]/10 text-[#06B6D4]';
+      case 'E5': return 'bg-[#6366F1]/10 text-[#6366F1]';
+      case 'E6': return 'bg-[#8B5CF6]/10 text-[#8B5CF6]';
+      case 'E7': return 'bg-[#D946EF]/10 text-[#D946EF]';
+      case 'E8': return 'bg-[#84CC16]/10 text-[#84CC16]';
       default: return 'bg-[#f6f6f6] text-[#171717]/70';
     }
   };
@@ -191,7 +158,7 @@ const Metamodels = () => {
           8大元模型<span className="text-[#ff6e00]">体系</span>
         </h2>
         <p className="text-center text-[#b7b7b7] mb-16 max-w-2xl mx-auto">
-          从核心建模到Agent语义理解，构建企业级本体模型的完整能力矩阵
+          从数据到接口，覆盖企业本体建模的八大维度
         </p>
 
         {/* Metamodel Cards */}
