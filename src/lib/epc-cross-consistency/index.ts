@@ -136,6 +136,56 @@ export function validateCrossConsistency(
   if (!getLatestConfirmed(records, "C", scenarioId)) return issues;
 
   const epcSteps = getConfirmedEpcSteps(records, epcProcesses ?? [], scenarioId);
+
+  // ---- VX-13: EPC-C 挂接一致 ----
+  // EPC 的 parentId 对应的 C 在 scenarios 中存在
+  const scenarioIds = new Set((scenarios ?? []).map((s) => s.id));
+  for (const epc of epcProcesses ?? []) {
+    if (!scenarioIds.has(epc.parentId)) {
+      issues.push(
+        issue(
+          "VX-13",
+          "warning",
+          `EPC「${epc.name}」的 parentId「${epc.parentId}」未在 scenarios 中找到对应的 C`,
+          scenarioId,
+          { epcId: epc.id },
+        ),
+      );
+    }
+  }
+
+  // ---- VX-14: C-B 挂接一致 ----
+  // C 的 parentId 对应的 B 在 capabilities 中存在
+  const capabilityIds = new Set((capabilities ?? []).map((c) => c.id));
+  for (const sc of scenarios ?? []) {
+    if (sc.parentId && !capabilityIds.has(sc.parentId)) {
+      issues.push(
+        issue(
+          "VX-14",
+          "warning",
+          `场景「${sc.name}」的 parentId「${sc.parentId}」未在 capabilities 中找到对应的 B`,
+          scenarioId,
+        ),
+      );
+    }
+  }
+
+  // ---- VX-15: B-A 挂接一致 ----
+  // B 的 parentId 对应的 A 在 valueDomains 中存在
+  const vdIds = new Set((valueDomains ?? []).map((v) => v.id));
+  for (const cap of capabilities ?? []) {
+    if (cap.parentId && !vdIds.has(cap.parentId)) {
+      issues.push(
+        issue(
+          "VX-15",
+          "warning",
+          `能力「${cap.name}」的 parentId「${cap.parentId}」未在 valueDomains 中找到对应的 A`,
+          scenarioId,
+        ),
+      );
+    }
+  }
+
   if (epcSteps.length === 0) return issues;
 
   // Collect all element IDs referenced in the EPC chain (per dimension)
@@ -548,6 +598,240 @@ export function validateCrossConsistency(
               dimension: "E5",
               elementId: eid,
               elementName: meta?.name,
+            },
+          ),
+        );
+      }
+    }
+  }
+
+  // ---- VX-07: Dept-Role 一致 ----
+  // EPC 引用的 E5 Department 类型要素，其下 Position 的 roleIds 必须在 governanceModel.roles 中存在
+  if (e5RoleIds.size > 0) {
+    const governanceRoleIds = new Set(
+      (governanceModel?.roles ?? []).map((r) => r.id).filter(Boolean),
+    );
+    // Build department → children positions map
+    const deptChildren = new Map<string, { name: string; roleIds: string[] }[]>();
+    for (const el of metaElements ?? []) {
+      const pId = (el as any).parentId;
+      if (!pId) continue;
+      const children = deptChildren.get(pId) ?? [];
+      children.push({ name: el.name, roleIds: (el as any).roleIds ?? [] });
+      deptChildren.set(pId, children);
+    }
+    for (const { epc, step } of epcSteps) {
+      if (step.elementRef!.dimension !== "E5") continue;
+      const eid = step.elementRef!.elementId;
+      const meta = metaById.get(eid);
+      if (!meta || (meta as any).type !== "department") continue;
+      const childPositions = deptChildren.get(eid) ?? [];
+      const missingRoleIds = new Set<string>();
+      for (const pos of childPositions) {
+        for (const rid of pos.roleIds) {
+          if (!governanceRoleIds.has(rid)) {
+            missingRoleIds.add(rid);
+          }
+        }
+      }
+      if (missingRoleIds.size > 0) {
+        issues.push(
+          issue(
+            "VX-07",
+            "warning",
+            `EPC「${epc.name}」步骤「${step.name}」引用的部门「${meta.name}」下属岗位的角色 ID「${Array.from(missingRoleIds).join(", ")}」未在 governanceModel.roles 中找到`,
+            scenarioId,
+            {
+              epcId: epc.id,
+              stepId: step.id,
+              dimension: "E5",
+              elementId: eid,
+              elementName: meta.name,
+            },
+          ),
+        );
+      }
+    }
+  }
+
+  // ---- VX-08: Position-Role 一致 ----
+  // 遍历 EPC steps 中 dimension='E5' 且 meta.type==='position' 的引用
+  // 获取 meta.roleIds，检查每个 roleId 在 metaElements 中有对应的 element 且有 confirmedVersion
+  if (e5RoleIds.size > 0) {
+    for (const { epc, step } of epcSteps) {
+      if (step.elementRef!.dimension !== "E5") continue;
+      const eid = step.elementRef!.elementId;
+      const meta = metaById.get(eid);
+      if (!meta) continue;
+      const metaType = (meta as any).type;
+      if (metaType !== "position") continue;
+      const roleIds: string[] = (meta as any).roleIds ?? [];
+      for (const roleId of roleIds) {
+        const roleMeta = metaById.get(roleId);
+        if (!roleMeta || !(roleMeta as any).confirmedVersion) {
+          issues.push(
+            issue(
+              "VX-08",
+              "warning",
+              `EPC「${epc.name}」步骤「${step.name}」引用的岗位「${meta.name}」关联的角色「${roleId}」在要素库中无已确认版本`,
+              scenarioId,
+              {
+                epcId: epc.id,
+                stepId: step.id,
+                dimension: "E5",
+                elementId: eid,
+                elementName: meta.name,
+              },
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  // ---- VX-16: Element 维度一致 ----
+  // elementRef 引用的要素 dimension 与步骤声明的维度一致
+  // Use all EPC steps (not just confirmed ones) for a broader check
+  for (const epc of epcProcesses ?? []) {
+    for (const stepElem of epc.steps ?? []) {
+      if (!stepElem.elementRef) continue;
+      const eid = stepElem.elementRef.elementId;
+      const declaredDim = stepElem.elementRef.dimension;
+      const meta = metaById.get(eid);
+      if (meta && meta.dimension !== declaredDim) {
+        issues.push(
+          issue(
+            "VX-16",
+            "error",
+            `EPC「${epc.name}」步骤「${stepElem.name}」声明的维度为「${declaredDim}」，但引用的要素「${meta.name}」实际维度为「${meta.dimension}」`,
+            scenarioId,
+            {
+              epcId: epc.id,
+              stepId: stepElem.id,
+              dimension: declaredDim,
+              elementId: eid,
+              elementName: meta.name,
+            },
+          ),
+        );
+      }
+    }
+  }
+
+  // ---- VX-17: Step 顺序合理性 ----
+  // 遍历已确认 EPC，检查 dimension='E3' 的步骤是否在 index 0 或最后一个位置
+  const confirmedEpcMap = new Map<string, EpcProcess>();
+  for (const { epc } of epcSteps) {
+    if (!confirmedEpcMap.has(epc.id)) {
+      confirmedEpcMap.set(epc.id, epc);
+    }
+  }
+  for (const epc of confirmedEpcMap.values()) {
+    const steps = epc.steps ?? [];
+    const lastIdx = steps.length - 1;
+    for (let i = 0; i < steps.length; i++) {
+      const stepElem = steps[i];
+      if (!stepElem.elementRef) continue;
+      if (stepElem.elementRef.dimension !== "E3") continue;
+      if (i !== 0 && i !== lastIdx) {
+        issues.push(
+          issue(
+            "VX-17",
+            "info",
+            `EPC「${epc.name}」步骤「${stepElem.name}」为 E3 事件步骤且位于索引 ${i}（非首位或末位），建议将事件步骤置于序列首尾`,
+            scenarioId,
+            {
+              epcId: epc.id,
+              stepId: stepElem.id,
+              dimension: "E3",
+              elementId: stepElem.elementRef.elementId,
+              elementName: metaById.get(stepElem.elementRef.elementId)?.name,
+            },
+          ),
+        );
+      }
+    }
+  }
+
+  // ---- VX-18: Draft-Confirmed 隔离 ----
+  // 对每个已确认 EPC 的步骤，elementRef.elementId 必须有已确认版本（meta.confirmedVersion）
+  for (const { epc, step } of epcSteps) {
+    if (!step.elementRef) continue;
+    const eid = step.elementRef.elementId;
+    const meta = metaById.get(eid);
+    if (meta && !(meta as any).confirmedVersion) {
+      issues.push(
+        issue(
+          "VX-18",
+          "warning",
+          `已确认 EPC「${epc.name}」步骤「${step.name}」引用的要素「${meta.name}」仅有 draft 版本，无已确认版本`,
+          scenarioId,
+          {
+            epcId: epc.id,
+            stepId: step.id,
+            dimension: step.elementRef.dimension,
+            elementId: eid,
+            elementName: meta.name,
+          },
+        ),
+      );
+    }
+  }
+
+  // ---- VX-19: Version pin 一致性 ----
+  // 对 elementRef 有 versionPin 的步骤，检查 moduleVersionRecords 中有匹配
+  // moduleKind=要素维度（E1~E8）, moduleId=elementId, version=versionPin 的记录
+  for (const { epc, step } of epcSteps) {
+    if (!step.elementRef) continue;
+    const vPin = step.elementRef.versionPin;
+    if (typeof vPin === "string" && vPin === "latest_confirmed") continue;
+    if (typeof vPin === "object" && vPin.version) {
+      const eid = step.elementRef.elementId;
+      const pinnedVersion = vPin.version;
+      const dim = step.elementRef.dimension;
+      const matchVersion = records.find(
+        (r) =>
+          r.moduleId === eid && r.moduleKind === dim &&
+          r.version === pinnedVersion,
+      );
+      if (!matchVersion) {
+        issues.push(
+          issue(
+            "VX-19",
+            "warning",
+            `EPC「${epc.name}」步骤「${step.name}」引用的 versionPin「${pinnedVersion}」在要素「${eid}」的版本历史中不存在`,
+            scenarioId,
+            {
+              epcId: epc.id,
+              stepId: step.id,
+              dimension: step.elementRef.dimension,
+              elementId: eid,
+              elementName: metaById.get(eid)?.name,
+            },
+          ),
+        );
+      }
+    }
+  }
+
+  // ---- VX-20: usageRefs 完整性 ----
+  // 检查 metaElements 中的 usageRefs 指向的 epcId 在 epcProcesses 中存在
+  const epcIdSet = new Set((epcProcesses ?? []).map((e) => e.id));
+  for (const meta of metaElements ?? []) {
+    const refs = meta.usageRefs ?? [];
+    for (const ref of refs) {
+      if (!epcIdSet.has(ref.epcId)) {
+        issues.push(
+          issue(
+            "VX-20",
+            "info",
+            `要素「${meta.name}」的 usageRefs 指向的 EPC「${ref.epcId}」在 epcProcesses 中不存在`,
+            scenarioId,
+            {
+              elementId: meta.id,
+              elementName: meta.name,
+              epcId: ref.epcId,
+              stepId: ref.stepId,
             },
           ),
         );
