@@ -1,3 +1,4 @@
+import { toastError } from '../test-utils/sonner-mock';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -50,23 +51,19 @@ describe('US-6.1 / IT-EVENT-001: event editor enforces domain event rules', () =
   });
 
   it('非过去式名称应提示错误并拒绝保存', () => {
-    const alertSpy = vi.fn();
-    vi.stubGlobal('alert', alertSpy);
+    toastError.mockClear();
     renderEditor();
 
     fireEvent.click(screen.getByRole('button', { name: '+ 添加事件' }));
     fireEvent.change(screen.getByPlaceholderText('如：创建完成'), { target: { value: '合同创建' } });
     fireEvent.click(screen.getByRole('button', { name: '添加事件' }));
 
-    expect(alertSpy).toHaveBeenCalledWith('领域事件名称应使用过去式');
+    expect(toastError).toHaveBeenCalledWith('领域事件名称应使用过去式');
     expect(useOntologyStore.getState().project?.eventModel?.events || []).toHaveLength(0);
-
-    vi.unstubAllGlobals();
   });
 
   it('状态变更事件缺少触发条件时应提示错误并拒绝保存', () => {
-    const alertSpy = vi.fn();
-    vi.stubGlobal('alert', alertSpy);
+    toastError.mockClear();
     renderEditor();
 
     fireEvent.click(screen.getByRole('button', { name: '+ 添加事件' }));
@@ -77,9 +74,7 @@ describe('US-6.1 / IT-EVENT-001: event editor enforces domain event rules', () =
     fireEvent.click(screen.getByText('状态变更时'));
     fireEvent.click(screen.getByRole('button', { name: '添加事件' }));
 
-    expect(alertSpy).toHaveBeenCalledWith('状态变更事件必须定义触发条件');
+    expect(toastError).toHaveBeenCalledWith('状态变更事件必须定义触发条件');
     expect(useOntologyStore.getState().project?.eventModel?.events || []).toHaveLength(0);
-
-    vi.unstubAllGlobals();
   });
 });

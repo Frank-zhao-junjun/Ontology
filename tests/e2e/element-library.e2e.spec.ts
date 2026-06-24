@@ -126,7 +126,7 @@ describe('E2E-ELEMENT-LIBRARY-001 @smoke', () => {
   it('@smoke 用户可打开要素库并筛选未引用要素', async () => {
     render(React.createElement(ModelingWorkspace, { project: createProject() }));
 
-    fireEvent.click(screen.getByRole('button', { name: /要素库/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /要素库/i }));
 
     await waitFor(() => {
       expect(screen.getByTestId('element-library')).toBeInTheDocument();
@@ -146,7 +146,7 @@ describe('E2E-ELEMENT-LIBRARY-001 @smoke', () => {
   it('@smoke 用户切换维度 Tab 并看到覆盖 Badge', async () => {
     render(React.createElement(ModelingWorkspace, { project: createProject() }));
 
-    fireEvent.click(screen.getByRole('button', { name: /要素库/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /要素库/i }));
 
     await waitFor(() => {
       expect(screen.getByTestId('element-library')).toBeInTheDocument();

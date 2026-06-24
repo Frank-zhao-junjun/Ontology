@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Inspector } from 'react-dev-inspector';
 import './globals.css';
+import { ThemeProvider } from '@/components/theme-provider';
+import { Toaster } from '@/components/ui/sonner';
 
 export const metadata: Metadata = {
   title: {
@@ -8,7 +10,7 @@ export const metadata: Metadata = {
     template: '%s | 扣子编程',
   },
   description:
-    'Ontology 本体模型建模工具 - 支持数据、行为、规则、事件四大元模型的可视化建模，并生成完整建模手册。',
+    'Ontology 本体模型建模工具 - 支持数据、行为、规则、事件等元模型的可视化建模，并生成完整建模手册。',
   keywords: [
     '扣子编程',
     'Coze Code',
@@ -64,10 +66,18 @@ export default function RootLayout({
   const isDev = process.env.COZE_PROJECT_ENV === 'DEV';
 
   return (
-    <html lang="en">
-      <body className={`antialiased`}>
-        {isDev && <Inspector />}
-        {children}
+    <html lang="zh-CN" suppressHydrationWarning>
+      <body className="antialiased bg-background text-foreground">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {isDev && <Inspector />}
+          {children}
+          <Toaster position="bottom-right" />
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -33,8 +33,19 @@ function downloadExcel(buf: Uint8Array, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function ExcelImportExportDialog() {
-  const [open, setOpen] = useState(false);
+interface ExcelImportExportDialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export function ExcelImportExportDialog({ open: controlledOpen, onOpenChange: controlledOnOpenChange }: ExcelImportExportDialogProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (isControlled) controlledOnOpenChange!(v);
+    else setInternalOpen(v);
+  };
   const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
   const [importStep, setImportStep] = useState<'select' | 'preview'>('select');
   const [preview, setPreview] = useState<ImportPreview | null>(null);
@@ -141,12 +152,14 @@ export function ExcelImportExportDialog() {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetImportState(); }}>
-      <DialogTrigger asChild>
-        <Button variant="outline" data-testid="excel-dialog-trigger">
-          <FileSpreadsheet className="mr-1 h-4 w-4" />
-          导入/导出
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button variant="outline" data-testid="excel-dialog-trigger">
+            <FileSpreadsheet className="mr-1 h-4 w-4" />
+            导入/导出
+          </Button>
+        </DialogTrigger>
+      )}
 
       <DialogContent className="max-w-2xl">
         <DialogHeader>

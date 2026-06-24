@@ -18,16 +18,26 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Download, Info, Save, History } from 'lucide-react';
+import { toast } from 'sonner';
 import type { PublishConfig } from '@/types/ontology';
 
 interface PublishDialogProps {
   onPublished?: () => void;
+  openSnap?: boolean;
+  onOpenSnapChange?: (open: boolean) => void;
+  openHistory?: boolean;
+  onOpenHistoryChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }
 
-export function PublishDialog({ onPublished }: PublishDialogProps) {
+export function PublishDialog({ onPublished, openSnap: controlledOpenSnap, onOpenSnapChange, openHistory: controlledOpenHistory, onOpenHistoryChange, hideTrigger }: PublishDialogProps) {
   const { project, versions, createVersion, publishVersion, getLatestVersion, approveVersion, rejectVersion } = useOntologyStore();
-  const [showSnapDialog, setShowSnapDialog] = useState(false);
-  const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+  const [internalShowSnap, setInternalShowSnap] = useState(false);
+  const [internalShowHistory, setInternalShowHistory] = useState(false);
+  const showSnapDialog = controlledOpenSnap !== undefined ? controlledOpenSnap : internalShowSnap;
+  const setShowSnapDialog = controlledOpenSnap !== undefined ? onOpenSnapChange! : setInternalShowSnap;
+  const showHistoryDialog = controlledOpenHistory !== undefined ? controlledOpenHistory : internalShowHistory;
+  const setShowHistoryDialog = controlledOpenHistory !== undefined ? onOpenHistoryChange! : setInternalShowHistory;
   const [isSaving, setIsSaving] = useState(false);
   const [saveLog, setSaveLog] = useState<string[]>([]);
 
@@ -60,7 +70,7 @@ export function PublishDialog({ onPublished }: PublishDialogProps) {
   const handleSaveSnapshot = async () => {
     if (!project) return;
     if (!newVersion.name.trim()) {
-      alert('请输入快照名称');
+      toast.error('请输入快照名称');
       return;
     }
 
@@ -165,7 +175,8 @@ export function PublishDialog({ onPublished }: PublishDialogProps) {
 
   return (
     <>
-      {/* 下拉按钮 */}
+      {/* 下拉按钮 - hidden when externally controlled */}
+      {!hideTrigger && (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="gap-2">
@@ -191,6 +202,7 @@ export function PublishDialog({ onPublished }: PublishDialogProps) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      )}
 
       {/* 草稿快照对话框 */}
       <Dialog open={showSnapDialog} onOpenChange={setShowSnapDialog}>

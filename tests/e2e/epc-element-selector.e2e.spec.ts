@@ -126,7 +126,7 @@ describe('E2E-EPC-ELEMENT-SELECTOR-001 @smoke', () => {
     const project = useOntologyStore.getState().project!;
     render(React.createElement(ModelingWorkspace, { project }));
 
-    fireEvent.click(screen.getByRole('button', { name: /业务链/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /业务链/i }));
     seedBusinessChainAndSelectEpc();
 
     await waitFor(() => {

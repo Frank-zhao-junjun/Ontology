@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { ProjectVersion, PublishConfig } from '@/types/ontology';
+import { useConfirm } from '@/hooks/use-confirm';
+import { toast } from 'sonner';
 
 interface VersionManagerProps {
   onPublish?: (version: ProjectVersion, config: PublishConfig) => void;
@@ -21,6 +23,7 @@ interface VersionManagerProps {
 
 export function VersionManager({ onPublish }: VersionManagerProps) {
   const { project, versions, createVersion, publishVersion, archiveVersion, deleteVersion, getLatestVersion } = useOntologyStore();
+  const { confirm, ConfirmDialog } = useConfirm();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState<ProjectVersion | null>(null);
@@ -53,7 +56,7 @@ export function VersionManager({ onPublish }: VersionManagerProps) {
 
   const handleCreateVersion = () => {
     if (!newVersion.name.trim()) {
-      alert('请输入版本名称');
+      toast.error('请输入版本名称');
       return;
     }
     createVersion(newVersion);
@@ -221,8 +224,12 @@ export function VersionManager({ onPublish }: VersionManagerProps) {
                         size="sm"
                         variant="ghost"
                         className="text-destructive"
-                        onClick={() => {
-                          if (confirm('确定要删除此版本吗？')) {
+                        onClick={async () => {
+                          if (await confirm({
+                            description: '确定要删除此版本吗？',
+                            variant: 'destructive',
+                            confirmLabel: '删除',
+                          })) {
                             deleteVersion(version.id);
                           }
                         }}
@@ -339,6 +346,7 @@ export function VersionManager({ onPublish }: VersionManagerProps) {
           </div>
         </DialogContent>
       </Dialog>
+      {ConfirmDialog}
     </div>
   );
 }

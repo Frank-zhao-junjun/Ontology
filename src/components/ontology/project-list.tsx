@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Pencil, Trash2 } from 'lucide-react';
 import { fetchProjects, deleteProject, updateProject } from '@/services/project-service';
 import { useOntologyStore } from '@/store/ontology-store';
+import { useConfirm } from '@/hooks/use-confirm';
+import { toast } from 'sonner';
 import type { OntologyProject } from '@/types/ontology';
 
 interface ProjectListItem {
@@ -26,6 +28,7 @@ interface ProjectListItem {
 
 export function ProjectList() {
   const router = useRouter();
+  const { confirm, ConfirmDialog } = useConfirm();
   const { importProject, project: currentProject } = useOntologyStore();
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,12 +66,16 @@ export function ProjectList() {
       }
     } catch (error) {
       console.error('打开项目失败:', error);
-      alert('打开项目失败');
+      toast.error('打开项目失败');
     }
   };
 
   const handleDeleteProject = async (projectId: string, projectName: string) => {
-    if (!confirm(`确定要删除项目 "${projectName}" 吗？此操作不可恢复。`)) {
+    if (!(await confirm({
+      description: `确定要删除项目 "${projectName}" 吗？此操作不可恢复。`,
+      variant: 'destructive',
+      confirmLabel: '删除',
+    }))) {
       return;
     }
     
@@ -77,7 +84,7 @@ export function ProjectList() {
       setProjects(projects.filter(p => p.id !== projectId));
     } catch (error) {
       console.error('删除项目失败:', error);
-      alert('删除项目失败');
+      toast.error('删除项目失败');
     }
   };
 
@@ -96,14 +103,14 @@ export function ProjectList() {
       }
     } catch (error) {
       console.error('获取项目数据失败:', error);
-      alert('获取项目数据失败');
+      toast.error('获取项目数据失败');
     }
   };
 
   // 保存编辑
   const handleSaveEdit = async () => {
     if (!editingProject || !editName.trim()) {
-      alert('项目名称不能为空');
+      toast.error('项目名称不能为空');
       return;
     }
 
@@ -141,7 +148,7 @@ export function ProjectList() {
       }
     } catch (error) {
       console.error('更新项目失败:', error);
-      alert('更新项目失败');
+      toast.error('更新项目失败');
     } finally {
       setSaving(false);
     }
@@ -263,6 +270,7 @@ export function ProjectList() {
           </div>
         </DialogContent>
       </Dialog>
+      {ConfirmDialog}
     </div>
   );
 }

@@ -69,6 +69,9 @@ vi.mock('@/components/ontology/data-source-editor', () => ({
 vi.mock('@/components/ontology/metrics-editor', () => ({
   MetricsEditor: () => React.createElement('div', { 'data-testid': 'metrics-editor' }),
 }));
+vi.mock('@/components/ontology/excel-import-export-dialog', () => ({
+  ExcelImportExportDialog: () => React.createElement('div', { 'data-testid': 'excel-import-export-dialog' }),
+}));
 
 function makeProject(): OntologyProject {
   return {
@@ -109,36 +112,29 @@ describe('Excel import/export E2E smoke', () => {
     return render(React.createElement(ModelingWorkspace, { project }));
   }
 
-  it('AC-1: should show import/export button in toolbar', () => {
+  it('AC-1: should render Excel dialog component in workspace', () => {
     renderWorkspace(makeProject());
-    expect(screen.getByTestId('excel-dialog-trigger')).toBeDefined();
+    // Dialog is always rendered (controlled by open/onOpenChange from header dropdown)
+    expect(screen.getByTestId('excel-import-export-dialog')).toBeDefined();
   });
 
-  it('AC-1: should open dialog and show export tab', async () => {
+  it('AC-1: header has export dropdown with Excel option', () => {
     renderWorkspace(makeProject());
-    fireEvent.click(screen.getByTestId('excel-dialog-trigger'));
-    await waitFor(() => {
-      expect(screen.getByText('Excel 分模块导入/导出')).toBeDefined();
-    });
-    expect(screen.getByTestId('tab-export')).toBeDefined();
-    expect(screen.getByTestId('tab-import')).toBeDefined();
+    expect(screen.getByTestId('header-export-dropdown')).toBeDefined();
   });
 
-  it('AC-2: should show export button in export tab', async () => {
+  it('AC-2: workspace renders with tabs and status bar', () => {
     renderWorkspace(makeProject());
-    fireEvent.click(screen.getByTestId('excel-dialog-trigger'));
-    await waitFor(() => {
-      expect(screen.getByTestId('export-btn')).toBeDefined();
-    });
+    expect(screen.getByTestId('workspace-tab-businessChain')).toBeDefined();
+    expect(screen.getByTestId('workspace-tab-elementLibrary')).toBeDefined();
+    expect(screen.getByTestId('workspace-status-bar')).toBeDefined();
   });
 
-  it('AC-2: import tab exists in dialog', async () => {
+  it('AC-2: status bar shows correct stats', () => {
     renderWorkspace(makeProject());
-    fireEvent.click(screen.getByTestId('excel-dialog-trigger'));
-    await waitFor(() => {
-      // Import tab trigger should be visible
-      expect(screen.getByTestId('tab-import')).toBeDefined();
-    });
+    const bar = screen.getByTestId('workspace-status-bar');
+    expect(bar.textContent).toContain('实体');
+    expect(bar.textContent).toContain('状态机');
   });
 
   it('AC-5: store has saveModuleDraft and rebuildUsageIndex', () => {

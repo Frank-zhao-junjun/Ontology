@@ -139,7 +139,7 @@ describe('E2E-SCENARIO-WORKSPACE-001 @smoke', () => {
     });
 
     render(React.createElement(ModelingWorkspace, { project: useOntologyStore.getState().project! }));
-    fireEvent.click(screen.getByRole('button', { name: /业务链/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /业务链/i }));
 
     await waitFor(() => {
       expect(screen.getByTestId('scenario-workspace')).toBeInTheDocument();
@@ -163,7 +163,7 @@ describe('E2E-SCENARIO-WORKSPACE-001 @smoke', () => {
     });
 
     render(React.createElement(ModelingWorkspace, { project: useOntologyStore.getState().project! }));
-    fireEvent.click(screen.getByRole('button', { name: /业务链/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /业务链/i }));
 
     await waitFor(() => {
       expect(screen.getByTestId('scenario-workspace')).toBeInTheDocument();

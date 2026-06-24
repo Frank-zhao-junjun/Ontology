@@ -10,14 +10,21 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Separator } from '@/components/ui/separator';
 import { Pencil, Trash2, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAggregateRootEntities, normalizeEntityRoleFields, resolveEntityRole } from '@/lib/entity-role';
+import { toast } from 'sonner';
 import type { Entity, Attribute, Relation, ComputedProperty, SourceMapping, EventDefinition } from '@/types/ontology';
+
+interface IndexDraft {
+  fields: string;
+  type: 'btree' | 'hash';
+  unique: boolean;
+}
 
 interface DataModelEditorProps {
   mode?: 'full' | 'entity-detail' | 'button-only';
@@ -73,6 +80,10 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
   const [editingComputedProp, setEditingComputedProp] = useState<ComputedProperty | null>(null);
   const [showSourceMappingDialog, setShowSourceMappingDialog] = useState(false);
   const [editingSourceMapping, setEditingSourceMapping] = useState<SourceMapping | null>(null);
+  const [showIndexDialog, setShowIndexDialog] = useState(false);
+  const [indexDraft, setIndexDraft] = useState<IndexDraft>({ fields: '', type: 'btree', unique: false });
+  const [showDomainEventDialog, setShowDomainEventDialog] = useState(false);
+  const [selectedDomainEventId, setSelectedDomainEventId] = useState('');
 
   const entities = project?.dataModel?.entities || [];
   const projects = project?.dataModel?.projects || [];
@@ -142,6 +153,63 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
     setShowAttributeDialog(true);
   };
 
+  const getAvailableDomainEvents = () => {
+    if (!selectedEntity) return [];
+    return eventDefinitions.filter(
+      (event) => event.isDomainEvent && !(selectedEntity.domainEvents || []).includes(event.id),
+    );
+  };
+
+  const openIndexDialog = () => {
+    setIndexDraft({ fields: '', type: 'btree', unique: false });
+    setShowIndexDialog(true);
+  };
+
+  const handleSaveIndex = () => {
+    if (!selectedEntity) return;
+    const fields = indexDraft.fields.split(',').map((field) => field.trim()).filter(Boolean);
+    if (fields.length === 0) {
+      toast.error('请输入至少一个索引字段');
+      return;
+    }
+    updateEntity(selectedEntity.id, {
+      ...selectedEntity,
+      indexes: [
+        ...(selectedEntity.indexes || []),
+        { fields, type: indexDraft.type, unique: indexDraft.unique },
+      ],
+    });
+    setShowIndexDialog(false);
+  };
+
+  const openDomainEventDialog = () => {
+    const availableEvents = getAvailableDomainEvents();
+    if (availableEvents.length === 0) {
+      toast.error('没有可用的领域事件。请先在事件模型中创建领域事件。');
+      return;
+    }
+    setSelectedDomainEventId(availableEvents[0].id);
+    setShowDomainEventDialog(true);
+  };
+
+  const handleLinkDomainEvent = () => {
+    if (!selectedEntity) return;
+    if (!selectedDomainEventId) {
+      toast.error('请选择领域事件');
+      return;
+    }
+    const found = getAvailableDomainEvents().find((event) => event.id === selectedDomainEventId);
+    if (!found) {
+      toast.error('未找到该领域事件');
+      return;
+    }
+    updateEntity(selectedEntity.id, {
+      ...selectedEntity,
+      domainEvents: [...(selectedEntity.domainEvents || []), found.id],
+    });
+    setShowDomainEventDialog(false);
+  };
+
   // 保存属性（新建或更新）
   const handleSaveAttribute = () => {
     if (!entityId || !selectedEntity) return;
@@ -153,12 +221,12 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
     const isMasterDataRef = dataType === 'reference' && referenceKind === 'masterData';
 
     if (isMasterDataRef && !editingAttribute.masterDataType) {
-      alert('关联主数据时必须选择主数据类型');
+      toast.error('关联主数据时必须选择主数据类型');
       return;
     }
 
     if (dataType === 'reference' && !isMasterDataRef && !editingAttribute.referencedEntityId) {
-      alert('引用实体时必须选择目标实体');
+      toast.error('引用实体时必须选择目标实体');
       return;
     }
     
@@ -1106,11 +1174,11 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                       if (!entityId) return;
                       const targetEntity = editingRelation.isRecursive ? entityId : editingRelation.targetEntity;
                       if (!targetEntity) {
-                        alert('关系必须选择目标实体');
+                        toast.error('关系必须选择目标实体');
                         return;
                       }
                       if (editingRelation.type === 'many_to_many' && !editingRelation.viaEntity?.trim()) {
-                        alert('多对多关系必须填写中间实体');
+                        toast.error('多对多关系必须填写中间实体');
                         return;
                       }
                       const relationData: Relation = {
@@ -1736,16 +1804,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">索引定义</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => {
-                    const fieldNames = prompt('索引字段（多个用逗号分隔）：');
-                    if (!fieldNames) return;
-                    const isUnique = confirm('点击确定=唯一索引, 取消=普通索引');
-                    const idxType = prompt('索引类型（btree/hash，默认btree）：') || 'btree';
-                    updateEntity(selectedEntity.id, {
-                      ...selectedEntity,
-                      indexes: [...(selectedEntity.indexes || []), { fields: fieldNames.split(',').map(s => s.trim()), type: idxType as 'btree' | 'hash', unique: isUnique }],
-                    });
-                  }}>
+                  <Button variant="outline" size="sm" onClick={openIndexDialog}>
                     + 添加索引
                   </Button>
                 </div>
@@ -1776,28 +1835,98 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
               </CardContent>
             </Card>
 
+            <Dialog open={showIndexDialog} onOpenChange={setShowIndexDialog}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>添加索引</DialogTitle>
+                  <DialogDescription>定义实体字段的数据库索引</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="index-fields">索引字段</Label>
+                    <Input
+                      id="index-fields"
+                      value={indexDraft.fields}
+                      onChange={(e) => setIndexDraft({ ...indexDraft, fields: e.target.value })}
+                      placeholder="多个字段用逗号分隔，如：orderNo, status"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>存储类型</Label>
+                    <Select
+                      value={indexDraft.type}
+                      onValueChange={(value) => setIndexDraft({ ...indexDraft, type: value as IndexDraft['type'] })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="btree">B-Tree（默认）</SelectItem>
+                        <SelectItem value="hash">Hash</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>约束类型</Label>
+                    <RadioGroup
+                      value={indexDraft.unique ? 'unique' : 'normal'}
+                      onValueChange={(value) => setIndexDraft({ ...indexDraft, unique: value === 'unique' })}
+                      className="flex gap-4"
+                    >
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="normal" id="index-normal" />
+                        <Label htmlFor="index-normal" className="font-normal cursor-pointer">普通索引</Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="unique" id="index-unique" />
+                        <Label htmlFor="index-unique" className="font-normal cursor-pointer">唯一索引</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowIndexDialog(false)}>取消</Button>
+                  <Button onClick={handleSaveIndex}>添加</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={showDomainEventDialog} onOpenChange={setShowDomainEventDialog}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>关联领域事件</DialogTitle>
+                  <DialogDescription>选择要关联到此聚合根的领域事件</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="domain-event-select">领域事件</Label>
+                    <Select value={selectedDomainEventId} onValueChange={setSelectedDomainEventId}>
+                      <SelectTrigger id="domain-event-select">
+                        <SelectValue placeholder="选择领域事件" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getAvailableDomainEvents().map((event) => (
+                          <SelectItem key={event.id} value={event.id}>
+                            {event.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowDomainEventDialog(false)}>取消</Button>
+                  <Button onClick={handleLinkDomainEvent} disabled={!selectedDomainEventId}>关联</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
             {/* 领域事件 (Domain Events) */}
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">领域事件</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => {
-                    const availableEvents = eventDefinitions.filter(
-                      (e: EventDefinition) => e.isDomainEvent && !(selectedEntity.domainEvents || []).includes(e.id)
-                    );
-                    if (availableEvents.length === 0) {
-                      alert('没有可用的领域事件。请先在事件模型中创建领域事件。');
-                      return;
-                    }
-                    const eventId = prompt('输入领域事件ID（可用：' + availableEvents.map((e: EventDefinition) => e.name).join(', ') + '）：');
-                    if (!eventId) return;
-                    const found = availableEvents.find((e: EventDefinition) => e.id === eventId || e.name === eventId);
-                    if (!found) { alert('未找到该领域事件'); return; }
-                    updateEntity(selectedEntity.id, {
-                      ...selectedEntity,
-                      domainEvents: [...(selectedEntity.domainEvents || []), found.id],
-                    });
-                  }}>
+                  <Button variant="outline" size="sm" onClick={openDomainEventDialog}>
                     + 关联领域事件
                   </Button>
                 </div>

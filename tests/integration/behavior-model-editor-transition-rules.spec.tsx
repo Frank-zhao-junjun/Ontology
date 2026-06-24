@@ -1,3 +1,4 @@
+import { toastError } from '../test-utils/sonner-mock';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
@@ -38,6 +39,7 @@ async function renderEditor(project = createFrozenProject('1.0.0')) {
 describe('US-4.2 / IT-TRANSITION-001: behavior editor enforces visible transition rules', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    toastError.mockClear();
     resetStore();
   });
 
@@ -80,21 +82,17 @@ describe('US-4.2 / IT-TRANSITION-001: behavior editor enforces visible transitio
   });
 
   it('未选择起始状态和目标状态时应提示错误并拒绝保存', async () => {
-    const alertSpy = vi.fn();
-    vi.stubGlobal('alert', alertSpy);
     await renderEditor();
 
     fireEvent.click(screen.getByRole('button', { name: '+ 添加转换' }));
     fireEvent.change(screen.getByPlaceholderText('如：提交审批'), { target: { value: '缺失状态转换' } });
     fireEvent.click(screen.getByRole('button', { name: '添加' }));
 
-    expect(alertSpy).toHaveBeenCalledWith('转换必须选择起始状态和目标状态');
+    expect(toastError).toHaveBeenCalledWith('转换必须选择起始状态和目标状态');
     expect(useOntologyStore.getState().project?.behaviorModel?.stateMachines[0].transitions.map((transition) => transition.name)).not.toContain('缺失状态转换');
   });
 
   it('自动触发转换缺少条件表达式时应提示错误并拒绝保存', async () => {
-    const alertSpy = vi.fn();
-    vi.stubGlobal('alert', alertSpy);
     await renderEditor();
 
     fireEvent.click(screen.getByRole('button', { name: '+ 添加转换' }));
@@ -107,7 +105,7 @@ describe('US-4.2 / IT-TRANSITION-001: behavior editor enforces visible transitio
     fireEvent.click(screen.getByText('自动触发'));
     fireEvent.click(screen.getByRole('button', { name: '添加' }));
 
-    expect(alertSpy).toHaveBeenCalledWith('自动或定时转换必须定义触发条件');
+    expect(toastError).toHaveBeenCalledWith('自动或定时转换必须定义触发条件');
     expect(useOntologyStore.getState().project?.behaviorModel?.stateMachines[0].transitions.map((transition) => transition.name)).not.toContain('自动审批通过');
   });
 

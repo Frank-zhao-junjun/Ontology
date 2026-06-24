@@ -121,7 +121,7 @@ describe('E2E-WARNING-CENTER-001 @smoke', () => {
 
     render(React.createElement(ModelingWorkspace, { project: useOntologyStore.getState().project! }));
 
-    fireEvent.click(screen.getByRole('button', { name: /警示/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /警示/i }));
 
     await waitFor(() => {
       expect(screen.getByTestId('warning-center')).toBeInTheDocument();

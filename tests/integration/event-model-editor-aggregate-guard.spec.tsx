@@ -1,3 +1,4 @@
+import { toastError } from '../test-utils/sonner-mock';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -92,18 +93,14 @@ describe('US-2.1 / IT-MODEL-ROLE-002: only aggregate roots can define domain eve
   });
 
   it('child_entity 尝试添加事件时应提示错误且不写入事件模型', () => {
-    const alertSpy = vi.fn();
-    vi.stubGlobal('alert', alertSpy);
-
+    toastError.mockClear();
     render(React.createElement(EventModelEditor, { mode: 'entity-detail', entityId: 'entity-child-1' }));
 
     fireEvent.click(screen.getByRole('button', { name: '+ 添加事件' }));
     fireEvent.click(screen.getByRole('button', { name: '添加事件' }));
 
-    expect(alertSpy).toHaveBeenCalledWith('只有 `entityRole = aggregate_root` 的实体才能定义领域事件。请先在数据模型中将其设置为聚合根。');
+    expect(toastError).toHaveBeenCalledWith('只有 `entityRole = aggregate_root` 的实体才能定义领域事件。请先在数据模型中将其设置为聚合根。');
     expect(useOntologyStore.getState().project?.eventModel?.events || []).toHaveLength(0);
-
-    vi.unstubAllGlobals();
   });
 
   it('aggregate_root 添加事件时应成功写入事件模型', () => {

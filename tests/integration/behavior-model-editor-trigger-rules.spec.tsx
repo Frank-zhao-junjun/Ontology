@@ -1,3 +1,4 @@
+import { toastError } from '../test-utils/sonner-mock';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
@@ -79,8 +80,7 @@ describe('US-4.3 / IT-TRIGGER-001: behavior editor configures transition trigger
   });
 
   it('事件触发转换缺少触发事件时应提示错误并拒绝保存', async () => {
-    const alertSpy = vi.fn();
-    vi.stubGlobal('alert', alertSpy);
+    toastError.mockClear();
     await renderEditor();
 
     fireEvent.click(screen.getByRole('button', { name: '+ 添加转换' }));
@@ -94,7 +94,7 @@ describe('US-4.3 / IT-TRIGGER-001: behavior editor configures transition trigger
     fireEvent.change(screen.getByPlaceholderText('如：archiveReady == true'), { target: { value: 'approvalReady == true' } });
     fireEvent.click(screen.getByRole('button', { name: '添加' }));
 
-    expect(alertSpy).toHaveBeenCalledWith('事件触发转换必须配置触发事件');
+    expect(toastError).toHaveBeenCalledWith('事件触发转换必须配置触发事件');
     expect(useOntologyStore.getState().project?.behaviorModel?.stateMachines[0].transitions.map((transition) => transition.name)).not.toContain('事件驱动审批');
   });
 

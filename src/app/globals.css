@@ -129,12 +129,8 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
   }
-}
-
-body {
-  @apply font-sans;
 }
 
 /* Landing Page Styles */

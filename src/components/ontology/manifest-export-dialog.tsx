@@ -26,6 +26,8 @@ import type { ManifestValidationIssue } from '@/lib/manifest-validator';
 
 interface ManifestExportDialogProps {
   project: OntologyProject;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 function IssueRow({ issue }: { issue: ManifestValidationIssue }) {
@@ -41,8 +43,11 @@ function IssueRow({ issue }: { issue: ManifestValidationIssue }) {
   );
 }
 
-export function ManifestExportDialog({ project }: ManifestExportDialogProps) {
-  const [open, setOpen] = useState(false);
+export function ManifestExportDialog({ project, open: controlledOpen, onOpenChange: controlledOnOpenChange }: ManifestExportDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? controlledOnOpenChange! : setInternalOpen;
   const [format, setFormat] = useState<ManifestExportFormat>('yaml');
   const [xlsxLoading, setXlsxLoading] = useState(false);
 
@@ -94,12 +99,14 @@ export function ManifestExportDialog({ project }: ManifestExportDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="gap-2">
-          <Download className="h-4 w-4" />
-          导出 OntologyManifest
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button className="gap-2">
+            <Download className="h-4 w-4" />
+            导出 OntologyManifest
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>导出平台本体制品</DialogTitle>

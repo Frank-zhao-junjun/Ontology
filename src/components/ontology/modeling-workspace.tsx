@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { useOntologyStore } from '@/store/ontology-store';
@@ -7,7 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { Pencil, Trash2, ChevronDown, MoreHorizontal } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ManualGenerator } from './manual-generator';
 import { MetadataManager } from './metadata-manager';
@@ -22,50 +30,23 @@ import { BusinessChainDetail } from './business-chain-detail';
 import { ElementLibrary } from './element-library';
 import { WarningCenter } from './warning-center';
 import { ExcelImportExportDialog } from './excel-import-export-dialog';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { updateProject, deleteProject } from '@/services/project-service';
 import { cn } from '@/lib/utils';
-import { META_DIMENSION_LABELS, META_DIMENSION_ORDER } from '@/lib/element-selector/constants';
+import { useConfirm } from '@/hooks/use-confirm';
+import { toast } from 'sonner';
 import type { MetaDimension, OntologyProject } from '@/types/ontology';
 
 interface ModelingWorkspaceProps {
   project: OntologyProject;
 }
 
-type WorkspaceScope =
-  | 'businessChain'
-  | 'elementLibrary'
-  | 'warnings'
-  | 'metrics'
-  | 'governance'
-  | 'dataSources';
-
-interface MenuItem {
-  id: WorkspaceScope;
-  label: string;
-  icon: string;
-  children?: { id: MetaDimension; label: string }[];
-}
-
-const LEFT_MENU_ITEMS: MenuItem[] = [
-  { id: 'businessChain', label: '业务链', icon: '🌳' },
-  {
-    id: 'elementLibrary',
-    label: '要素库',
-    icon: '📦',
-    children: META_DIMENSION_ORDER.map((dim) => ({
-      id: dim,
-      label: META_DIMENSION_LABELS[dim],
-    })),
-  },
-  { id: 'warnings', label: '警示', icon: '⚠️' },
-  { id: 'metrics', label: '指标', icon: '📊' },
-  { id: 'governance', label: '治理', icon: '🛡️' },
-  { id: 'dataSources', label: '数据源', icon: '🔌' },
-];
+type ContentTab = 'businessChain' | 'elementLibrary' | 'warnings' | 'metrics' | 'governance' | 'dataSources';
 
 export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   useProjectSync();
   const router = useRouter();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const { resetProject, exportProject, clearAllModels } = useOntologyStore();
   const getBusinessEpcWarnings = useOntologyStore((s) => s.getBusinessEpcWarnings);
@@ -75,9 +56,8 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   const selectedNode = useOntologyStore((s) => s.selectedBusinessChainNode);
   const vxIssues = (selectedNode?.kind === 'C') ? getCrossConsistency(selectedNode.id) : [];
 
-  const [workspaceScope, setWorkspaceScope] = useState<WorkspaceScope>('businessChain');
+  const [activeTab, setActiveTab] = useState<ContentTab>('businessChain');
   const [activeDimension, setActiveDimension] = useState<MetaDimension>('E1');
-  const [elementLibraryExpanded, setElementLibraryExpanded] = useState(true);
   const [elementLibraryFocus, setElementLibraryFocus] = useState<{
     elementId: string;
     dimension: MetaDimension;
@@ -89,6 +69,12 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   const [editProjectName, setEditProjectName] = useState('');
   const [editProjectDescription, setEditProjectDescription] = useState('');
   const [savingProject, setSavingProject] = useState(false);
+
+  // Header dropdown dialog states
+  const [showManifestExport, setShowManifestExport] = useState(false);
+  const [showExcelImportExport, setShowExcelImportExport] = useState(false);
+  const [showPublishSnap, setShowPublishSnap] = useState(false);
+  const [showPublishHistory, setShowPublishHistory] = useState(false);
 
   const stats = {
     entities: project.dataModel?.entities.length || 0,
@@ -103,6 +89,10 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
     stats.rules > 0 ||
     stats.events > 0 ||
     stats.subscriptions > 0;
+
+  const metaElementCount = project.metaElements?.length ?? 0;
+
+  const warningCount = epcWarnings.length + vxIssues.length;
 
   const handleExport = () => {
     const json = exportProject();
@@ -127,7 +117,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
       entityCount > 0
         ? `该项目下有 ${entityCount} 个实体，确定要删除整个项目吗？此操作不可恢复。`
         : `确定要删除项目 "${project.name}" 吗？此操作不可恢复。`;
-    if (!confirm(message)) return;
+    if (!(await confirm({ description: message, variant: 'destructive', confirmLabel: '删除' }))) return;
 
     try {
       await deleteProject(project.id);
@@ -135,13 +125,13 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
       router.push('/');
     } catch (error) {
       console.error('删除项目失败:', error);
-      alert('删除项目失败，请重试');
+      toast.error('删除项目失败，请重试');
     }
   };
 
   const handleSaveEditProject = async () => {
     if (!editProjectName.trim()) {
-      alert('项目名称不能为空');
+      toast.error('项目名称不能为空');
       return;
     }
 
@@ -162,11 +152,20 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
       setShowEditProjectDialog(false);
     } catch (error) {
       console.error('保存项目失败:', error);
-      alert('保存项目失败，请重试');
+      toast.error('保存项目失败，请重试');
     } finally {
       setSavingProject(false);
     }
   };
+
+  const TABS: { id: ContentTab; label: string; count?: number }[] = [
+    { id: 'businessChain', label: '业务链' },
+    { id: 'elementLibrary', label: '要素库' },
+    { id: 'warnings', label: '警示', count: warningCount },
+    { id: 'metrics', label: '指标' },
+    { id: 'governance', label: '治理' },
+    { id: 'dataSources', label: '数据源' },
+  ];
 
   if (showManual) {
     return <ManualGenerator onBack={() => setShowManual(false)} />;
@@ -194,22 +193,24 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col" data-testid="modeling-workspace">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-3">
+      {/* ========== HEADER ========== */}
+      <header className="border-b bg-card shrink-0">
+        <div className="px-4 py-3">
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-4 flex-wrap">
+            {/* Left: Project info */}
+            <div className="flex items-center gap-4 flex-wrap min-w-0">
               <div
-                className="text-3xl p-2 rounded-lg"
+                className="text-3xl p-2 rounded-lg shrink-0"
                 style={{ backgroundColor: `${project.domain.color}20` }}
               >
                 {project.domain.icon}
               </div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold">{project.name}</h1>
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="text-xl font-bold truncate">{project.name}</h1>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0 text-muted-foreground"
+                  className="h-6 w-6 p-0 text-muted-foreground shrink-0"
                   onClick={handleOpenEditProjectDialog}
                 >
                   <Pencil className="w-3 h-3" />
@@ -217,199 +218,223 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                  className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0"
                   onClick={handleDeleteProject}
                 >
                   <Trash2 className="w-3 h-3" />
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground">{project.domain.name}</p>
+              <p className="text-sm text-muted-foreground hidden sm:block">{project.domain.name}</p>
             </div>
+
+            {/* Right: Action buttons grouped into dropdowns */}
             <div className="flex items-center gap-2 flex-wrap">
-              <Button variant="outline" onClick={() => setShowMetadata(true)}>
-                📚 元数据管理
+              {/* Export dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" data-testid="header-export-dropdown">
+                    导出 <ChevronDown className="ml-1 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setShowManifestExport(true)}>
+                    Manifest 导出
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={handleExport}>
+                    导出 JSON 备份
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => setShowExcelImportExport(true)}
+                    data-testid="header-export-excel"
+                  >
+                    Excel 导入导出
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button size="sm" onClick={() => setShowManual(true)}>
+                生成建模手册
               </Button>
-              <Button variant="outline" onClick={() => setShowMasterData(true)}>
-                📊 主数据管理
-              </Button>
-              <ManifestExportDialog project={project} />
-              <PublishDialog />
-              <Button variant="outline" onClick={handleExport}>
-                导出 JSON 备份
-              </Button>
-              <ExcelImportExportDialog />
-              <Button onClick={() => setShowManual(true)}>生成建模手册</Button>
-              <Button variant="ghost" onClick={resetProject}>
-                新建项目
-              </Button>
+
+              {/* More actions dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="更多操作">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setShowMetadata(true)}>
+                    📚 元数据管理
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setShowMasterData(true)}>
+                    📊 主数据管理
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setShowPublishSnap(true)}>
+                    保存快照
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setShowPublishHistory(true)}>
+                    快照历史
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={resetProject}>
+                    新建项目
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <ThemeToggle />
             </div>
           </div>
         </div>
       </header>
 
-      <div className="border-b bg-muted/30">
-        <div className="container mx-auto px-4 py-2 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4 text-sm flex-wrap">
-            <Badge variant="secondary">🗄️ 实体: {stats.entities}</Badge>
-            <Badge variant="secondary">⚡ 状态机: {stats.stateMachines}</Badge>
-            <Badge variant="secondary">📋 规则: {stats.rules}</Badge>
-            <Badge variant="secondary">📨 事件: {stats.events}</Badge>
-            <Badge variant="secondary">🔔 订阅: {stats.subscriptions}</Badge>
-          </div>
-          {hasModelData && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-600 hover:bg-red-50 hover:text-red-700"
-              onClick={() => {
-                if (confirm('确定要清空所有建模数据吗？此操作不可恢复，但会保留项目和分类。')) {
-                  clearAllModels();
-                }
-              }}
-            >
-              🗑️ 清空数据
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <main className="flex-1 flex overflow-hidden">
-        {/* 左侧垂直菜单 */}
-        <aside className="w-56 shrink-0 border-r bg-card flex flex-col overflow-y-auto">
-          <nav className="p-3 space-y-1">
-            {LEFT_MENU_ITEMS.map((item) => {
-              const isActive = workspaceScope === item.id;
-              const hasChildren = item.children && item.children.length > 0;
-              return (
-                <div key={item.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setWorkspaceScope(item.id);
-                      if (hasChildren) {
-                        setElementLibraryExpanded(true);
-                      }
-                    }}
-                    className={cn(
-                      'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors text-left',
-                      isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'hover:bg-muted text-foreground',
-                    )}
-                  >
-                    <span>{item.icon}</span>
-                    <span className="flex-1">{item.label}</span>
-                    {hasChildren && (
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setElementLibraryExpanded((v) => !v);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.stopPropagation();
-                            setElementLibraryExpanded((v) => !v);
-                          }
-                        }}
-                        className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10"
-                      >
-                        {elementLibraryExpanded ? (
-                          <ChevronDown className="w-4 h-4" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4" />
-                        )}
-                      </span>
-                    )}
-                  </button>
-                  {hasChildren && elementLibraryExpanded && item.children && (
-                    <div className="ml-4 mt-1 space-y-1 border-l pl-2">
-                      {item.children.map((child) => (
-                        <button
-                          key={child.id}
-                          type="button"
-                          onClick={() => {
-                            setWorkspaceScope(item.id);
-                            setActiveDimension(child.id);
-                            setElementLibraryExpanded(true);
-                          }}
-                          className={cn(
-                            'w-full px-3 py-1.5 rounded-md text-sm text-left transition-colors',
-                            workspaceScope === item.id && activeDimension === child.id
-                              ? 'bg-primary/10 text-primary font-medium'
-                              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                          )}
-                        >
-                          {child.label}
-                        </button>
-                      ))}
-                    </div>
+      {/* ========== MAIN CONTENT ========== */}
+      <main className="flex-1 flex overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Tab Bar */}
+          <div className="border-b bg-card shrink-0" role="tablist" aria-label="视图切换">
+            <div className="flex">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  data-testid={`workspace-tab-${tab.id}`}
+                  className={cn(
+                    'px-4 py-2.5 text-sm font-medium transition-colors relative',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                    activeTab === tab.id
+                      ? 'text-foreground border-b-2 border-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
                   )}
-                </div>
-              );
-            })}
-          </nav>
-        </aside>
-
-        {/* 右侧内容区 */}
-        {workspaceScope === 'warnings' && (
-          <div className="flex-1 overflow-auto p-6">
-            <WarningCenter
-              warnings={epcWarnings}
-              vxIssues={vxIssues}
-              onNavigate={(kind, id) => {
-                if (kind === 'A' || kind === 'B' || kind === 'C' || kind === 'EPC') {
-                  setSelectedBusinessChainNode({ kind, id });
-                  setWorkspaceScope('businessChain');
-                }
-              }}
-            />
-          </div>
-        )}
-        {workspaceScope === 'elementLibrary' && (
-          <div className="flex-1 overflow-auto p-6">
-            <ElementLibrary
-              focusTarget={elementLibraryFocus}
-              onFocusConsumed={() => setElementLibraryFocus(null)}
-              activeDimension={activeDimension}
-              onDimensionChange={setActiveDimension}
-            />
-          </div>
-        )}
-        {workspaceScope === 'businessChain' && (
-          <>
-            <div className="w-80 flex flex-col shrink-0">
-              <BusinessChainTree />
+                >
+                  <span className="flex items-center gap-1.5">
+                    {tab.label}
+                    {tab.count !== undefined && tab.count > 0 && (
+                      <Badge variant="secondary" className="px-1.5 py-0 text-xs leading-none">
+                        {tab.count}
+                      </Badge>
+                    )}
+                  </span>
+                </button>
+              ))}
             </div>
-            <BusinessChainDetail
-              onNavigateToElement={(elementId, dimension) => {
-                setElementLibraryFocus({ elementId, dimension });
-                setWorkspaceScope('elementLibrary');
-              }}
-            />
-          </>
-        )}
-        {workspaceScope === 'metrics' && (
-          <div className="flex-1 overflow-auto p-6">
-            <h2 className="text-lg font-semibold mb-4">指标 (E6)</h2>
-            <MetricsEditor />
           </div>
-        )}
-        {workspaceScope === 'governance' && (
-          <div className="flex-1 overflow-auto p-6">
-            <h2 className="text-lg font-semibold mb-4">治理层 (E5)</h2>
-            <GovernanceEditor />
+
+          {/* Tab Content */}
+          <div className="flex-1 flex overflow-hidden min-h-0">
+            {/* Business Chain: tree + detail with resizable split */}
+            {activeTab === 'businessChain' && (
+              <ResizablePanelGroup orientation="horizontal" className="flex-1">
+                <ResizablePanel defaultSize={20} minSize={12} maxSize={40}>
+                  <BusinessChainTree />
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={80} minSize={30}>
+                  <BusinessChainDetail
+                    onNavigateToElement={(elementId, dimension) => {
+                      setElementLibraryFocus({ elementId, dimension });
+                      setActiveTab('elementLibrary');
+                    }}
+                  />
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            )}
+
+            {/* Element Library */}
+            {activeTab === 'elementLibrary' && (
+              <div className="flex-1 overflow-auto p-6">
+                <ElementLibrary
+                  focusTarget={elementLibraryFocus}
+                  onFocusConsumed={() => setElementLibraryFocus(null)}
+                  activeDimension={activeDimension}
+                  onDimensionChange={setActiveDimension}
+                />
+              </div>
+            )}
+
+            {/* Warnings */}
+            {activeTab === 'warnings' && (
+              <div className="flex-1 overflow-auto p-6">
+                <WarningCenter
+                  warnings={epcWarnings}
+                  vxIssues={vxIssues}
+                  onNavigate={(kind, id) => {
+                    if (kind === 'A' || kind === 'B' || kind === 'C' || kind === 'EPC') {
+                      setSelectedBusinessChainNode({ kind, id });
+                      setActiveTab('businessChain');
+                    }
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Metrics */}
+            {activeTab === 'metrics' && (
+              <div className="flex-1 overflow-auto p-6">
+                <h2 className="text-lg font-semibold mb-4">指标 (E6)</h2>
+                <MetricsEditor />
+              </div>
+            )}
+
+            {/* Governance */}
+            {activeTab === 'governance' && (
+              <div className="flex-1 overflow-auto p-6">
+                <h2 className="text-lg font-semibold mb-4">治理层 (E5)</h2>
+                <GovernanceEditor />
+              </div>
+            )}
+
+            {/* Data Sources */}
+            {activeTab === 'dataSources' && (
+              <div className="flex-1 overflow-auto p-6">
+                <h2 className="text-lg font-semibold mb-4">数据源 (E8)</h2>
+                <DataSourceEditor />
+              </div>
+            )}
           </div>
-        )}
-        {workspaceScope === 'dataSources' && (
-          <div className="flex-1 overflow-auto p-6">
-            <h2 className="text-lg font-semibold mb-4">数据源 (E8)</h2>
-            <DataSourceEditor />
-          </div>
-        )}
+        </div>
       </main>
 
+      {/* ========== STATUS FOOTER ========== */}
+      <footer
+        className="border-t bg-muted/30 px-4 py-1.5 flex items-center justify-between text-xs text-muted-foreground shrink-0"
+        data-testid="workspace-status-bar"
+      >
+        <div className="flex items-center gap-3 flex-wrap">
+          <span>🗄️ 实体: {stats.entities}</span>
+          <span>⚡ 状态机: {stats.stateMachines}</span>
+          <span>📋 规则: {stats.rules}</span>
+          <span>📨 事件: {stats.events}</span>
+          <span className="hidden sm:inline">|</span>
+          <span className="hidden sm:inline">📦 要素库: {metaElementCount} 个</span>
+        </div>
+        {hasModelData && (
+          <button
+            type="button"
+            className="text-red-500 hover:text-red-700 underline shrink-0"
+            onClick={async () => {
+              if (await confirm({
+                description: '确定要清空所有建模数据吗？此操作不可恢复，但会保留项目和分类。',
+                variant: 'destructive',
+                confirmLabel: '清空',
+              })) {
+                clearAllModels();
+              }
+            }}
+          >
+            清空数据
+          </button>
+        )}
+      </footer>
+
+      {/* ========== DIALOGS ========== */}
+
+      {/* Edit Project Dialog */}
       <Dialog open={showEditProjectDialog} onOpenChange={setShowEditProjectDialog}>
         <DialogContent>
           <DialogHeader>
@@ -445,7 +470,25 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Controlled dialogs from header dropdowns */}
+      <ManifestExportDialog
+        project={project}
+        open={showManifestExport}
+        onOpenChange={setShowManifestExport}
+      />
+      <ExcelImportExportDialog
+        open={showExcelImportExport}
+        onOpenChange={setShowExcelImportExport}
+      />
+      <PublishDialog
+        hideTrigger
+        openSnap={showPublishSnap}
+        onOpenSnapChange={setShowPublishSnap}
+        openHistory={showPublishHistory}
+        onOpenHistoryChange={setShowPublishHistory}
+      />
+      {ConfirmDialog}
     </div>
   );
 }
-

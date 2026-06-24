@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import type { Entity } from '@/types/ontology';
+import { toast } from 'sonner';
 
 type E1ModelTab = 'data' | 'behavior' | 'rule' | 'event';
 
@@ -72,7 +73,7 @@ export function E1EntityPanel() {
       setSelectedEntityId(newEntity.id);
       setActiveTab('data');
     } catch (error) {
-      alert(error instanceof Error ? error.message : '创建实体失败');
+      toast.error(error instanceof Error ? error.message : '创建实体失败');
     }
   };
 

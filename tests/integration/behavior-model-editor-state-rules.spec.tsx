@@ -1,3 +1,4 @@
+import { toastError } from '../test-utils/sonner-mock';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
@@ -83,7 +84,6 @@ describe('US-4.1 / IT-STATE-UI-001: behavior editor enforces visible state rules
     const randomValue = 0.314159265;
     const duplicateStateId = randomValue.toString(36).substring(2, 10);
     const project = createProject();
-    const alertSpy = vi.fn();
 
     project.behaviorModel?.stateMachines[0].states.push({
       id: duplicateStateId,
@@ -91,7 +91,7 @@ describe('US-4.1 / IT-STATE-UI-001: behavior editor enforces visible state rules
       color: '#6B7280',
     });
 
-    vi.stubGlobal('alert', alertSpy);
+    toastError.mockClear();
     await renderEditor(project);
 
     fireEvent.click(screen.getByRole('button', { name: '+ 添加状态' }));
@@ -101,13 +101,12 @@ describe('US-4.1 / IT-STATE-UI-001: behavior editor enforces visible state rules
     fireEvent.click(screen.getByRole('button', { name: '添加' }));
     randomSpy.mockRestore();
 
-    expect(alertSpy).toHaveBeenCalledWith('状态编码不能重复');
+    expect(toastError).toHaveBeenCalledWith('状态编码不能重复');
     expect(useOntologyStore.getState().project?.behaviorModel?.stateMachines[0].states.map((state) => state.name)).not.toContain('重复编码状态');
   });
 
   it('尝试新增第二个初始态时应提示错误并拒绝保存', async () => {
-    const alertSpy = vi.fn();
-    vi.stubGlobal('alert', alertSpy);
+    toastError.mockClear();
     await renderEditor();
 
     fireEvent.click(screen.getByRole('button', { name: '+ 添加状态' }));
@@ -115,13 +114,12 @@ describe('US-4.1 / IT-STATE-UI-001: behavior editor enforces visible state rules
     fireEvent.click(screen.getByLabelText('初始状态'));
     fireEvent.click(screen.getByRole('button', { name: '添加' }));
 
-    expect(alertSpy).toHaveBeenCalledWith('状态机只能有一个初始状态');
+    expect(toastError).toHaveBeenCalledWith('状态机只能有一个初始状态');
     expect(useOntologyStore.getState().project?.behaviorModel?.stateMachines[0].states.map((state) => state.name)).not.toContain('待签署');
   });
 
   it('删除仍被转换引用的状态时应提示先处理转换规则', async () => {
-    const alertSpy = vi.fn();
-    vi.stubGlobal('alert', alertSpy);
+    toastError.mockClear();
     await renderEditor();
 
     const stateBadge = screen
@@ -132,20 +130,19 @@ describe('US-4.1 / IT-STATE-UI-001: behavior editor enforces visible state rules
 
     fireEvent.click(within(stateBadge as HTMLElement).getByRole('button', { name: '×' }));
 
-    expect(alertSpy).toHaveBeenCalledWith('状态已被转换规则引用，不能删除');
+    expect(toastError).toHaveBeenCalledWith('状态已被转换规则引用，不能删除');
     expect(useOntologyStore.getState().project?.behaviorModel?.stateMachines[0].states.map((state) => state.id)).toContain('s2');
   });
 
   it('达到 10 个状态后继续新增时应提示上限并拒绝保存', async () => {
-    const alertSpy = vi.fn();
-    vi.stubGlobal('alert', alertSpy);
+    toastError.mockClear();
     await renderEditor(createProjectWithTenStates());
 
     fireEvent.click(screen.getByRole('button', { name: '+ 添加状态' }));
     fireEvent.change(screen.getByPlaceholderText('如：草稿'), { target: { value: '状态11' } });
     fireEvent.click(screen.getByRole('button', { name: '添加' }));
 
-    expect(alertSpy).toHaveBeenCalledWith('每个状态机最多只能定义 10 个状态');
+    expect(toastError).toHaveBeenCalledWith('每个状态机最多只能定义 10 个状态');
     expect(useOntologyStore.getState().project?.behaviorModel?.stateMachines[0].states).toHaveLength(10);
     expect(useOntologyStore.getState().project?.behaviorModel?.stateMachines[0].states.map((state) => state.name)).not.toContain('状态11');
   });

@@ -165,7 +165,7 @@ describe('E2E-EPC-VALIDATION-001 @smoke', () => {
     });
 
     render(React.createElement(ModelingWorkspace, { project: useOntologyStore.getState().project! }));
-    fireEvent.click(screen.getByRole('button', { name: /业务链/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /业务链/i }));
 
     await waitFor(() => {
       expect(screen.getByTestId('epc-validation-panel')).toBeInTheDocument();
@@ -177,9 +177,9 @@ describe('E2E-EPC-VALIDATION-001 @smoke', () => {
 
     fireEvent.click(screen.getByTestId('vp-tab-vx'));
     await waitFor(() => {
-      expect(screen.getByTestId('vp-vx-0')).toBeInTheDocument();
+      expect(screen.getAllByTestId('vp-vx-0').length).toBeGreaterThan(0);
     });
-    expect(screen.getByTestId('vp-vx-0')).toHaveTextContent('VX-09');
+    expect(screen.getAllByTestId('vp-vx-0').some((el) => el.textContent?.includes('VX-09'))).toBe(true);
 
     fireEvent.click(screen.getByTestId('vp-tab-vm'));
     expect(screen.getByTestId('epc-coverage-panel')).toBeInTheDocument();

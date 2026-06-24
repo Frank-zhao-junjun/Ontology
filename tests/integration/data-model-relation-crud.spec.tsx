@@ -1,3 +1,4 @@
+import { toastError } from '../test-utils/sonner-mock';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -99,8 +100,7 @@ describe('US-3.5 / DataModelEditor relation CRUD and constraints', () => {
   });
 
   it('多对多关系缺少中间实体时应拦截保存', async () => {
-    const alertSpy = vi.fn();
-    vi.stubGlobal('alert', alertSpy);
+    toastError.mockClear();
     render(React.createElement(DataModelEditor, { mode: 'entity-detail', entityId: 'entity-contract' }));
 
     fireEvent.click(screen.getByRole('button', { name: '+ 添加关系' }));
@@ -113,9 +113,8 @@ describe('US-3.5 / DataModelEditor relation CRUD and constraints', () => {
     fireEvent.click(await screen.findByText('订单 (Order)'));
     fireEvent.click(screen.getByRole('button', { name: '添加关系' }));
 
-    expect(alertSpy).toHaveBeenCalledWith('多对多关系必须填写中间实体');
+    expect(toastError).toHaveBeenCalledWith('多对多关系必须填写中间实体');
     const relations = useOntologyStore.getState().project?.dataModel?.entities.find((e) => e.id === 'entity-contract')?.relations || [];
     expect(relations).toHaveLength(0);
-    vi.unstubAllGlobals();
   });
 });

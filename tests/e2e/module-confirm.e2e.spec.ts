@@ -122,7 +122,7 @@ describe('E2E-MODULE-CONFIRM-001: draft A 确认 @smoke', () => {
   it('@smoke 用户可从 draft A 节点确认 → 详情面板刷新为 confirmed v1', async () => {
     render(React.createElement(ModelingWorkspace, { project: createProject() }));
 
-    fireEvent.click(screen.getByRole('button', { name: /业务链/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /业务链/i }));
     fireEvent.click(screen.getByRole('button', { name: /新建价值域/i }));
 
     fireEvent.change(screen.getByLabelText(/名称/i), { target: { value: '生产域' } });

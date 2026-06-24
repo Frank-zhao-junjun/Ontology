@@ -1,3 +1,4 @@
+import { toastError } from '../test-utils/sonner-mock';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -75,8 +76,7 @@ describe('US-6.2 / IT-SUB-001: event editor configures subscription handler, ret
   });
 
   it('异步订阅缺少重试策略时应提示错误并拒绝保存', () => {
-    const alertSpy = vi.fn();
-    vi.stubGlobal('alert', alertSpy);
+    toastError.mockClear();
     renderEditor();
     openSubscriptionDialog();
 
@@ -88,10 +88,8 @@ describe('US-6.2 / IT-SUB-001: event editor configures subscription handler, ret
     fireEvent.change(screen.getByLabelText('动作引用'), { target: { value: 'https://example.com/hooks/contracts' } });
     fireEvent.click(screen.getByRole('button', { name: '添加订阅' }));
 
-    expect(alertSpy).toHaveBeenCalledWith('异步订阅必须配置重试策略');
+    expect(toastError).toHaveBeenCalledWith('异步订阅必须配置重试策略');
     expect(useOntologyStore.getState().project?.eventModel?.subscriptions || []).toHaveLength(0);
-
-    vi.unstubAllGlobals();
   });
 
   it('同步订阅应使用默认幂等配置并支持删除', () => {

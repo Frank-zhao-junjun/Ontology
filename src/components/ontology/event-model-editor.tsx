@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { isEntityAggregateRoot } from '@/lib/entity-role';
 import type { EventDefinition, Subscription } from '@/types/ontology';
+import { toast } from 'sonner';
 
 interface EventModelEditorProps {
   mode?: 'full' | 'entity-detail';
@@ -99,7 +100,7 @@ export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorPr
     // E1: 验证只有聚合根实体才能定义事件
     const entity = project?.dataModel?.entities.find(e => e.id === entityId);
     if (!isEntityAggregateRoot(entity)) {
-      alert('只有 `entityRole = aggregate_root` 的实体才能定义领域事件。请先在数据模型中将其设置为聚合根。');
+      toast.error('只有 `entityRole = aggregate_root` 的实体才能定义领域事件。请先在数据模型中将其设置为聚合根。');
       return;
     }
 
@@ -126,7 +127,7 @@ export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorPr
     try {
       addEventDefinition(newEvent);
     } catch (error) {
-      alert(error instanceof Error ? error.message : '保存事件失败');
+      toast.error(error instanceof Error ? error.message : '保存事件失败');
       return;
     }
 
@@ -167,7 +168,7 @@ export function EventModelEditor({ mode = 'full', entityId }: EventModelEditorPr
     try {
       addSubscription(newSubscription);
     } catch (error) {
-      alert(error instanceof Error ? error.message : '保存订阅失败');
+      toast.error(error instanceof Error ? error.message : '保存订阅失败');
       return;
     }
 

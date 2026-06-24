@@ -212,23 +212,21 @@ export function ElementLibrary({
         </Button>
       </div>
 
-      {controlledDimension === undefined && (
-        <div className="flex flex-wrap gap-2" role="tablist">
-          {META_DIMENSION_ORDER.map((d) => (
-            <Button
-              key={d}
-              type="button"
-              size="sm"
-              role="tab"
-              aria-selected={activeDimension === d}
-              variant={activeDimension === d ? 'default' : 'outline'}
-              onClick={() => setActiveDimension(d)}
-            >
-              {META_DIMENSION_LABELS[d]}
-            </Button>
-          ))}
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2" role="tablist">
+        {META_DIMENSION_ORDER.map((d) => (
+          <Button
+            key={d}
+            type="button"
+            size="sm"
+            role="tab"
+            aria-selected={activeDimension === d}
+            variant={activeDimension === d ? 'default' : 'outline'}
+            onClick={() => setActiveDimension(d)}
+          >
+            {META_DIMENSION_LABELS[d]}
+          </Button>
+        ))}
+      </div>
 
       <div className="mt-4" data-testid={`element-library-panel-${activeDimension}`}>
         {activeDimension === 'E1' && (

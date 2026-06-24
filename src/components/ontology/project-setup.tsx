@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { ProjectList } from './project-list';
 import type { Domain, OntologyProject } from '@/types/ontology';
 import { createProject } from '@/services/project-service';
+import { toast } from 'sonner';
 
 const PRESET_DOMAINS: Domain[] = [
   { id: 'contract', name: '合同管理', nameEn: 'Contract Management', description: '企业合同全生命周期管理', icon: '📄', color: '#3B82F6' },
@@ -79,7 +80,7 @@ export function ProjectSetup() {
       setProject(projectName, domain, projectDescription);
     } catch (error) {
       console.error('创建项目失败:', error);
-      alert(error instanceof Error ? error.message : '创建项目失败');
+      toast.error(error instanceof Error ? error.message : '创建项目失败');
     }
   };
 

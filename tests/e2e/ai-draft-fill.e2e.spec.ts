@@ -131,7 +131,7 @@ describe('E2E-AI-DRAFT-001 @smoke', () => {
   it('@smoke 用户可从业务链详情 AI 填充 draft A 节点', async () => {
     render(React.createElement(ModelingWorkspace, { project: createProject() }));
 
-    fireEvent.click(screen.getByRole('button', { name: /业务链/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /业务链/i }));
     fireEvent.click(screen.getByRole('button', { name: /新建价值域/i }));
     fireEvent.change(screen.getByLabelText(/名称/i), { target: { value: '生产域' } });
     fireEvent.click(screen.getByRole('button', { name: /^创建$/i }));

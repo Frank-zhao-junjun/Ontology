@@ -114,7 +114,7 @@ describe('E2E-BUSINESS-CHAIN-001: 业务链树导航 @smoke', () => {
   it('@smoke 用户可从业务链 Tab 创建首个价值域', async () => {
     render(React.createElement(ModelingWorkspace, { project: createProject() }));
 
-    fireEvent.click(screen.getByRole('button', { name: /业务链/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /业务链/i }));
     fireEvent.click(screen.getByRole('button', { name: /新建价值域/i }));
 
     fireEvent.change(screen.getByLabelText(/名称/i), { target: { value: '生产域' } });
@@ -132,7 +132,7 @@ describe('E2E-BUSINESS-CHAIN-001: 业务链树导航 @smoke', () => {
   it('@smoke 用户可展开深层树并保持选中态', async () => {
     render(React.createElement(ModelingWorkspace, { project: createProject() }));
 
-    fireEvent.click(screen.getByRole('button', { name: /业务链/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /业务链/i }));
 
     fireEvent.click(screen.getByRole('button', { name: /新建价值域/i }));
     fireEvent.change(screen.getByLabelText(/名称/i), { target: { value: '生产域' } });
@@ -161,7 +161,7 @@ describe('E2E-BUSINESS-CHAIN-001: 业务链树导航 @smoke', () => {
   it('should hide delete when value domain has child capability', async () => {
     render(React.createElement(ModelingWorkspace, { project: createProject() }));
 
-    fireEvent.click(screen.getByRole('button', { name: /业务链/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /业务链/i }));
     fireEvent.click(screen.getByRole('button', { name: /新建价值域/i }));
     fireEvent.change(screen.getByLabelText(/名称/i), { target: { value: '生产域' } });
     fireEvent.click(screen.getByRole('button', { name: /^创建$/i }));

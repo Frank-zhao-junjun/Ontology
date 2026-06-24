@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { StateMachine, State, Transition, Action, FunctionDefinition, TransactionBoundary, BehaviorIndicator, BehaviorConstraint, IndicatorType } from '@/types/ontology';
 import { SideEffectSection } from './side-effect-section';
+import { toast } from 'sonner';
 
 interface BehaviorModelEditorProps {
   mode?: 'full' | 'entity-detail';
@@ -122,7 +123,7 @@ export function BehaviorModelEditor({ mode = 'full', entityId }: BehaviorModelEd
           states: [...sm.states, newState],
         });
       } catch (error) {
-        alert(error instanceof Error ? error.message : '保存状态失败');
+        toast.error(error instanceof Error ? error.message : '保存状态失败');
         return;
       }
     }
@@ -155,12 +156,12 @@ export function BehaviorModelEditor({ mode = 'full', entityId }: BehaviorModelEd
 
     const hasFromSelection = Array.isArray(from) ? from.length > 0 : Boolean(from);
     if (!hasFromSelection || !to) {
-      alert('转换必须选择起始状态和目标状态');
+      toast.error('转换必须选择起始状态和目标状态');
       return;
     }
 
     if ((trigger === 'automatic' || trigger === 'scheduled') && preConditions.length === 0) {
-      alert('自动或定时转换必须定义触发条件');
+      toast.error('自动或定时转换必须定义触发条件');
       return;
     }
     
@@ -189,7 +190,7 @@ export function BehaviorModelEditor({ mode = 'full', entityId }: BehaviorModelEd
           transitions: nextTransitions,
         });
       } catch (error) {
-        alert(error instanceof Error ? error.message : '保存转换失败');
+        toast.error(error instanceof Error ? error.message : '保存转换失败');
         return;
       }
     }
@@ -207,7 +208,7 @@ export function BehaviorModelEditor({ mode = 'full', entityId }: BehaviorModelEd
       });
 
       if (hasReferencedTransitions) {
-        alert('状态已被转换规则引用，不能删除');
+        toast.error('状态已被转换规则引用，不能删除');
         return;
       }
 
