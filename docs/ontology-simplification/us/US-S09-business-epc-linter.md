@@ -12,14 +12,14 @@
 ## User Story
 
 **作为** 业务建模人员，  
-**我希望** 对已确认模块运行 W-EPC-01~05 警示规则并在警示中心查看，  
+**我希望** 对已确认模块运行 W-EPC-01~17 警示规则并在警示中心查看，  
 **以便** 发现引用不一致问题且不阻断确认/导出。
 
 ## 范围（In Scope）
 
 | 项 | 说明 |
 |----|------|
-| `lintBusinessEpc` | W-EPC-01~05，**warning only**，仅 **confirmed** 快照 |
+| `lintBusinessEpc` | W-EPC-01~17，**warning only**，仅 **confirmed** 快照 |
 | Store | `getBusinessEpcWarnings()` |
 | `WarningCenter` | 列表、按规则筛选、本地忽略 |
 | 工作台 | 顶栏 **警示** Tab |
@@ -34,6 +34,8 @@
 
 ## 规则（W-EPC）
 
+本 US 覆盖核心 5 条（W-EPC-01~05）。扩展规则 W-EPC-06~17 见 **US-S15**。
+
 | ID | 条件 |
 |----|------|
 | W-EPC-01 | 已确认 EPC 步骤引用要素未确认 |
@@ -41,6 +43,7 @@
 | W-EPC-03 | 已确认 EPC 引用仅有 draft 的要素 |
 | W-EPC-04 | 已确认 C 下无 EPC 子节点 |
 | W-EPC-05 | 已确认 EPC 步骤 `elementId` 不在库中 |
+| W-EPC-06~17 | 语义/行为/约束一致性扩展 → 详见 **US-S15** |
 
 ## Unit 拆分
 

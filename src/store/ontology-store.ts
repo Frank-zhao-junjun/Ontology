@@ -19,6 +19,7 @@ import {
   confirmModule as confirmModuleRecord,
   forkConfirmedToDraft,
   getLatestConfirmed,
+  getModuleDraft as getModuleDraftRecord,
   getModuleVersions as getModuleVersionList,
   resolveModuleRef as resolveModuleRefRecord,
   saveModuleDraft as saveModuleDraftRecord,
@@ -106,6 +107,7 @@ import type {
   EpcProcess,
   ModuleStatus,
   ElementUsageRef,
+  EpcStep,
   MetaElement,
 } from '@/types/ontology';
 import { filterUnreferencedElements } from '@/lib/element-library';
@@ -378,6 +380,14 @@ interface OntologyState {
     moduleId: string,
     suggestion: ModuleDraftSuggestion,
   ) => void;
+
+  // US-S11b-Task2: 应用 AI 生成的 EPC 步骤（带版 fork 逻辑）
+  applyAiEpcDraft: (epcId: string, steps: EpcStep[]) => void;
+
+  // US-S19-Task2: 批量应用 AI 生成的要素草稿（纯 insert，不修改已有）
+  applyAiElementDrafts: (
+    elements: { name: string; dimension: string; nameEn?: string; description?: string }[],
+  ) => { inserted: number; skipped: { name: string; dimension: string }[] };
 
   // 简化架构 — legacy 迁移 (US-S12)
   migrateLegacyBusinessScenariosToChain: () => {
@@ -4191,6 +4201,126 @@ export const useOntologyStore = create<OntologyState>()(
         if (moduleKind === 'A') get().updateValueDomain(moduleId, updates);
         else if (moduleKind === 'B') get().updateCapability(moduleId, updates);
         else get().updateScenario(moduleId, updates);
+      },
+
+      // US-S11b-Task2: 应用 AI 生成的 EPC 步骤
+      applyAiEpcDraft: (epcId, steps) => {
+        const state = get();
+        if (!state.project) throw new Error('没有活动项目');
+
+        const epcIndex = (state.project.epcProcesses ?? []).findIndex(
+          (e) => e.id === epcId,
+        );
+        if (epcIndex < 0) throw new Error('EPC 流程不存在');
+
+        let moduleVersionRecords = state.project.moduleVersionRecords ?? [];
+        const confirmed = getLatestConfirmed(moduleVersionRecords, 'EPC', epcId);
+        const draft = getModuleDraftRecord(moduleVersionRecords, 'EPC', epcId);
+
+        // 构建带新 steps 的 EPC 数据
+        const currentEpc = state.project.epcProcesses[epcIndex];
+        const nextEpc: EpcProcess = { ...currentEpc, steps };
+
+        // fork 规则（三选一）
+        if (confirmed) {
+          // 1. 有 confirmed 版本 → 从 confirmed fork 出新 draft，覆盖其 steps
+          moduleVersionRecords = forkConfirmedToDraft(moduleVersionRecords, {
+            moduleKind: 'EPC',
+            moduleId: epcId,
+            snapshot: nextEpc,
+            recordId: generateId(),
+          });
+        } else if (draft) {
+          // 2. 无 confirmed 但有 draft → 全量覆盖当前 draft 的 steps
+          moduleVersionRecords = saveModuleDraftRecord(moduleVersionRecords, {
+            moduleKind: 'EPC',
+            moduleId: epcId,
+            snapshot: nextEpc,
+            recordId: generateId(),
+          });
+        } else {
+          // 3. 无任何版本 → 创建新 draft
+          moduleVersionRecords = saveModuleDraftRecord(moduleVersionRecords, {
+            moduleKind: 'EPC',
+            moduleId: epcId,
+            snapshot: nextEpc,
+            recordId: generateId(),
+          });
+        }
+
+        // 更新 project 中的 EPC 数据
+        const nextEpcProcesses = [...(state.project.epcProcesses ?? [])];
+        nextEpcProcesses[epcIndex] = nextEpc;
+
+        set({
+          project: {
+            ...state.project,
+            epcProcesses: nextEpcProcesses,
+            moduleVersionRecords,
+            updatedAt: new Date().toISOString(),
+          },
+        });
+
+        // 重建反向索引（不触发 confirm）
+        get().rebuildUsageIndex();
+      },
+
+      // US-S19-Task2: 批量应用 AI 生成的要素草稿（纯 insert，不修改已有）
+      applyAiElementDrafts: (elements) => {
+        const state = get();
+        if (!state.project) throw new Error('没有活动项目');
+
+        const existing = state.project.metaElements ?? [];
+
+        // 1. 构建去重索引：Map<`${dimension}:${name}`, true>
+        const dedupIndex = new Map<string, true>();
+        for (const el of existing) {
+          dedupIndex.set(`${el.dimension}:${el.name}`, true);
+        }
+
+        const newElements: MetaElement[] = [];
+        const skipped: { name: string; dimension: string }[] = [];
+
+        // 2. 遍历入参 elements，跳过已存在的
+        for (const el of elements) {
+          const key = `${el.dimension}:${el.name}`;
+          if (dedupIndex.has(key)) {
+            skipped.push({ name: el.name, dimension: el.dimension });
+            continue;
+          }
+
+          // 3. 为新要素生成完整字段
+          const now = new Date().toISOString();
+          const element: MetaElement & { status: string; createdAt: string; updatedAt: string } = {
+            id: crypto.randomUUID(),
+            name: el.name,
+            nameEn: el.nameEn,
+            dimension: el.dimension as MetaElement['dimension'],
+            visibility: 'project',
+            status: 'draft',
+            createdAt: now,
+            updatedAt: now,
+            ...(el.description ? { description: el.description } : {}),
+          };
+
+          newElements.push(element);
+          dedupIndex.set(key, true);
+        }
+
+        // 4. 更新 store
+        set({
+          project: {
+            ...state.project,
+            metaElements: [...existing, ...newElements],
+            updatedAt: new Date().toISOString(),
+          },
+        });
+
+        // 4. 调用 rebuildUsageIndex()
+        get().rebuildUsageIndex();
+
+        // 5. 返回值
+        return { inserted: newElements.length, skipped };
       },
 
       migrateLegacyBusinessScenariosToChain: () => {

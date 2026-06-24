@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
+import { toast } from 'sonner';
 import { useOntologyStore } from '@/store/ontology-store';
 import {
   META_DIMENSION_LABELS,
@@ -16,6 +17,14 @@ import {
 import type { MetaDimension } from '@/types/ontology';
 import { ElementCoverageBadge } from '@/components/ontology/element-coverage-badge';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -34,9 +43,19 @@ export interface ElementLibraryProps {
 export function ElementLibrary({ focusTarget, onFocusConsumed }: ElementLibraryProps = {}) {
   const project = useOntologyStore((s) => s.project);
   const getElementUsageRefs = useOntologyStore((s) => s.getElementUsageRefs);
+  const applyAiElementDrafts = useOntologyStore((s) => s.applyAiElementDrafts);
   const [onlyUnreferenced, setOnlyUnreferenced] = useState(false);
   const [activeDimension, setActiveDimension] = useState<MetaDimension>('E1');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // AI 解析文档对话框状态
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [documentText, setDocumentText] = useState('');
+  const [documentName, setDocumentName] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const ALLOWED_EXTENSIONS = ['.txt', '.md', '.csv', '.json', '.docx', '.pdf'];
 
   const metaElements = useMemo(() => project?.metaElements ?? [], [project?.metaElements]);
 
@@ -62,6 +81,93 @@ export function ElementLibrary({ focusTarget, onFocusConsumed }: ElementLibraryP
   }, [focusTarget, onFocusConsumed]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  // ── AI 解析文档 ─────────────────────────────────────────────────
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext as typeof ALLOWED_EXTENSIONS[number])) {
+      toast.error(`不支持 ${ext} 格式，仅支持 ${ALLOWED_EXTENSIONS.join(' / ')}`);
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+
+    // 非文本格式提示使用文本格式
+    const binaryFormats = ['.docx', '.pdf'];
+    if (binaryFormats.includes(ext as typeof binaryFormats[number])) {
+      toast.error(`${ext} 格式暂不支持客户端直接读取，请使用 .txt / .md / .csv / .json 格式`);
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = ev.target?.result as string;
+      if (content.length > 50000) {
+        toast.error('文件过大，请裁剪至 50000 字以内');
+        if (fileRef.current) fileRef.current.value = '';
+        return;
+      }
+      setDocumentText(content);
+      setDocumentName(file.name);
+    };
+    reader.onerror = () => {
+      toast.error('文件读取失败');
+    };
+    reader.readAsText(file, 'utf-8');
+  };
+
+  const handleAiSubmit = async () => {
+    if (!project || !documentText.trim()) {
+      toast.error('请先选择文档');
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const existingNames = metaElements.map((el) => el.name);
+      const response = await fetch('/api/generate-element-draft', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          projectId: project.id,
+          documentText,
+          existingElementNames: existingNames,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error ?? 'AI 解析文档失败');
+      }
+      const { elements } = payload;
+      if (!elements || elements.length === 0) {
+        toast.error('AI 未识别出任何要素');
+        return;
+      }
+      const result = applyAiElementDrafts(elements);
+      const skipMsg =
+        result.skipped.length > 0
+          ? `，跳过 ${result.skipped.length} 个重复要素`
+          : '';
+      toast.success(`成功插入 ${result.inserted} 个要素${skipMsg}`);
+      setDialogOpen(false);
+      setDocumentText('');
+      setDocumentName('');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'AI 解析文档失败');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleDialogClose = () => {
+    setDocumentText('');
+    setDocumentName('');
+    if (fileRef.current) fileRef.current.value = '';
+    setDialogOpen(false);
+  };
+
   return (
     <div className="space-y-4" data-testid="element-library">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -80,6 +186,16 @@ export function ElementLibrary({ focusTarget, onFocusConsumed }: ElementLibraryP
           />
           <Label htmlFor="element-library-unreferenced">仅显示未引用</Label>
         </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          onClick={() => setDialogOpen(true)}
+          data-testid="ai-element-draft-btn"
+        >
+          <FileText className="h-4 w-4 mr-1" />
+          AI 解析文档
+        </Button>
       </div>
 
       <div className="flex flex-wrap gap-2" role="tablist">
@@ -167,6 +283,74 @@ export function ElementLibrary({ focusTarget, onFocusConsumed }: ElementLibraryP
           </ul>
         )}
       </div>
+
+      {/* AI 解析文档对话框 */}
+      <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
+        <DialogContent data-testid="ai-element-draft-dialog" className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>AI 解析文档生成要素</DialogTitle>
+            <DialogDescription>
+              上传业务文档，AI 将自动提取要素并归入 E1~E8 八维建模维度。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2" data-testid="element-doc-upload-section">
+            <Label>上传业务文档</Label>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileRef.current?.click()}
+                disabled={aiLoading}
+                data-testid="element-doc-upload-btn"
+              >
+                选择文件
+              </Button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept={ALLOWED_EXTENSIONS.join(',')}
+                onChange={handleFileChange}
+                className="hidden"
+                data-testid="element-doc-file-input"
+              />
+              {documentName ? (
+                <span
+                  className="text-sm text-muted-foreground truncate max-w-[280px]"
+                  data-testid="element-doc-filename"
+                >
+                  {documentName}
+                </span>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  支持 .txt .md .csv .json .docx .pdf（50KB 以内）
+                </span>
+              )}
+            </div>
+          </div>
+
+          {aiLoading && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="element-doc-loading">
+              <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+              AI 正在解析文档…
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleDialogClose} disabled={aiLoading}>
+              取消
+            </Button>
+            <Button
+              data-testid="element-doc-submit"
+              onClick={() => void handleAiSubmit()}
+              disabled={aiLoading || !documentText.trim()}
+            >
+              {aiLoading ? '解析中…' : '提交解析'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -6,6 +6,7 @@
 | **Phase** | B（EPC v3.1 简化架构升级） |
 | **规则范围** | VM 系列 22 条（VM-D/B/R/E/P/G/M/S/E7） |
 | **依赖** | US-S05（EPC usageRefs），US-S08（C 工作区） |
+| **对应文档** | 3.4 校验体系 - EPC 覆盖率分析 |
 | **架构准据** | [ADR 简化架构](../adr-simplified-ontology-model.md) |
 
 ## 目标

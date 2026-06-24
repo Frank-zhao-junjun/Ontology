@@ -23,6 +23,7 @@
 | Store | `getUnreferencedElements()` |
 | `ElementLibrary` | E1–E8 Tab；列表展示 name、引用次数；**仅显示未引用** 开关 |
 | 引用来源 | 只读展示 `usageRefs`（EPC/步骤） |
+| usageRefs 范围 | 覆盖 **全部 E1~E8 要素**（含 E5 Department/Position/Role），不按层级或类型过滤 |
 | 工作台 | 顶栏 **要素库** Tab |
 
 ## 范围外
