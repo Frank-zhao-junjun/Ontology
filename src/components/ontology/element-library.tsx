@@ -38,14 +38,28 @@ export interface ElementLibraryFocusTarget {
 export interface ElementLibraryProps {
   focusTarget?: ElementLibraryFocusTarget | null;
   onFocusConsumed?: () => void;
+  activeDimension?: MetaDimension;
+  onDimensionChange?: (dimension: MetaDimension) => void;
 }
 
-export function ElementLibrary({ focusTarget, onFocusConsumed }: ElementLibraryProps = {}) {
+export function ElementLibrary({
+  focusTarget,
+  onFocusConsumed,
+  activeDimension: controlledDimension,
+  onDimensionChange,
+}: ElementLibraryProps = {}) {
   const project = useOntologyStore((s) => s.project);
   const getElementUsageRefs = useOntologyStore((s) => s.getElementUsageRefs);
   const applyAiElementDrafts = useOntologyStore((s) => s.applyAiElementDrafts);
   const [onlyUnreferenced, setOnlyUnreferenced] = useState(false);
-  const [activeDimension, setActiveDimension] = useState<MetaDimension>('E1');
+  const [internalDimension, setInternalDimension] = useState<MetaDimension>('E1');
+  const activeDimension = controlledDimension ?? internalDimension;
+  const setActiveDimension = (dimension: MetaDimension) => {
+    if (controlledDimension === undefined) {
+      setInternalDimension(dimension);
+    }
+    onDimensionChange?.(dimension);
+  };
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // AI 解析文档对话框状态
@@ -198,21 +212,23 @@ export function ElementLibrary({ focusTarget, onFocusConsumed }: ElementLibraryP
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2" role="tablist">
-        {META_DIMENSION_ORDER.map((d) => (
-          <Button
-            key={d}
-            type="button"
-            size="sm"
-            role="tab"
-            aria-selected={activeDimension === d}
-            variant={activeDimension === d ? 'default' : 'outline'}
-            onClick={() => setActiveDimension(d)}
-          >
-            {META_DIMENSION_LABELS[d]}
-          </Button>
-        ))}
-      </div>
+      {controlledDimension === undefined && (
+        <div className="flex flex-wrap gap-2" role="tablist">
+          {META_DIMENSION_ORDER.map((d) => (
+            <Button
+              key={d}
+              type="button"
+              size="sm"
+              role="tab"
+              aria-selected={activeDimension === d}
+              variant={activeDimension === d ? 'default' : 'outline'}
+              onClick={() => setActiveDimension(d)}
+            >
+              {META_DIMENSION_LABELS[d]}
+            </Button>
+          ))}
+        </div>
+      )}
 
       <div className="mt-4" data-testid={`element-library-panel-${activeDimension}`}>
         {activeDimension === 'E1' && (

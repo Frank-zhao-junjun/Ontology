@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ManualGenerator } from './manual-generator';
 import { MetadataManager } from './metadata-manager';
@@ -23,6 +23,8 @@ import { ElementLibrary } from './element-library';
 import { WarningCenter } from './warning-center';
 import { ExcelImportExportDialog } from './excel-import-export-dialog';
 import { updateProject, deleteProject } from '@/services/project-service';
+import { cn } from '@/lib/utils';
+import { META_DIMENSION_LABELS, META_DIMENSION_ORDER } from '@/lib/element-selector/constants';
 import type { MetaDimension, OntologyProject } from '@/types/ontology';
 
 interface ModelingWorkspaceProps {
@@ -37,9 +39,24 @@ type WorkspaceScope =
   | 'governance'
   | 'dataSources';
 
-const PROJECT_LAYER_TABS: { id: WorkspaceScope; label: string; icon: string }[] = [
+interface MenuItem {
+  id: WorkspaceScope;
+  label: string;
+  icon: string;
+  children?: { id: MetaDimension; label: string }[];
+}
+
+const LEFT_MENU_ITEMS: MenuItem[] = [
   { id: 'businessChain', label: '业务链', icon: '🌳' },
-  { id: 'elementLibrary', label: '要素库', icon: '📦' },
+  {
+    id: 'elementLibrary',
+    label: '要素库',
+    icon: '📦',
+    children: META_DIMENSION_ORDER.map((dim) => ({
+      id: dim,
+      label: META_DIMENSION_LABELS[dim],
+    })),
+  },
   { id: 'warnings', label: '警示', icon: '⚠️' },
   { id: 'metrics', label: '指标', icon: '📊' },
   { id: 'governance', label: '治理', icon: '🛡️' },
@@ -59,6 +76,8 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   const vxIssues = (selectedNode?.kind === 'C') ? getCrossConsistency(selectedNode.id) : [];
 
   const [workspaceScope, setWorkspaceScope] = useState<WorkspaceScope>('businessChain');
+  const [activeDimension, setActiveDimension] = useState<MetaDimension>('E1');
+  const [elementLibraryExpanded, setElementLibraryExpanded] = useState(true);
   const [elementLibraryFocus, setElementLibraryFocus] = useState<{
     elementId: string;
     dimension: MetaDimension;
@@ -205,20 +224,6 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground">{project.domain.name}</p>
-              <div className="flex items-center gap-1 border-l pl-4 flex-wrap">
-                {PROJECT_LAYER_TABS.map((tab) => (
-                  <Button
-                    key={tab.id}
-                    type="button"
-                    size="sm"
-                    variant={workspaceScope === tab.id ? 'default' : 'outline'}
-                    onClick={() => setWorkspaceScope(tab.id)}
-                  >
-                    <span className="mr-1">{tab.icon}</span>
-                    {tab.label}
-                  </Button>
-                ))}
-              </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Button variant="outline" onClick={() => setShowMetadata(true)}>
@@ -269,6 +274,85 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
       </div>
 
       <main className="flex-1 flex overflow-hidden">
+        {/* 左侧垂直菜单 */}
+        <aside className="w-56 shrink-0 border-r bg-card flex flex-col overflow-y-auto">
+          <nav className="p-3 space-y-1">
+            {LEFT_MENU_ITEMS.map((item) => {
+              const isActive = workspaceScope === item.id;
+              const hasChildren = item.children && item.children.length > 0;
+              return (
+                <div key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWorkspaceScope(item.id);
+                      if (hasChildren) {
+                        setElementLibraryExpanded(true);
+                      }
+                    }}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors text-left',
+                      isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'hover:bg-muted text-foreground',
+                    )}
+                  >
+                    <span>{item.icon}</span>
+                    <span className="flex-1">{item.label}</span>
+                    {hasChildren && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setElementLibraryExpanded((v) => !v);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.stopPropagation();
+                            setElementLibraryExpanded((v) => !v);
+                          }
+                        }}
+                        className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10"
+                      >
+                        {elementLibraryExpanded ? (
+                          <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4" />
+                        )}
+                      </span>
+                    )}
+                  </button>
+                  {hasChildren && elementLibraryExpanded && item.children && (
+                    <div className="ml-4 mt-1 space-y-1 border-l pl-2">
+                      {item.children.map((child) => (
+                        <button
+                          key={child.id}
+                          type="button"
+                          onClick={() => {
+                            setWorkspaceScope(item.id);
+                            setActiveDimension(child.id);
+                            setElementLibraryExpanded(true);
+                          }}
+                          className={cn(
+                            'w-full px-3 py-1.5 rounded-md text-sm text-left transition-colors',
+                            workspaceScope === item.id && activeDimension === child.id
+                              ? 'bg-primary/10 text-primary font-medium'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                          )}
+                        >
+                          {child.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+        </aside>
+
+        {/* 右侧内容区 */}
         {workspaceScope === 'warnings' && (
           <div className="flex-1 overflow-auto p-6">
             <WarningCenter
@@ -288,6 +372,8 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
             <ElementLibrary
               focusTarget={elementLibraryFocus}
               onFocusConsumed={() => setElementLibraryFocus(null)}
+              activeDimension={activeDimension}
+              onDimensionChange={setActiveDimension}
             />
           </div>
         )}
