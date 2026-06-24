@@ -1,0 +1,12 @@
+{
+  "elements": [
+    {
+      "type": "html",
+      "options": {
+        "path": ".cozeproj/prototype/web/workspace.html"
+      },
+      "title": "本体建模工作台",
+      "size": "web"
+    }
+  ]
+}

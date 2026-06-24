@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/jquery/jquery-3.7.1.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/lucide/lucide-1.11.0.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/tailwindcss/tailwindcss-browser-4.2.4.min.js"></script>
+
+  <style type="text/tailwindcss">
+    @theme {
+      --color-primary:              #ff6e00;
+      --color-primary-container:    #fff3e6;
+      --color-on-primary:           #ffffff;
+      --color-background:           #fafaf9;
+      --color-surface-container-lowest: #ffffff;
+      --color-surface:              #ffffff;
+      --color-surface-container:    #f5f5f4;
+      --color-surface-container-high: #ebebea;
+      --color-surface-container-highest: #e0e0de;
+      --color-on-surface:           #1c1917;
+      --color-on-surface-variant:   #78716c;
+      --color-success:  #16a34a;
+      --color-error:    #dc2626;
+      --color-warning:  #d97706;
+      --color-info:     #2563eb;
+      --color-outline:          #d6d3d1;
+      --color-outline-variant:  #e7e5e4;
+      --radius-sm:   0.375rem;
+      --radius-md:   0.375rem;
+      --radius-lg:   0.5rem;
+      --radius-xl:   0.75rem;
+      --radius-2xl:  1rem;
+      --radius-full: 9999px;
+      --shadow-card:   0 1px 3px rgba(0,0,0,0.08);
+      --shadow-float:  0 4px 12px rgba(0,0,0,0.10);
+      --shadow-dialog: 0 20px 40px rgba(0,0,0,0.15);
+      --font-sans: "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+    }
+  </style>
+
+  <script>
+    document.addEventListener('error', function (e) {
+      const img = e.target;
+      if (img.tagName !== 'IMG' || img.dataset.fallback) return;
+      img.dataset.fallback = '1';
+      const cat = img.getAttribute('data-category') || '其他';
+      const alt = img.getAttribute('alt') || '';
+      const icons = { '其他': '🖼' };
+      const icon = icons[cat] || '🖼';
+      const w = img.width || 400, h = img.height || 300;
+      img.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" text-anchor="middle" font-size="40" dominant-baseline="central">' + icon + '</text></svg>';
+    }, true);
+  </script>
+</head>
+
+<body class="bg-background text-on-surface font-sans">
+
+  <!-- @nav:start -->
+  <!-- @nav:end -->
+
+  <main class="flex-1">
+    <!-- @main-content:start -->
+    <!-- @main-content:end -->
+  </main>
+
+  <script>lucide.createIcons();</script>
+</body>
+
+</html>

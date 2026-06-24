@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { Pencil, Trash2, ChevronDown, MoreHorizontal } from 'lucide-react';
+import { Pencil, Trash2, ChevronDown, MoreHorizontal, Network, Library, AlertTriangle, Gauge, ShieldCheck, Database, BookOpen, Download, Box, GitBranch, ScrollText, Bell, Package } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ManualGenerator } from './manual-generator';
 import { MetadataManager } from './metadata-manager';
@@ -158,13 +158,13 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
     }
   };
 
-  const TABS: { id: ContentTab; label: string; count?: number }[] = [
-    { id: 'businessChain', label: '业务链' },
-    { id: 'elementLibrary', label: '要素库' },
-    { id: 'warnings', label: '警示', count: warningCount },
-    { id: 'metrics', label: '指标' },
-    { id: 'governance', label: '治理' },
-    { id: 'dataSources', label: '数据源' },
+  const TABS: { id: ContentTab; label: string; count?: number; icon: typeof Network }[] = [
+    { id: 'businessChain', label: '业务链', icon: Network },
+    { id: 'elementLibrary', label: '要素库', icon: Library },
+    { id: 'warnings', label: '警示', count: warningCount, icon: AlertTriangle },
+    { id: 'metrics', label: '指标', icon: Gauge },
+    { id: 'governance', label: '治理', icon: ShieldCheck },
+    { id: 'dataSources', label: '数据源', icon: Database },
   ];
 
   if (showManual) {
@@ -176,7 +176,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
       <div className="min-h-screen bg-background flex flex-col">
         <header className="border-b bg-card">
           <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-            <h1 className="text-xl font-bold">📚 元数据管理</h1>
+            <h1 className="text-xl font-bold">元数据管理</h1>
             <Button variant="ghost" onClick={() => setShowMetadata(false)}>
               ← 返回建模
             </Button>
@@ -195,45 +195,46 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
     <div className="min-h-screen bg-background flex flex-col" data-testid="modeling-workspace">
       {/* ========== HEADER ========== */}
       <header className="border-b bg-card shrink-0">
-        <div className="px-4 py-3">
+        <div className="px-5 py-3">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             {/* Left: Project info */}
-            <div className="flex items-center gap-4 flex-wrap min-w-0">
+            <div className="flex items-center gap-3 flex-wrap min-w-0">
               <div
-                className="text-3xl p-2 rounded-lg shrink-0"
-                style={{ backgroundColor: `${project.domain.color}20` }}
+                className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                style={{ backgroundColor: `${project.domain.color}15` }}
               >
-                {project.domain.icon}
+                <span className="text-lg">{project.domain.icon}</span>
               </div>
               <div className="flex items-center gap-2 min-w-0">
-                <h1 className="text-xl font-bold truncate">{project.name}</h1>
+                <h1 className="text-base font-semibold truncate">{project.name}</h1>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0 text-muted-foreground shrink-0"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground shrink-0"
                   onClick={handleOpenEditProjectDialog}
                 >
-                  <Pencil className="w-3 h-3" />
+                  <Pencil className="w-3.5 h-3.5" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0"
+                  className="h-7 w-7 p-0 text-destructive/60 hover:text-destructive shrink-0"
                   onClick={handleDeleteProject}
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground hidden sm:block">{project.domain.name}</p>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded shrink-0">{project.domain.name}</span>
             </div>
 
-            {/* Right: Action buttons grouped into dropdowns */}
+            {/* Right: Action buttons */}
             <div className="flex items-center gap-2 flex-wrap">
               {/* Export dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" data-testid="header-export-dropdown">
-                    导出 <ChevronDown className="ml-1 h-4 w-4" />
+                    <Download className="w-4 h-4 mr-1.5" />
+                    导出 <ChevronDown className="ml-1 h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -253,6 +254,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
               </DropdownMenu>
 
               <Button size="sm" onClick={() => setShowManual(true)}>
+                <BookOpen className="w-4 h-4 mr-1.5" />
                 生成建模手册
               </Button>
 
@@ -265,10 +267,10 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onSelect={() => setShowMetadata(true)}>
-                    📚 元数据管理
+                    元数据管理
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => setShowMasterData(true)}>
-                    📊 主数据管理
+                    主数据管理
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => setShowPublishSnap(true)}>
@@ -295,33 +297,35 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Tab Bar */}
           <div className="border-b bg-card shrink-0" role="tablist" aria-label="视图切换">
-            <div className="flex">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  data-testid={`workspace-tab-${tab.id}`}
-                  className={cn(
-                    'px-4 py-2.5 text-sm font-medium transition-colors relative',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-                    activeTab === tab.id
-                      ? 'text-foreground border-b-2 border-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-                  )}
-                >
-                  <span className="flex items-center gap-1.5">
+            <div className="flex px-2">
+              {TABS.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    data-testid={`workspace-tab-${tab.id}`}
+                    className={cn(
+                      'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors relative',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                      activeTab === tab.id
+                        ? 'text-foreground border-b-2 border-primary'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border-b-2 border-transparent',
+                    )}
+                  >
+                    <Icon className="w-4 h-4" />
                     {tab.label}
                     {tab.count !== undefined && tab.count > 0 && (
-                      <Badge variant="secondary" className="px-1.5 py-0 text-xs leading-none">
+                      <Badge variant="secondary" className="px-1.5 py-0 text-xs leading-none bg-destructive/10 text-destructive hover:bg-destructive/10">
                         {tab.count}
                       </Badge>
                     )}
-                  </span>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -376,7 +380,6 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
             {/* Metrics */}
             {activeTab === 'metrics' && (
               <div className="flex-1 overflow-auto p-6">
-                <h2 className="text-lg font-semibold mb-4">指标 (E6)</h2>
                 <MetricsEditor />
               </div>
             )}
@@ -384,7 +387,6 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
             {/* Governance */}
             {activeTab === 'governance' && (
               <div className="flex-1 overflow-auto p-6">
-                <h2 className="text-lg font-semibold mb-4">治理层 (E5)</h2>
                 <GovernanceEditor />
               </div>
             )}
@@ -392,7 +394,6 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
             {/* Data Sources */}
             {activeTab === 'dataSources' && (
               <div className="flex-1 overflow-auto p-6">
-                <h2 className="text-lg font-semibold mb-4">数据源 (E8)</h2>
                 <DataSourceEditor />
               </div>
             )}
@@ -406,12 +407,30 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
         data-testid="workspace-status-bar"
       >
         <div className="flex items-center gap-3 flex-wrap">
-          <span>🗄️ 实体: {stats.entities}</span>
-          <span>⚡ 状态机: {stats.stateMachines}</span>
-          <span>📋 规则: {stats.rules}</span>
-          <span>📨 事件: {stats.events}</span>
-          <span className="hidden sm:inline">|</span>
-          <span className="hidden sm:inline">📦 要素库: {metaElementCount} 个</span>
+          <span className="flex items-center gap-1">
+            <Box className="w-3.5 h-3.5" />
+            <span className="font-semibold text-foreground tabular-nums">{stats.entities}</span> 实体
+          </span>
+          <span className="text-border">·</span>
+          <span className="flex items-center gap-1">
+            <GitBranch className="w-3.5 h-3.5" />
+            <span className="font-semibold text-foreground tabular-nums">{stats.stateMachines}</span> 状态机
+          </span>
+          <span className="text-border">·</span>
+          <span className="flex items-center gap-1">
+            <ScrollText className="w-3.5 h-3.5" />
+            <span className="font-semibold text-foreground tabular-nums">{stats.rules}</span> 规则
+          </span>
+          <span className="text-border">·</span>
+          <span className="flex items-center gap-1">
+            <Bell className="w-3.5 h-3.5" />
+            <span className="font-semibold text-foreground tabular-nums">{stats.events}</span> 事件
+          </span>
+          <span className="text-border hidden sm:inline">·</span>
+          <span className="hidden sm:flex items-center gap-1">
+            <Package className="w-3.5 h-3.5" />
+            要素库 <span className="font-semibold text-foreground tabular-nums">{metaElementCount}</span> 个
+          </span>
         </div>
         {hasModelData && (
           <button

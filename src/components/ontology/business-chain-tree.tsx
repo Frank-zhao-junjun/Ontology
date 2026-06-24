@@ -54,8 +54,8 @@ function NodeRow({
   return (
     <div>
       <div
-        className={`flex items-center gap-1 py-1 px-2 rounded-md cursor-pointer text-sm ${
-          isSelected ? 'bg-primary/15 border border-primary/40' : 'hover:bg-muted'
+        className={`flex items-center gap-1 py-1.5 px-2 rounded-md cursor-pointer text-sm transition-colors ${
+          isSelected ? 'bg-primary/10 border-l-2 border-primary' : 'hover:bg-muted border-l-2 border-transparent'
         }`}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
         data-testid={`business-chain-node-${node.kind}-${node.id}`}
