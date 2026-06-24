@@ -117,4 +117,24 @@ describe('epc-derivation store (US-S18-U02)', () => {
       expect(epc?.steps.length).toBe(result.stepCount);
     }
   });
+
+  it('should preserve existing EPC steps when applying derived steps', () => {
+    const elements: MetaElement[] = [
+      { id: 'ev-1', name: '事件', dimension: 'E3' },
+      { id: 'act-1', name: '提交', dimension: 'E2', stateMachineId: 'sm-1' },
+    ];
+    const scenarioId = setupConfirmedScenario(elements);
+    const epc = useOntologyStore.getState().addEpcProcess(scenarioId, { name: '手工流程' });
+    useOntologyStore.getState().saveEpc(epc.id, {
+      ...epc,
+      steps: [{ id: 'manual-step', name: '人工审核' }],
+    });
+
+    const result = useOntologyStore.getState().applyDerivedStepsToScenarioEpc(scenarioId, epc.id);
+
+    expect(result.ok).toBe(true);
+    const updated = useOntologyStore.getState().project?.epcProcesses?.find((item) => item.id === epc.id);
+    expect(updated?.steps.map((step) => step.id)).toContain('manual-step');
+    expect(updated?.steps.length).toBeGreaterThan(1);
+  });
 });
