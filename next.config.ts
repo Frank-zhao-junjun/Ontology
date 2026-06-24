@@ -2,7 +2,7 @@
 import path from 'path';
 
 const nextConfig: NextConfig = {
-  outputFileTracingRoot: path.resolve(__dirname, "../../"),
+  // outputFileTracingRoot: path.resolve(__dirname, "../../"),
   /* config options here */
   allowedDevOrigins: ['*.dev.coze.site'],
   serverExternalPackages: ['xlsx', 'mammoth', 'pdf-parse'],
