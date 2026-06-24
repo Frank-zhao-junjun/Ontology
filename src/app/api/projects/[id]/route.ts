@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
 import type { OntologyProject } from '@/types/ontology';
+
+function hasSupabaseEnv(): boolean {
+  return !!(process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY);
+}
 
 // GET /api/projects/[id] - 获取单个项目
 export async function GET(
@@ -9,6 +12,17 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    
+    // 无 Supabase 环境时返回错误（项目应从本地 localStorage 加载）
+    if (!hasSupabaseEnv()) {
+      return NextResponse.json(
+        { success: false, error: '项目应从本地存储加载' },
+        { status: 404 }
+      );
+    }
+
+    // 延迟导入，避免在无 Supabase 环境时报错
+    const { getSupabaseClient } = await import('@/storage/database/supabase-client');
     const client = getSupabaseClient();
     
     const { data, error } = await client
@@ -58,6 +72,16 @@ export async function PUT(
       );
     }
     
+    // 无 Supabase 环境时成功返回（项目已在本地存储）
+    if (!hasSupabaseEnv()) {
+      return NextResponse.json({ 
+        success: true, 
+        data: { id: project.id } 
+      });
+    }
+
+    // 延迟导入，避免在无 Supabase 环境时报错
+    const { getSupabaseClient } = await import('@/storage/database/supabase-client');
     const client = getSupabaseClient();
     
     const { data, error } = await client
@@ -76,33 +100,6 @@ export async function PUT(
     
     if (error) {
       throw new Error(`更新项目失败: ${error.message}`);
-    }
-    
-    if (!data) {
-      // 如果更新失败（可能是项目不存在），尝试插入
-      const { data: insertData, error: insertError } = await client
-        .from('ontology_projects')
-        .insert({
-          id: project.id,
-          name: project.name,
-          description: project.description || null,
-          domain_id: project.domain.id,
-          domain_name: project.domain.name,
-          project_data: project,
-          created_at: project.createdAt,
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .maybeSingle();
-      
-      if (insertError) {
-        throw new Error(`创建项目失败: ${insertError.message}`);
-      }
-      
-      return NextResponse.json({ 
-        success: true, 
-        data: insertData 
-      });
     }
     
     return NextResponse.json({ 
@@ -125,6 +122,16 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    
+    // 无 Supabase 环境时成功返回（项目已在本地删除）
+    if (!hasSupabaseEnv()) {
+      return NextResponse.json({ 
+        success: true 
+      });
+    }
+
+    // 延迟导入，避免在无 Supabase 环境时报错
+    const { getSupabaseClient } = await import('@/storage/database/supabase-client');
     const client = getSupabaseClient();
     
     const { error } = await client

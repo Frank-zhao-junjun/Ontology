@@ -1,10 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
 import type { OntologyProject } from '@/types/ontology';
+
+function hasSupabaseEnv(): boolean {
+  return !!(process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY);
+}
 
 // GET /api/projects - 获取所有项目列表
 export async function GET() {
   try {
+    // 无 Supabase 环境时返回空列表
+    if (!hasSupabaseEnv()) {
+      console.log('Supabase not configured, returning empty project list');
+      return NextResponse.json({ 
+        success: true, 
+        data: [] 
+      });
+    }
+
+    // 延迟导入，避免在无 Supabase 环境时报错
+    const { getSupabaseClient } = await import('@/storage/database/supabase-client');
     const client = getSupabaseClient();
     
     const { data, error } = await client
@@ -42,6 +56,17 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // 无 Supabase 环境时成功返回（项目已在本地存储）
+    if (!hasSupabaseEnv()) {
+      console.log('Supabase not configured, skipping database save');
+      return NextResponse.json({ 
+        success: true, 
+        data: { id: project.id } 
+      });
+    }
+
+    // 延迟导入，避免在无 Supabase 环境时报错
+    const { getSupabaseClient } = await import('@/storage/database/supabase-client');
     const client = getSupabaseClient();
     
     const { data, error } = await client
