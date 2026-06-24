@@ -89,3 +89,4 @@ logs/
 
 # Preview files
 .preview
+.codegraph
