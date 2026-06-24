@@ -810,6 +810,7 @@ export function createEmptyEpcModel(): EpcModel {
     name: 'EPC业务活动规格说明书',
     version: '1.0.0',
     profiles: [],
+    chains: [],
     updatedAt: getNow(),
   };
 }

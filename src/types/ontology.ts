@@ -1281,23 +1281,36 @@ export interface EpcAggregateProfile {
 
 // ========== EPC 全域关联类型 (v3.1) ==========
 
+/** 12 大元模型类型 */
 export type EpcModelRefModelType =
-  | 'entity' | 'attribute' | 'relation' | 'computedProperty'
-  | 'action' | 'transition' | 'stateMachine' | 'function' | 'state'
-  | 'rule'
-  | 'event' | 'subscription'
-  | 'process' | 'step'
-  | 'governanceRole' | 'fieldPermission' | 'governanceAgentPolicy'
-  | 'metric' | 'indicator'
-  | 'dataSource'
-  | 'masterData' | 'masterDataRecord'
-  | 'metadata'
-  | 'lifecycle' | 'semantic';
+  | 'data'          // 数据模型 (E1)
+  | 'behavior'      // 行为模型 (E2)
+  | 'rule'          // 规则模型 (E3)
+  | 'event'         // 事件模型 (E4)
+  | 'organization'  // 组织与岗位模型 (E5)
+  | 'metric'        // 指标模型 (E6)
+  | 'boundary'      // 边界约束模型 (E7)
+  | 'dataSource'    // 数据源模型 (E8)
+  | 'process'       // 流程模型
+  | 'governance'    // 治理模型
+  | 'lifecycle'     // 实体生命周期
+  | 'semantic';     // Agent 语义层
 
+/** 13 种引用角色 */
 export type EpcModelRefRole =
-  | 'core' | 'input' | 'output' | 'trigger' | 'condition' | 'permission'
-  | 'owner' | 'measure' | 'source' | 'reference' | 'template'
-  | 'guard' | 'compensate' | 'recovery' | 'intent' | 'term' | 'timeout';
+  | 'core'          // 核心元素
+  | 'input'         // 输入
+  | 'output'        // 输出
+  | 'trigger'       // 触发
+  | 'condition'     // 条件
+  | 'permission'    // 权限
+  | 'owner'         // 所有者
+  | 'measure'       // 度量
+  | 'source'        // 数据来源
+  | 'guard'         // 守卫条件
+  | 'compensate'    // 补偿
+  | 'recovery'      // 恢复
+  | 'intent';       // 意图
 
 export interface EpcModelRef {
   modelType: EpcModelRefModelType;
@@ -1315,11 +1328,47 @@ export interface EpcModelCoverage {
   coveragePercent: number;
 }
 
+/** EPC 链路节点类型 */
+export type EpcChainNodeType = 'event' | 'function' | 'connector' | 'infoObject' | 'orgUnit';
+
+/** EPC 链路节点 */
+export interface EpcChainNode {
+  id: string;
+  type: EpcChainNodeType;
+  name: string;
+  refs: EpcModelRef[];
+  nextNodeIds: string[];
+}
+
+/** EPC 业务链路 — 从起点到终点串联完整业务流程 */
+export interface EpcChain {
+  id: string;
+  name: string;
+  description?: string;
+  startNodeId: string;
+  endNodeId: string;
+  nodes: EpcChainNode[];
+  /** 自动推导：链路涉及的所有实体 */
+  derivedEntityIds: string[];
+  /** 自动推导：链路涉及的所有状态 */
+  derivedStateIds: string[];
+  /** 自动推导：链路涉及的所有规则 */
+  derivedRuleIds: string[];
+  /** 自动推导：链路涉及的所有事件 */
+  derivedEventIds: string[];
+  /** 自动推导：链路涉及的所有角色 */
+  derivedRoleIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface EpcModel {
   id: string;
   name: string;
   version: string;
   profiles: EpcAggregateProfile[];
+  /** EPC 业务链路集合 */
+  chains: EpcChain[];
   generatedAt?: string;
   updatedAt: string;
 }

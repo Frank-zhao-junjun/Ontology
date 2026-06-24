@@ -80,13 +80,35 @@ const DDDEvents = () => {
       decision: '模型即关联',
       description: 'EPC 将 12 大元模型通过 EpcModelRef 全域关联，EpcChain 串联完整业务链路',
       details: '每个 EPC 节点（Event/Function/Connector/InfoObject/OrgUnit）通过 refs 引用具体模型元素，支持 12 种 modelType 和 13 种 refRole。一条 EpcChain 从起点到终点，自动推导涉及的实体、状态、规则、事件、角色。',
-      code: `interface EpcModelRef {
-  modelType: 'data' | 'behavior' | 'rule' 
-    | 'event' | 'process' | 'governance'
-    | 'lifecycle' | 'semantic' | ...;
-  elementId: string;
-  refRole: 'primary' | 'guard' 
-    | 'compensate' | 'intent' | ...;
+      code: `type EpcModelRefModelType =
+  'data' | 'behavior' | 'rule'
+    | 'event' | 'organization' | 'metric'
+    | 'boundary' | 'dataSource' | 'process'
+    | 'governance' | 'lifecycle' | 'semantic';
+
+type EpcModelRefRole =
+  'core' | 'input' | 'output'
+    | 'trigger' | 'condition' | 'permission'
+    | 'owner' | 'measure' | 'source'
+    | 'guard' | 'compensate'
+    | 'recovery' | 'intent';
+
+interface EpcModelRef {
+  modelType: EpcModelRefModelType;
+  modelId: string;
+  modelName: string;
+  role: EpcModelRefRole;
+}
+
+interface EpcChain {
+  startNodeId: string;
+  endNodeId: string;
+  nodes: EpcChainNode[];
+  derivedEntityIds: string[];
+  derivedStateIds: string[];
+  derivedRuleIds: string[];
+  derivedEventIds: string[];
+  derivedRoleIds: string[];
 }`,
     },
     {
