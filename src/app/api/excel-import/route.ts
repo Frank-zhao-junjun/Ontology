@@ -1,10 +1,10 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
-import type { ExcelImportResult, ExcelImportError, ExcelImportValidation } from '@/types/ontology';
+import type { ExcelImportResult, ExcelImportError, ExcelImportValidation, BusinessMetric, TransactionBoundary, DataSourceDefinition, DataSourceApiConfig } from '@/types/ontology';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const EXPECTED_SHEETS = ['实体', '属性', '关系', '状态机', '规则', '事件'];
-const OPTIONAL_SHEETS = ['部门', '岗位'];
+const OPTIONAL_SHEETS = ['部门', '岗位', '指标', '边界约束', '数据源'];
 const SHEET_HEADER_MAP: Record<string, Record<number, { key: string; required: boolean; type: 'string' | 'number' | 'boolean' | 'enum'; enumValues?: string[] }>> = {
   '实体': {
     0: { key: 'name', required: true, type: 'string' },
@@ -63,6 +63,34 @@ const SHEET_HEADER_MAP: Record<string, Record<number, { key: string; required: b
     4: { key: 'parentPositionCode', required: false, type: 'string' },
     5: { key: 'level', required: false, type: 'number' },
     14: { key: 'status', required: false, type: 'enum', enumValues: ['active', 'inactive'] },
+  },
+  '指标': {
+    0: { key: 'name', required: true, type: 'string' },
+    1: { key: 'nameEn', required: true, type: 'string' },
+    2: { key: 'description', required: false, type: 'string' },
+    3: { key: 'formula', required: true, type: 'string' },
+    4: { key: 'unit', required: true, type: 'string' },
+    5: { key: 'targetValue', required: false, type: 'number' },
+    6: { key: 'boundActionId', required: true, type: 'string' },
+    7: { key: 'measurementType', required: true, type: 'enum', enumValues: ['automatic', 'manual'] },
+    8: { key: 'dataSourceRef', required: false, type: 'string' },
+  },
+  '边界约束': {
+    0: { key: 'name', required: true, type: 'string' },
+    1: { key: 'nameEn', required: true, type: 'string' },
+    2: { key: 'description', required: false, type: 'string' },
+    3: { key: 'actionIds', required: false, type: 'string' },
+    4: { key: 'aggregateRootIds', required: false, type: 'string' },
+    5: { key: 'isolation', required: true, type: 'enum', enumValues: ['read_committed', 'repeatable_read', 'serializable'] },
+    6: { key: 'compensationActionId', required: false, type: 'string' },
+  },
+  '数据源': {
+    0: { key: 'name', required: true, type: 'string' },
+    1: { key: 'type', required: true, type: 'enum', enumValues: ['api', 'database', 'file'] },
+    2: { key: 'boundObjectTypeId', required: false, type: 'string' },
+    3: { key: 'baseUrl', required: false, type: 'string' },
+    4: { key: 'entitySet', required: false, type: 'string' },
+    5: { key: 'authSecretRef', required: false, type: 'string' },
   },
 };
 
@@ -333,6 +361,9 @@ function parseExcelToModels(sheets: SheetData[], entityNameEns: Set<string>) {
   const eventSheet = sheets.find(s => s.name === '事件');
   const deptSheet = sheets.find(s => s.name === '部门');
   const posSheet = sheets.find(s => s.name === '岗位');
+  const metricSheet = sheets.find(s => s.name === '指标');
+  const boundarySheet = sheets.find(s => s.name === '边界约束');
+  const dataSourceSheet = sheets.find(s => s.name === '数据源');
 
   const entities = (entitySheet?.rows || []).map(row => ({
     name: (row['实体名称(必填)'] || '').trim(),
@@ -386,8 +417,11 @@ function parseExcelToModels(sheets: SheetData[], entityNameEns: Set<string>) {
   const events = parseEvents(eventSheet?.rows || []);
   const departments = parseDepartments(deptSheet?.rows || []);
   const positions = parsePositions(posSheet?.rows || []);
+  const metrics = parseMetrics(metricSheet?.rows || []);
+  const boundaries = parseBoundaries(boundarySheet?.rows || []);
+  const dataSources = parseDataSources(dataSourceSheet?.rows || []);
 
-  return { entities, attributes, relations, stateMachines, rules, eventDefinitions: events, departments, positions };
+  return { entities, attributes, relations, stateMachines, rules, eventDefinitions: events, departments, positions, metrics, boundaries, dataSources };
 }
 
 function parseStateMachines(rows: Record<string, string>[]) {
@@ -534,4 +568,53 @@ function parsePositions(rows: Record<string, string>[]) {
       status: (((row['状态'] || 'active').trim() || 'active') as 'active' | 'inactive'),
     };
   });
+}
+
+function parseMetrics(rows: Record<string, string>[]): BusinessMetric[] {
+  return rows.map((row, index) => ({
+    id: `metric-${index + 1}`,
+    name: row['指标名称(必填)']?.toString().trim() || '',
+    nameEn: row['英文名称(必填)']?.toString().trim() || '',
+    description: row['描述']?.toString().trim() || undefined,
+    formula: row['公式(必填)']?.toString().trim() || '',
+    unit: row['单位(必填)']?.toString().trim() || '',
+    targetValue: row['目标值']?.toString().trim()
+      ? Number(row['目标值']?.toString().trim()) || undefined
+      : undefined,
+    boundActionId: row['绑定动作(必填)']?.toString().trim() || '',
+    measurementType: (row['测量方式(必填)']?.toString().trim() as BusinessMetric['measurementType']) || 'manual',
+    dataSourceRef: row['数据源引用']?.toString().trim() || undefined,
+  })).filter(m => m.name && m.nameEn && m.formula && m.unit && m.boundActionId);
+}
+
+function parseBoundaries(rows: Record<string, string>[]): TransactionBoundary[] {
+  return rows.map((row, index) => ({
+    id: `boundary-${index + 1}`,
+    name: row['约束名称(必填)']?.toString().trim() || '',
+    nameEn: row['英文名称(必填)']?.toString().trim() || '',
+    actionIds: (row['涉及动作(分号分隔)']?.toString().trim() || '').split(/[;；]/).map(s => s.trim()).filter(Boolean),
+    aggregateRootIds: (row['涉及聚合根(分号分隔)']?.toString().trim() || '').split(/[;；]/).map(s => s.trim()).filter(Boolean),
+    isolation: (row['隔离级别(必填)']?.toString().trim() as TransactionBoundary['isolation']) || 'read_committed',
+    compensationActionId: row['补偿动作']?.toString().trim() || undefined,
+  })).filter(b => b.name && b.nameEn);
+}
+
+function parseDataSources(rows: Record<string, string>[]): DataSourceDefinition[] {
+  return rows.map((row, index) => {
+    const baseUrl = row['基础URL']?.toString().trim();
+    const entitySet = row['实体集']?.toString().trim();
+    const authSecretRef = row['认证密钥引用']?.toString().trim();
+    const api: DataSourceApiConfig | undefined = baseUrl || entitySet || authSecretRef
+      ? { baseUrl, entitySet, authSecretRef: authSecretRef || '' }
+      : undefined;
+    return {
+      id: `ds-${index + 1}`,
+      name: row['数据源名称(必填)']?.toString().trim() || '',
+      type: (row['数据源类型(必填)']?.toString().trim() as DataSourceDefinition['type']) || 'api',
+      boundObjectTypeId: row['绑定对象类型']?.toString().trim() || undefined,
+      api,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }).filter(ds => ds.name && ds.type);
 }

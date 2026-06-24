@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import type { Entity, Attribute, Relation, StateMachine, State, Transition, Rule, EventDefinition, Subscription } from '@/types/ontology';
+import type { Entity, Attribute, Relation, StateMachine, State, Transition, Action, Rule, EventDefinition, Subscription, Department, Position, PositionResponsibility, BusinessMetric, TransactionBoundary, DataSourceDefinition } from '@/types/ontology';
 
 interface RelatedModels {
   entity?: Entity;
@@ -31,6 +31,7 @@ interface AISuggestions {
   };
   behaviorModel?: {
     suggestedStates?: Partial<State>[];
+    suggestedActions?: Partial<Action>[];
     suggestedTransitions?: Partial<Transition>[];
   };
   ruleModel?: {
@@ -40,12 +41,26 @@ interface AISuggestions {
     suggestedEvents?: Partial<EventDefinition>[];
     suggestedSubscriptions?: Partial<Subscription>[];
   };
+  roleModel?: {
+    suggestedDepartments?: Partial<Department>[];
+    suggestedPositions?: Partial<Position>[];
+    suggestedResponsibilities?: Partial<PositionResponsibility>[];
+  };
+  metricModel?: {
+    suggestedMetrics?: Partial<BusinessMetric>[];
+  };
+  boundaryModel?: {
+    suggestedBoundaries?: Partial<TransactionBoundary>[];
+  };
+  interfaceModel?: {
+    suggestedDataSources?: Partial<DataSourceDefinition>[];
+  };
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 10);
 
 export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: ManualGeneratorProps) {
-  const { project, updateEntity, addStateMachine, addRule, addEventDefinition, addSubscription, metadataList, masterDataList } = useOntologyStore();
+  const { project, addEntity, updateEntity, addStateMachine, addAction, addRule, addEventDefinition, addSubscription, addDepartment, addPosition, addMetric, addDataSource, metadataList, masterDataList } = useOntologyStore();
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestions | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -153,6 +168,27 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
     handler?: string;
     action?: string;
     actionRef?: string;
+    code?: string;
+    parentId?: string;
+    roleIds?: string[];
+    status?: string;
+    responsibilities?: Partial<PositionResponsibility>[];
+    target?: string;
+    warningThreshold?: string;
+    formula?: string;
+    frequency?: string;
+    unit?: string;
+    targetValue?: string;
+    boundActionId?: string;
+    measurementType?: string;
+    dataSourceRef?: string;
+    boundObjectTypeId?: string;
+    api?: string;
+    url?: string;
+    method?: string;
+    params?: unknown[];
+    response?: unknown;
+    source?: string;
   }
 
   const handleApplySuggestion = async (
@@ -312,6 +348,91 @@ export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: Man
           addSubscription(newSubscription);
           rollbackHandlersRef.current.set(itemKey, () => {
             useOntologyStore.getState().deleteSubscription(newSubscription.id);
+          });
+          break;
+        }
+
+        case 'position': {
+          const newPosition: Position = {
+            id: generateId(),
+            name: item.name || '新岗位',
+            nameEn: item.nameEn || '',
+            code: item.code || '',
+            departmentId: item.parentId || '',
+            roleIds: (item.roleIds || []) as string[],
+            status: (item.status || 'active') as Position['status'],
+            responsibilities: (item.responsibilities || []).map((r) => ({
+              id: generateId(),
+              name: r.name || '职责项',
+              scope: (r.scope || 'entity') as PositionResponsibility['scope'],
+              scopeRefs: (r.scopeRefs || []) as string[],
+              actions: (r.actions || []) as string[],
+              decisionAuthority: (r.decisionAuthority || 'none') as PositionResponsibility['decisionAuthority'],
+              delegateToPositionIds: (r.delegateToPositionIds || []) as string[],
+              isActive: (r.isActive ?? true) as boolean,
+            })),
+          };
+          addPosition(newPosition);
+          rollbackHandlersRef.current.set(itemKey, () => {
+            useOntologyStore.getState().deletePosition(newPosition.id);
+          });
+          break;
+        }
+
+        case 'department': {
+          const newDepartment: Department = {
+            id: generateId(),
+            name: item.name || '新部门',
+            nameEn: item.nameEn || '',
+            code: item.code || '',
+            type: (item.type as Department['type']) || 'department',
+            parentId: item.parentId,
+            status: 'active',
+            description: item.description || '',
+          };
+          addDepartment(newDepartment);
+          rollbackHandlersRef.current.set(itemKey, () => {
+            useOntologyStore.getState().deleteDepartment(newDepartment.id);
+          });
+          break;
+        }
+
+        case 'metric': {
+          const newMetric: BusinessMetric = {
+            id: generateId(),
+            name: item.name || '新指标',
+            nameEn: item.nameEn || '',
+            description: item.description || '',
+            formula: item.formula || '',
+            unit: item.unit || 'count',
+            targetValue: Number(item.targetValue || item.target || 0),
+            boundActionId: item.boundActionId || '',
+            measurementType: (item.measurementType as BusinessMetric['measurementType']) || 'manual',
+            dataSourceRef: item.dataSourceRef,
+          };
+          addMetric(newMetric);
+          rollbackHandlersRef.current.set(itemKey, () => {
+            useOntologyStore.getState().deleteMetric(newMetric.id);
+          });
+          break;
+        }
+
+        case 'dataSource': {
+          const now = new Date().toISOString();
+          const newDataSource: DataSourceDefinition = {
+            id: generateId(),
+            name: item.name || '新数据源',
+            type: (item.type as DataSourceDefinition['type']) || 'database',
+            boundObjectTypeId: item.boundObjectTypeId,
+            api: item.api
+              ? (item.api as unknown as DataSourceDefinition['api'])
+              : ({ authSecretRef: '' } as DataSourceDefinition['api']),
+            createdAt: now,
+            updatedAt: now,
+          };
+          addDataSource(newDataSource);
+          rollbackHandlersRef.current.set(itemKey, () => {
+            useOntologyStore.getState().deleteDataSource(newDataSource.id);
           });
           break;
         }

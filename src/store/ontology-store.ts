@@ -3379,6 +3379,15 @@ export const useOntologyStore = create<OntologyState>()(
           version: '1.0.0',
           domain: state.project.domain?.name || '',
           stateMachines,
+          transactionBoundaries: (parsedData.boundaries || []).map(b => ({
+            id: b.id || generateId(),
+            name: b.name,
+            nameEn: b.nameEn,
+            actionIds: (b as unknown as TransactionBoundary).actionIds || [],
+            aggregateRootIds: (b as unknown as TransactionBoundary).aggregateRootIds || [],
+            isolation: ((b as unknown as TransactionBoundary).isolation) || 'read_committed',
+            compensationActionId: (b as unknown as TransactionBoundary).compensationActionId,
+          })),
           createdAt: now,
           updatedAt: now,
         };
@@ -3431,6 +3440,48 @@ export const useOntologyStore = create<OntologyState>()(
           updatedAt: now,
         };
 
+        const metricsModel: MetricsModel = {
+          id: generateId(),
+          name: state.project.metricsModel?.name || '指标模型',
+          version: '1.0.0',
+          domain: state.project.domain?.name || '',
+          metrics: (parsedData.metrics || []).map(m => ({
+            id: m.id || generateId(),
+            name: m.name,
+            nameEn: m.nameEn,
+            description: m.description,
+            formula: m.formula,
+            unit: m.unit || '',
+            targetValue: m.targetValue,
+            boundActionId: (m as unknown as BusinessMetric).boundActionId || '',
+            measurementType: ((m as unknown as BusinessMetric).measurementType) || 'manual',
+            dataSourceRef: m.dataSourceRef,
+          })),
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        const dataSourcesModel: DataSourcesModel = {
+          id: generateId(),
+          sources: (parsedData.dataSources || []).map(ds => ({
+            id: ds.id || generateId(),
+            name: ds.name,
+            type: (ds.type as DataSourceDefinition['type']) || 'api',
+            boundObjectTypeId: ds.boundObjectTypeId,
+            api: ds.api
+              ? {
+                  baseUrl: ds.api.baseUrl,
+                  entitySet: ds.api.entitySet,
+                  authSecretRef: ds.api.authSecretRef || '',
+                }
+              : undefined,
+            createdAt: now,
+            updatedAt: now,
+          })),
+          createdAt: now,
+          updatedAt: now,
+        };
+
         const newVersion: ProjectVersion = {
           id: generateId(),
           projectId: state.project.id,
@@ -3444,6 +3495,8 @@ export const useOntologyStore = create<OntologyState>()(
             process: state.project.processModel ? JSON.parse(JSON.stringify(state.project.processModel)) : null,
             events: eventModel,
             epc: state.project.epcModel ? JSON.parse(JSON.stringify(state.project.epcModel)) : null,
+            metrics: metricsModel,
+            dataSources: dataSourcesModel,
             masterData: {
               definitions: JSON.parse(JSON.stringify(state.masterDataList)),
               records: JSON.parse(JSON.stringify(state.masterDataRecords)),
@@ -3517,6 +3570,8 @@ export const useOntologyStore = create<OntologyState>()(
               processModel: targetVersion.metamodels.process ? JSON.parse(JSON.stringify(targetVersion.metamodels.process)) : null,
               eventModel: targetVersion.metamodels.events ? JSON.parse(JSON.stringify(targetVersion.metamodels.events)) : null,
               epcModel: targetVersion.metamodels.epc ? JSON.parse(JSON.stringify(targetVersion.metamodels.epc)) : null,
+              metricsModel: targetVersion.metamodels.metrics ? JSON.parse(JSON.stringify(targetVersion.metamodels.metrics)) : state.project.metricsModel,
+              dataSourcesModel: targetVersion.metamodels.dataSources ? JSON.parse(JSON.stringify(targetVersion.metamodels.dataSources)) : state.project.dataSourcesModel,
               updatedAt: new Date().toISOString(),
             },
             masterDataList: targetVersion.metamodels.masterData ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.definitions)) : [],
@@ -3560,6 +3615,8 @@ export const useOntologyStore = create<OntologyState>()(
                 processModel: version.metamodels.process ? JSON.parse(JSON.stringify(version.metamodels.process)) : s.project.processModel,
                 eventModel: version.metamodels.events ? JSON.parse(JSON.stringify(version.metamodels.events)) : s.project.eventModel,
                 epcModel: version.metamodels.epc ? JSON.parse(JSON.stringify(version.metamodels.epc)) : s.project.epcModel,
+                metricsModel: version.metamodels.metrics ? JSON.parse(JSON.stringify(version.metamodels.metrics)) : s.project.metricsModel,
+                dataSourcesModel: version.metamodels.dataSources ? JSON.parse(JSON.stringify(version.metamodels.dataSources)) : s.project.dataSourcesModel,
               }
             : s.project,
           masterDataList: version.metamodels.masterData ? JSON.parse(JSON.stringify(version.metamodels.masterData.definitions)) : s.masterDataList,

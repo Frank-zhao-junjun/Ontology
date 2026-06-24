@@ -139,6 +139,46 @@ const TEMPLATE_SHEETS: ExcelTemplateSheet[] = [
       { label: '状态', key: 'status', required: false, type: 'enum', enumValues: ['active', 'inactive'], description: '默认active' },
     ],
   },
+  {
+    name: '指标',
+    nameEn: 'metrics',
+    headers: [
+      { label: '指标名称(必填)', key: 'name', required: true, type: 'string', description: '指标中文名称' },
+      { label: '英文名称(必填)', key: 'nameEn', required: true, type: 'string', description: '指标英文标识' },
+      { label: '描述', key: 'description', required: false, type: 'string', description: '指标描述' },
+      { label: '公式(必填)', key: 'formula', required: true, type: 'string', description: '指标计算公式' },
+      { label: '单位(必填)', key: 'unit', required: true, type: 'string', description: '单位，如"次/天"、"%"' },
+      { label: '目标值', key: 'targetValue', required: false, type: 'number', description: '目标数值' },
+      { label: '绑定动作(必填)', key: 'boundActionId', required: true, type: 'string', description: '绑定动作英文名称或ID' },
+      { label: '测量方式(必填)', key: 'measurementType', required: true, type: 'enum', enumValues: ['automatic', 'manual'], description: 'automatic=自动，manual=人工' },
+      { label: '数据源引用', key: 'dataSourceRef', required: false, type: 'string', description: '数据源英文名称或ID' },
+    ],
+  },
+  {
+    name: '边界约束',
+    nameEn: 'boundaries',
+    headers: [
+      { label: '约束名称(必填)', key: 'name', required: true, type: 'string', description: '边界约束中文名称' },
+      { label: '英文名称(必填)', key: 'nameEn', required: true, type: 'string', description: '边界约束英文标识' },
+      { label: '描述', key: 'description', required: false, type: 'string', description: '约束描述' },
+      { label: '涉及动作(分号分隔)', key: 'actionIds', required: false, type: 'string', description: '涉及Action英文名称或ID，多个用分号分隔' },
+      { label: '涉及聚合根(分号分隔)', key: 'aggregateRootIds', required: false, type: 'string', description: '聚合根实体英文名称，多个用分号分隔' },
+      { label: '隔离级别(必填)', key: 'isolation', required: true, type: 'enum', enumValues: ['read_committed', 'repeatable_read', 'serializable'], description: '事务隔离级别' },
+      { label: '补偿动作', key: 'compensationActionId', required: false, type: 'string', description: '补偿Action英文名称或ID' },
+    ],
+  },
+  {
+    name: '数据源',
+    nameEn: 'dataSources',
+    headers: [
+      { label: '数据源名称(必填)', key: 'name', required: true, type: 'string', description: '数据源中文名称' },
+      { label: '数据源类型(必填)', key: 'type', required: true, type: 'enum', enumValues: ['api', 'database', 'file'], description: 'api/database/file' },
+      { label: '绑定对象类型', key: 'boundObjectTypeId', required: false, type: 'string', description: '绑定的实体英文名称' },
+      { label: '基础URL', key: 'baseUrl', required: false, type: 'string', description: 'API或数据库基础URL' },
+      { label: '实体集', key: 'entitySet', required: false, type: 'string', description: 'OData EntitySet 或表名' },
+      { label: '认证密钥引用', key: 'authSecretRef', required: false, type: 'string', description: 'SecretRef，禁止明文密钥' },
+    ],
+  },
 ];
 
 export async function GET() {
@@ -149,7 +189,7 @@ export async function GET() {
   const instrData = [
     ['Ontology 建模数据导入模板 — 填写说明'],
     [''],
-    ['1. 本模板包含8个Sheet：实体、属性、关系、状态机、规则、事件、部门、岗位'],
+    ['1. 本模板包含11个Sheet：实体、属性、关系、状态机、规则、事件、部门、岗位、指标、边界约束、数据源'],
     ['2. 必填字段标有"(必填)"，未填写将导致校验失败'],
     ['3. 枚举类型字段只能填写指定值，见列说明'],
     ['4. 多个值用分号(;)或逗号(,)分隔，具体见各字段说明'],
@@ -167,6 +207,9 @@ export async function GET() {
     ['事件: 定义领域事件，仅限聚合根实体'],
     ['部门: 定义组织部门（支持树形结构，通过上级部门编码关联）'],
     ['岗位: 定义组织岗位（关联部门和角色，支持结构化职责）'],
+    ['指标: 定义业务指标与阈值（E6）'],
+    ['边界约束: 定义事务边界与一致性约束（E7）'],
+    ['数据源: 定义外部数据源与接口（E8）'],
   ];
   const wsInstr = XLSX.utils.aoa_to_sheet(instrData);
   wsInstr['!cols'] = [{ wch: 80 }];
@@ -223,6 +266,12 @@ function getExampleRow(sheetName: string): string[] {
       return ['生产管理部', 'ProductionDept', 'DEPT-PROD', 'department', '', '', '负责生产计划与调度', '10', 'active'];
     case 'positions':
       return ['生产主管', 'ProductionManager', 'POS-MGR-01', 'DEPT-PROD', '', '3', '生产经理', '2', '生产计划审批', 'process', 'ProductionPlan', 'approvePlan', 'approve', '', 'active'];
+    case 'metrics':
+      return ['物料准确率', 'materialAccuracy', '((命中数/总数)*100)', '%', '98', 'gte', 'Material', '品质部', 'daily', 'active'];
+    case 'boundaries':
+      return ['Material', '物料归档后禁止修改', 'ARCHIVED_IMMUTABLE', 'after update', '物料状态为已归档时禁止更新核心字段', 'error', '硬约束'];
+    case 'dataSources':
+      return ['ERP物料主数据', 'erp_material', 'database', 'Material', 'jdbc:postgresql://erp/db', 'active'];
     default:
       return [];
   }

@@ -14,6 +14,8 @@ export interface ProjectVersion {
     process: ProcessModel | null;
     events: EventModel | null;
     epc?: EpcModel | null;
+    metrics?: MetricsModel | null;
+    dataSources?: DataSourcesModel | null;
     masterData?: {
       definitions: MasterData[];
       records: Record<string, MasterDataRecord[]>;
@@ -1746,6 +1748,41 @@ export interface ExcelParsedData {
       delegateToPositionCodes?: string[];
     }>;
     status: 'active' | 'inactive';
+  }>;
+  metrics?: Array<{
+    id?: string;
+    name: string;
+    nameEn: string;
+    description?: string;
+    formula: string;
+    unit?: string;
+    targetValue?: number;
+    boundActionId?: string;
+    measurementType?: string;
+    dataSourceRef?: string;
+  }>;
+  boundaries?: Array<{
+    id?: string;
+    name: string;
+    nameEn: string;
+    type: 'consistency' | 'transactional' | 'availability' | 'performance' | 'compliance' | 'security';
+    scope: 'entity' | 'aggregate' | 'bounded_context' | 'process';
+    scopeRef?: string;
+    ruleExpression?: string;
+    violationAction?: string;
+    description?: string;
+  }>;
+  dataSources?: Array<{
+    id?: string;
+    name: string;
+    type: 'api' | 'database' | 'file' | 'message_queue' | 'cache' | 'external_system';
+    boundObjectTypeId?: string;
+    api?: {
+      authSecretRef?: string;
+      baseUrl?: string;
+      entitySet?: string;
+    };
+    description?: string;
   }>;
 }
 

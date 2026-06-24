@@ -1,191 +1,234 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
-import type { Metadata, MasterData } from '@/types/ontology';
 
-export async function POST(request: NextRequest) {
+interface GenerateModelRequest {
+  entity: {
+    id: string;
+    name: string;
+    nameEn: string;
+    description?: string;
+    projectId?: string;
+    projectName?: string;
+    attributes: unknown[];
+    relations: unknown[];
+  };
+  domain?: {
+    name: string;
+    nameEn?: string;
+    description?: string;
+  };
+  project?: {
+    name: string;
+    nameEn?: string;
+    description?: string;
+  } | null;
+  existingModels?: {
+    stateMachines?: unknown[];
+    rules?: unknown[];
+    events?: unknown[];
+    roles?: unknown[];
+    metrics?: unknown[];
+    boundaries?: unknown[];
+    dataSources?: unknown[];
+  };
+  metadataList?: unknown[];
+  masterDataList?: unknown[];
+  referenceDocuments?: string[];
+}
+
+interface GenerateModelResponse {
+  success: boolean;
+  data?: {
+    e1?: {
+      suggestedAttributes?: Array<Record<string, unknown>>;
+      suggestedRelations?: Array<Record<string, unknown>>;
+    };
+    e2?: {
+      suggestedStates?: Array<Record<string, unknown>>;
+      suggestedActions?: Array<Record<string, unknown>>;
+      suggestedTransitions?: Array<Record<string, unknown>>;
+    };
+    e3?: {
+      suggestedRules?: Array<Record<string, unknown>>;
+    };
+    e4?: {
+      suggestedEvents?: Array<Record<string, unknown>>;
+      suggestedSubscriptions?: Array<Record<string, unknown>>;
+    };
+    e5?: {
+      suggestedRoles?: Array<Record<string, unknown>>;
+      suggestedDepartments?: Array<Record<string, unknown>>;
+    };
+    e6?: {
+      suggestedMetrics?: Array<Record<string, unknown>>;
+    };
+    e7?: {
+      suggestedBoundaries?: Array<Record<string, unknown>>;
+    };
+    e8?: {
+      suggestedDataSources?: Array<Record<string, unknown>>;
+      suggestedInterfaces?: Array<Record<string, unknown>>;
+    };
+  };
+  error?: string;
+}
+
+function createPrompt(request: GenerateModelRequest): string {
+  const { entity, domain, project, existingModels, metadataList, masterDataList, referenceDocuments } = request;
+
+  const metadataContext = metadataList && metadataList.length > 0
+    ? `\n可用标准元数据字段（生成属性时请优先从此列表匹配，名称/含义接近则直接复用）：\n${metadataList.map((m: any) => `- ${m.name} (${m.nameEn}): ${m.description || ''} [类型: ${m.type || 'string'}]`).join('\n')}`
+    : '';
+
+  const masterDataContext = masterDataList && masterDataList.length > 0
+    ? `\n可用主数据（生成关系/引用时请优先从此列表匹配）：\n${masterDataList.map((m: any) => `- ${m.name} (${m.nameEn || ''}): ${m.description || ''}`).join('\n')}`
+    : '';
+
+  const existingContext = existingModels
+    ? `\n已有模型上下文：\n- 状态机：${(existingModels.stateMachines || []).length} 个\n- 规则：${(existingModels.rules || []).length} 条\n- 事件：${(existingModels.events || []).length} 个\n- 岗位角色：${(existingModels.roles || []).length} 个\n- 指标：${(existingModels.metrics || []).length} 个\n- 边界约束：${(existingModels.boundaries || []).length} 个\n- 数据源：${(existingModels.dataSources || []).length} 个`
+    : '';
+
+  const referenceContext = referenceDocuments && referenceDocuments.length > 0
+    ? `\n参考文档内容：\n${referenceDocuments.join('\n---\n').slice(0, 8000)}`
+    : '';
+
+  return `你是一位资深企业架构师，正在为${domain?.name || '目标领域'}设计本体模型。
+
+请基于以下实体信息，生成完整的 E1-E8 八维元模型建议。每个维度只需返回最相关、最精简的 1-5 条建议。
+
+## 目标实体
+- 中文名：${entity.name}
+- 英文名：${entity.nameEn}
+- 描述：${entity.description || '暂无'}
+- 所属项目：${entity.projectName || project?.name || '默认项目'}
+- 领域：${domain?.name || '通用领域'}
+- 现有属性：${(entity.attributes || []).map((a: any) => a.name).join('、') || '无'}
+- 现有关系：${(entity.relations || []).map((r: any) => r.name).join('、') || '无'}
+${metadataContext}${masterDataContext}${existingContext}${referenceContext}
+
+## E1-E8 八维元模型定义
+- E1 数据模型：实体、属性、关系。属性支持 string/text/integer/decimal/boolean/date/datetime/enum/reference。
+- E2 行为模型：状态机（状态、转换）、动作。
+- E3 规则模型：字段校验、跨字段校验、跨实体校验、聚合校验、时序规则。
+- E4 事件模型：事件定义、订阅、处理。
+- E5 岗位角色模型：部门、岗位、职责、治理角色。
+- E6 指标模型：指标、阈值、目标、计算口径。
+- E7 边界约束模型：合规边界、业务约束、技术约束。
+- E8 数据/接口模型：数据源、接口定义、集成方式。
+
+## 输出格式要求
+请严格返回以下 JSON 结构，不要包含任何 markdown 代码块或额外解释：
+
+{
+  "e1": {
+    "suggestedAttributes": [{ "name": "", "nameEn": "", "dataType": "string", "required": false, "description": "" }],
+    "suggestedRelations": [{ "name": "", "type": "one_to_many", "targetEntity": "", "description": "" }]
+  },
+  "e2": {
+    "suggestedStates": [{ "name": "", "isInitial": false, "isFinal": false, "description": "" }],
+    "suggestedActions": [{ "name": "", "trigger": "manual", "description": "" }],
+    "suggestedTransitions": [{ "name": "", "from": "", "to": "", "trigger": "manual", "description": "" }]
+  },
+  "e3": {
+    "suggestedRules": [{ "name": "", "type": "field_validation", "field": "", "condition": { "type": "required" }, "errorMessage": "", "severity": "error" }]
+  },
+  "e4": {
+    "suggestedEvents": [{ "name": "", "trigger": "create", "description": "" }],
+    "suggestedSubscriptions": [{ "name": "", "event": "", "handler": "async", "action": "notification" }]
+  },
+  "e5": {
+    "suggestedRoles": [{ "name": "", "description": "", "responsibilities": [] }],
+    "suggestedDepartments": [{ "name": "", "type": "department", "description": "" }]
+  },
+  "e6": {
+    "suggestedMetrics": [{ "name": "", "unit": "", "targetValue": "", "description": "" }]
+  },
+  "e7": {
+    "suggestedBoundaries": [{ "name": "", "type": "business", "description": "" }]
+  },
+  "e8": {
+    "suggestedDataSources": [{ "name": "", "type": "database", "connection": "", "description": "" }],
+    "suggestedInterfaces": [{ "name": "", "protocol": "REST", "method": "GET", "description": "" }]
+  }
+}
+
+注意：
+1. 所有字段必须与目标实体${entity.name}强相关，避免泛泛而谈。
+2. 如果某维度没有合适建议，返回空数组即可，不要编造。
+3. 优先从提供的元数据/主数据列表中匹配已有字段名，保持术语一致性。`;
+}
+
+function safeJsonParse(text: string): unknown {
   try {
-    const body = await request.json();
-    const { entity, domain, project, existingModels, metadataList, masterDataList } = body;
-
-    if (!entity || !domain) {
-      return NextResponse.json(
-        { error: '缺少实体或领域信息' },
-        { status: 400 }
-      );
+    // 尝试直接解析
+    return JSON.parse(text);
+  } catch {
+    // 尝试提取 JSON 代码块
+    const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[1].trim());
+      } catch {
+        // ignore
+      }
     }
+    // 尝试提取第一个 { ... }
+    const braceMatch = text.match(/\{[\s\S]*\}/);
+    if (braceMatch) {
+      try {
+        return JSON.parse(braceMatch[0]);
+      } catch {
+        // ignore
+      }
+    }
+    return null;
+  }
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse<GenerateModelResponse>> {
+  try {
+    const body = (await request.json()) as GenerateModelRequest;
+
+    if (!body.entity) {
+      return NextResponse.json({ success: false, error: '缺少实体信息' }, { status: 400 });
+    }
+
+    const prompt = createPrompt(body);
 
     const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
     const config = new Config();
     const client = new LLMClient(config, customHeaders);
 
-    // 构建元数据提示部分
-    let metadataPrompt = '';
-    if (metadataList && metadataList.length > 0) {
-      // 按类型分组元数据
-      const groupedMetadata: Record<string, Metadata[]> = {};
-      metadataList.forEach((m: Metadata) => {
-        if (!groupedMetadata[m.type]) {
-          groupedMetadata[m.type] = [];
-        }
-        groupedMetadata[m.type].push(m);
-      });
+    const stream = client.stream(
+      [
+        {
+          role: 'system',
+          content: '你是一位资深企业架构师，专注于本体模型建模，输出严格 JSON。',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      {
+        model: 'doubao-pro-128k',
+        temperature: 0.3,
+      },
+    );
 
-      metadataPrompt = `\n## 可用元数据字典（重要！生成属性时优先从此列表匹配）
-
-以下是系统预定义的标准元数据，生成属性时**必须优先**从此列表中匹配相似的属性，保持命名和类型的一致性：
-
-`;
-      
-      Object.entries(groupedMetadata).forEach(([type, items]) => {
-        metadataPrompt += `### ${type.toUpperCase()} 类型字段\n`;
-        items.slice(0, 15).forEach((item) => {
-          metadataPrompt += `- **${item.name}** (${item.nameEn}): ${item.description || '暂无描述'}`;
-          if (item.valueRange) {
-            metadataPrompt += ` | 值范围: ${item.valueRange}`;
-          }
-          if (item.standard) {
-            metadataPrompt += ` | 标准: ${item.standard}`;
-          }
-          metadataPrompt += '\n';
-        });
-        metadataPrompt += '\n';
-      });
-
-      metadataPrompt += `**使用规则**：
-1. 当实体需要类似功能的属性时，优先使用上述元数据中的定义
-2. 保持英文名称、类型、值范围与元数据一致
-3. 可以根据实体特点适当扩展描述
-4. 如果元数据中没有合适的属性，可以自定义新属性
-`;
-    }
-
-    // 构建主数据提示部分
-    let masterDataPrompt = '';
-    if (masterDataList && masterDataList.length > 0) {
-      // 按领域分组主数据
-      const groupedMasterData: Record<string, MasterData[]> = {};
-      masterDataList.forEach((m: MasterData) => {
-        if (!groupedMasterData[m.domain]) {
-          groupedMasterData[m.domain] = [];
-        }
-        groupedMasterData[m.domain].push(m);
-      });
-
-      masterDataPrompt = `\n## 可用主数据参考（用于生成引用关系和业务属性）
-
-以下是系统预定义的主数据记录，可用于生成引用类型的属性或建立实体间关系：
-
-`;
-      
-      Object.entries(groupedMasterData).forEach(([domain, items]) => {
-        masterDataPrompt += `### ${domain}\n`;
-        items.slice(0, 10).forEach((item) => {
-          masterDataPrompt += `- **${item.name}** (${item.nameEn})`;
-          if (item.code) masterDataPrompt += ` [${item.code}]`;
-          masterDataPrompt += `: ${item.description || '暂无描述'}`;
-          if (item.fieldNames) masterDataPrompt += ` | 字段: ${item.fieldNames}`;
-          masterDataPrompt += '\n';
-        });
-        masterDataPrompt += '\n';
-      });
-
-      masterDataPrompt += `**使用规则**：
-1. 当实体需要引用核心业务数据时，可使用reference类型属性引用主数据
-2. 例如：合同实体可引用"客户主数据"或"供应商主数据"
-    3. 引用主数据时，请设置 \`dataType = 'reference'\`、\`referenceKind = 'masterData'\`、\`isMasterDataRef = true\`
-    4. 主数据引用至少输出 \`masterDataType\`，如需细化到字段可补充 \`masterDataField\`
-`;
-    }
-
-    // 构建提示词
-    const systemPrompt = `你是一个专业的本体建模专家，擅长为业务实体设计四大元模型：数据模型、行为模型、规则模型和事件模型。
-
-请根据提供的实体信息和业务领域，为该实体生成合理的模型建议。输出必须是严格的JSON格式，不要包含任何markdown标记。
-
-输出格式要求：
-{
-  "dataModel": {
-    "suggestedAttributes": [
-      { "name": "属性名", "nameEn": "英文名", "type": "类型", "required": true/false, "description": "说明" }
-    ],
-    "suggestedRelations": [
-      { "name": "关系名", "type": "one_to_one/one_to_many/many_to_many", "targetEntity": "目标实体", "description": "说明" }
-    ]
-  },
-  "behaviorModel": {
-    "suggestedStates": [
-      { "name": "状态名", "nameEn": "英文名", "isInitial": true/false, "isFinal": true/false, "description": "说明" }
-    ],
-    "suggestedTransitions": [
-      { "name": "转换名", "from": "起始状态", "to": "目标状态", "trigger": "manual/automatic/scheduled", "description": "说明" }
-    ]
-  },
-  "ruleModel": {
-    "suggestedRules": [
-      { "name": "规则名", "type": "field_validation/cross_field_validation", "field": "字段名", "condition": { "type": "条件类型", "value": "值" }, "errorMessage": "错误消息", "description": "说明" }
-    ]
-  },
-  "eventModel": {
-    "suggestedEvents": [
-      { "name": "事件名", "nameEn": "英文名", "trigger": "create/update/delete/state_change", "description": "说明" }
-    ],
-    "suggestedSubscriptions": [
-      { "name": "订阅名", "event": "事件名", "action": "skill/webhook/notification", "description": "说明" }
-    ]
-  }
-}
-
-属性类型可选：string, integer, decimal, boolean, date, datetime, enum, text, reference
-
-请确保生成的建议符合业务逻辑和领域特点。`;
-
-    const userPrompt = `请为以下业务实体生成四大模型建议：
-
-## 领域信息
-- 领域名称：${domain.name}
-- 领域描述：${domain.description || '暂无描述'}
-
-## 所属项目信息
-${entity.projectName ? `- 项目名称：${entity.projectName}` : '- 未指定项目'}
-${project?.description ? `- 项目描述：${project.description}` : ''}
-
-## 实体信息
-- 实体名称：${entity.name}
-- 英文名称：${entity.nameEn}
-- 实体描述：${entity.description || '暂无描述'}
-${metadataPrompt}${masterDataPrompt}
-## 已有模型数据
-${existingModels ? JSON.stringify(existingModels, null, 2) : '暂无已有模型数据'}
-
-请基于领域知识和业务场景，为该实体生成合理的模型建议。`;
-
-    const messages = [
-      { role: 'system' as const, content: systemPrompt },
-      { role: 'user' as const, content: userPrompt }
-    ];
-
-    // 使用流式输出获取响应
     let fullContent = '';
-    const stream = client.stream(messages, {
-      model: 'doubao-seed-2-0-pro-260215',
-      temperature: 0.7,
-      thinking: 'enabled'
-    });
-
     for await (const chunk of stream) {
       if (chunk.content) {
         fullContent += chunk.content.toString();
       }
     }
 
-    // 解析JSON响应
-    // 尝试提取JSON部分（处理可能的markdown代码块）
+    // 尝试从 markdown 代码块中提取 JSON
     let jsonContent = fullContent;
     const jsonMatch = fullContent.match(/```json\s*([\s\S]*?)\s*```/);
     if (jsonMatch) {
       jsonContent = jsonMatch[1];
     } else {
-      // 尝试找到第一个 { 和最后一个 }
       const firstBrace = fullContent.indexOf('{');
       const lastBrace = fullContent.lastIndexOf('}');
       if (firstBrace !== -1 && lastBrace !== -1) {
@@ -193,27 +236,89 @@ ${existingModels ? JSON.stringify(existingModels, null, 2) : '暂无已有模型
       }
     }
 
-    let parsedContent;
-    try {
-      parsedContent = JSON.parse(jsonContent);
-    } catch {
-      console.error('Failed to parse LLM response:', jsonContent);
+    const parsed = safeJsonParse(jsonContent);
+
+    if (!parsed || typeof parsed !== 'object') {
       return NextResponse.json(
-        { error: 'AI响应格式解析失败', rawContent: fullContent },
+        { success: false, error: 'AI 返回内容无法解析为 JSON', rawContent: fullContent },
         { status: 500 }
       );
     }
 
+    // 兼容旧版四大模型格式，自动映射到 E1-E4
+    const legacyData = parsed as Record<string, unknown>;
+    const normalizedData: GenerateModelResponse['data'] = {};
+
+    if (legacyData.e1 || legacyData.dataModel) {
+      const source = (legacyData.e1 || legacyData.dataModel) as Record<string, unknown>;
+      normalizedData.e1 = {
+        suggestedAttributes: (source.suggestedAttributes || []) as Array<Record<string, unknown>>,
+        suggestedRelations: (source.suggestedRelations || []) as Array<Record<string, unknown>>,
+      };
+    }
+
+    if (legacyData.e2 || legacyData.behaviorModel) {
+      const source = (legacyData.e2 || legacyData.behaviorModel) as Record<string, unknown>;
+      normalizedData.e2 = {
+        suggestedStates: (source.suggestedStates || []) as Array<Record<string, unknown>>,
+        suggestedActions: (source.suggestedActions || source.suggestedTransitions || []) as Array<Record<string, unknown>>,
+        suggestedTransitions: (source.suggestedTransitions || []) as Array<Record<string, unknown>>,
+      };
+    }
+
+    if (legacyData.e3 || legacyData.ruleModel) {
+      const source = (legacyData.e3 || legacyData.ruleModel) as Record<string, unknown>;
+      normalizedData.e3 = {
+        suggestedRules: (source.suggestedRules || []) as Array<Record<string, unknown>>,
+      };
+    }
+
+    if (legacyData.e4 || legacyData.eventModel) {
+      const source = (legacyData.e4 || legacyData.eventModel) as Record<string, unknown>;
+      normalizedData.e4 = {
+        suggestedEvents: (source.suggestedEvents || []) as Array<Record<string, unknown>>,
+        suggestedSubscriptions: (source.suggestedSubscriptions || []) as Array<Record<string, unknown>>,
+      };
+    }
+
+    if (legacyData.e5) {
+      const source = legacyData.e5 as Record<string, unknown>;
+      normalizedData.e5 = {
+        suggestedRoles: (source.suggestedRoles || []) as Array<Record<string, unknown>>,
+        suggestedDepartments: (source.suggestedDepartments || []) as Array<Record<string, unknown>>,
+      };
+    }
+
+    if (legacyData.e6) {
+      const source = legacyData.e6 as Record<string, unknown>;
+      normalizedData.e6 = {
+        suggestedMetrics: (source.suggestedMetrics || []) as Array<Record<string, unknown>>,
+      };
+    }
+
+    if (legacyData.e7) {
+      const source = legacyData.e7 as Record<string, unknown>;
+      normalizedData.e7 = {
+        suggestedBoundaries: (source.suggestedBoundaries || []) as Array<Record<string, unknown>>,
+      };
+    }
+
+    if (legacyData.e8) {
+      const source = legacyData.e8 as Record<string, unknown>;
+      normalizedData.e8 = {
+        suggestedDataSources: (source.suggestedDataSources || []) as Array<Record<string, unknown>>,
+        suggestedInterfaces: (source.suggestedInterfaces || []) as Array<Record<string, unknown>>,
+      };
+    }
+
     return NextResponse.json({
       success: true,
-      data: parsedContent,
-      rawContent: fullContent
+      data: normalizedData,
     });
-
   } catch (error) {
     console.error('Generate model error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : '生成模型失败' },
+      { success: false, error: error instanceof Error ? error.message : '生成模型失败' },
       { status: 500 }
     );
   }
