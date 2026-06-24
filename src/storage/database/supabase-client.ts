@@ -1,118 +1,51 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { execSync } from 'child_process';
-import dotenv from 'dotenv';
+// Supabase 数据库客户端
+// 使用项目注入的安全环境变量 COZE_SUPABASE_URL 和 COZE_SUPABASE_ANON_KEY
 
-let envLoaded = false;
+import { createClient } from '@supabase/supabase-js';
 
-interface SupabaseCredentials {
-  url: string;
-  anonKey: string;
+/**
+ * 检查是否配置了 Supabase 环境变量
+ */
+export function hasSupabaseConfig(): boolean {
+  return !!(process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY);
 }
 
-function loadEnv(): void {
-  if (envLoaded || (process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY)) {
-    return;
+// Supabase 客户端单例
+let supabaseClient: ReturnType<typeof createClient> | null = null;
+
+/**
+ * 获取 Supabase 客户端实例（安全版本 - 返回 null 而不是抛出错误）
+ */
+export function getSupabaseClient() {
+  if (!hasSupabaseConfig()) {
+    return null;
   }
 
-  // Try dotenv first
-  try {
-    dotenv.config();
-    if (process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY) {
-      envLoaded = true;
-      return;
-    }
-  } catch {
-    // dotenv not available
+  if (!supabaseClient) {
+    supabaseClient = createClient(
+      process.env.COZE_SUPABASE_URL!,
+      process.env.COZE_SUPABASE_ANON_KEY!
+    );
   }
 
-  // Try Python workload identity
-  try {
-    const pythonCode = `
-import os
-import sys
-try:
-    from coze_workload_identity import Client
-    client = Client()
-    env_vars = client.get_project_env_vars()
-    client.close()
-    for env_var in env_vars:
-        print(f"{env_var.key}={env_var.value}")
-except Exception as e:
-    print(f"# Error: {e}", file=sys.stderr)
-`;
-
-    const output = execSync(`python3 -c '${pythonCode.replace(/'/g, "'\"'\"'")}'`, {
-      encoding: 'utf-8',
-      timeout: 10000,
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-
-    const lines = output.trim().split('\n');
-    for (const line of lines) {
-      if (line.startsWith('#')) continue;
-      const eqIndex = line.indexOf('=');
-      if (eqIndex > 0) {
-        const key = line.substring(0, eqIndex);
-        let value = line.substring(eqIndex + 1);
-        if ((value.startsWith("'") && value.endsWith("'")) ||
-            (value.startsWith('"') && value.endsWith('"'))) {
-          value = value.slice(1, -1);
-        }
-        if (!process.env[key]) {
-          process.env[key] = value;
-        }
-      }
-    }
-
-    envLoaded = true;
-  } catch {
-    // Silently fail - credentials may not be available in all environments
-  }
+  return supabaseClient;
 }
 
-function getSupabaseCredentials(): SupabaseCredentials {
-  loadEnv();
-
-  const url = process.env.COZE_SUPABASE_URL;
-  const anonKey = process.env.COZE_SUPABASE_ANON_KEY;
-
-  if (!url) {
+/**
+ * 同步版本 - 仅用于已确认有环境变量的场景
+ * @deprecated 使用 getSupabaseClient() 替代
+ */
+export function getSupabaseClientSync() {
+  if (!process.env.COZE_SUPABASE_URL || !process.env.COZE_SUPABASE_ANON_KEY) {
     throw new Error('COZE_SUPABASE_URL is not set');
   }
-  if (!anonKey) {
-    throw new Error('COZE_SUPABASE_ANON_KEY is not set');
+
+  if (!supabaseClient) {
+    supabaseClient = createClient(
+      process.env.COZE_SUPABASE_URL,
+      process.env.COZE_SUPABASE_ANON_KEY
+    );
   }
 
-  return { url, anonKey };
+  return supabaseClient;
 }
-
-function getSupabaseClient(token?: string): SupabaseClient {
-  const { url, anonKey } = getSupabaseCredentials();
-
-  if (token) {
-    return createClient(url, anonKey, {
-      global: {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-      db: {
-        timeout: 60000,
-      },
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-  }
-
-  return createClient(url, anonKey, {
-    db: {
-      timeout: 60000,
-    },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
-
-export { loadEnv, getSupabaseCredentials, getSupabaseClient };

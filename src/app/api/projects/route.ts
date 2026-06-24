@@ -1,19 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
 import type { OntologyProject } from '@/types/ontology';
+import { hasSupabaseConfig, getSupabaseClient } from '@/storage/database/supabase-client';
 
 // GET /api/projects - 获取所有项目列表
 export async function GET() {
   try {
+    // 无 Supabase 环境时返回空列表
+    if (!hasSupabaseConfig()) {
+      console.log('Supabase not configured, returning empty project list');
+      return NextResponse.json({ 
+        success: true, 
+        data: [] 
+      });
+    }
+
     const client = getSupabaseClient();
+    if (!client) {
+      return NextResponse.json({ 
+        success: true, 
+        data: [] 
+      });
+    }
     
-    const { data, error } = await client
+    const { data, error } = await (client as any)
       .from('ontology_projects')
-      .select('id, name, description, domain_id, domain_name, created_at, updated_at')
+      .select('*')
       .order('updated_at', { ascending: false });
     
     if (error) {
-      throw new Error(`查询项目列表失败: ${error.message}`);
+      throw new Error(`获取项目列表失败: ${error.message}`);
     }
     
     return NextResponse.json({ 
@@ -42,17 +57,32 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // 无 Supabase 环境时成功返回（项目已在本地存储）
+    if (!hasSupabaseConfig()) {
+      console.log('Supabase not configured, skipping database save');
+      return NextResponse.json({ 
+        success: true, 
+        data: { id: project.id } 
+      });
+    }
+
     const client = getSupabaseClient();
+    if (!client) {
+      return NextResponse.json({ 
+        success: true, 
+        data: { id: project.id } 
+      });
+    }
     
-    const { data, error } = await client
+    const { data, error } = await (client as any)
       .from('ontology_projects')
       .insert({
         id: project.id,
         name: project.name,
         description: project.description || null,
-        domain_id: project.domain.id,
-        domain_name: project.domain.name,
         project_data: project,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .select()
       .single();

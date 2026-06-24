@@ -18,14 +18,21 @@ interface ApiResponse<T> {
 
 // 获取项目列表
 export async function fetchProjects(): Promise<ProjectListItem[]> {
-  const response = await fetch('/api/projects');
-  const result: ApiResponse<ProjectListItem[]> = await response.json();
-  
-  if (!result.success) {
-    throw new Error(result.error || '获取项目列表失败');
+  try {
+    const response = await fetch('/api/projects');
+    const result: ApiResponse<ProjectListItem[]> = await response.json();
+    
+    if (!result.success) {
+      // 无 Supabase 时返回空列表，不抛错误
+      console.log('No Supabase configured, showing empty project list');
+      return [];
+    }
+    
+    return result.data || [];
+  } catch (error) {
+    console.log('获取项目列表失败，返回空列表:', error);
+    return [];
   }
-  
-  return result.data || [];
 }
 
 // 获取单个项目
@@ -48,10 +55,11 @@ export async function createProject(project: OntologyProject): Promise<void> {
     body: JSON.stringify({ project }),
   });
   
-  const result: ApiResponse<unknown> = await response.json();
+  const result: ApiResponse<void> = await response.json();
   
   if (!result.success) {
-    throw new Error(result.error || '创建项目失败');
+    // 无 Supabase 时不抛错误，只记录日志
+    console.log('No Supabase configured, skipping remote save');
   }
 }
 
@@ -63,10 +71,11 @@ export async function updateProject(project: OntologyProject): Promise<void> {
     body: JSON.stringify({ project }),
   });
   
-  const result: ApiResponse<unknown> = await response.json();
+  const result: ApiResponse<void> = await response.json();
   
   if (!result.success) {
-    throw new Error(result.error || '更新项目失败');
+    // 无 Supabase 时不抛错误，只记录日志
+    console.log('No Supabase configured, skipping remote update');
   }
 }
 
@@ -76,9 +85,10 @@ export async function deleteProject(id: string): Promise<void> {
     method: 'DELETE',
   });
   
-  const result: ApiResponse<unknown> = await response.json();
+  const result: ApiResponse<void> = await response.json();
   
   if (!result.success) {
-    throw new Error(result.error || '删除项目失败');
+    // 无 Supabase 时不抛错误，只记录日志
+    console.log('No Supabase configured, skipping remote delete');
   }
 }

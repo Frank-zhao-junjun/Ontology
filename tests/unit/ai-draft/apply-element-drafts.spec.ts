@@ -64,9 +64,9 @@ describe('US-S19-Task2: applyAiElementDrafts', () => {
     expect(result.skipped).toEqual([]);
 
     const project = useOntologyStore.getState().project!;
-    expect(project.metaElements).toHaveLength(5);
+    expect(project.metaElements ?? []).toHaveLength(5);
     // 新要素应包含 id / visibility / status / createdAt / updatedAt
-    const newEl1 = project.metaElements.find((m) => m.name === '数据导出')!;
+    const newEl1 = (project.metaElements ?? []).find((m) => m.name === '数据导出')!;
     expect(newEl1).toBeDefined();
     expect(newEl1.id).toBeTruthy();
     expect(newEl1.dimension).toBe('E1');
@@ -78,7 +78,7 @@ describe('US-S19-Task2: applyAiElementDrafts', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((newEl1 as any).updatedAt).toBe('2026-06-24T12:00:00.000Z');
 
-    const newEl2 = project.metaElements.find((m) => m.name === '权限校验')!;
+    const newEl2 = (project.metaElements ?? []).find((m) => m.name === '权限校验')!;
     expect(newEl2).toBeDefined();
     expect(newEl2.id).toBeTruthy();
     expect(newEl2.visibility).toBe('project');
@@ -100,16 +100,16 @@ describe('US-S19-Task2: applyAiElementDrafts', () => {
 
     const project = useOntologyStore.getState().project!;
     // 原有 3 个 + 新 1 个 = 4 个
-    expect(project.metaElements).toHaveLength(4);
+    expect(project.metaElements ?? []).toHaveLength(4);
     // 原有的要素应未被修改
-    expect(project.metaElements.find((m) => m.id === 'el-1')?.name).toBe('用户管理');
-    expect(project.metaElements.find((m) => m.id === 'el-2')?.name).toBe('订单审核');
+    expect((project.metaElements ?? []).find((m) => m.id === 'el-1')?.name).toBe('用户管理');
+    expect((project.metaElements ?? []).find((m) => m.id === 'el-2')?.name).toBe('订单审核');
   });
 
   // ---------- 场景 3：已有要素不修改、不删除 ----------
   it('不应修改或删除任何已有要素（纯 insert）', () => {
     // 先记录原始快照
-    const before = useOntologyStore.getState().project!.metaElements;
+    const before = useOntologyStore.getState().project!.metaElements ?? [];
     const beforeJson = JSON.stringify(before);
 
     useOntologyStore.getState().applyAiElementDrafts([
@@ -117,7 +117,7 @@ describe('US-S19-Task2: applyAiElementDrafts', () => {
       { name: '全新要素 B', dimension: 'E6' },
     ]);
 
-    const after = useOntologyStore.getState().project!.metaElements;
+    const after = useOntologyStore.getState().project!.metaElements ?? [];
     // 原有 3 个要素的 id / name / dimension 应完全不变
     for (const orig of seedExistingElements()) {
       const found = after.find((m) => m.id === orig.id);
@@ -221,7 +221,7 @@ describe('US-S19-Task2: applyAiElementDrafts', () => {
     expect(result.skipped).toEqual([]);
 
     const project = useOntologyStore.getState().project!;
-    expect(project.metaElements).toHaveLength(3); // 保持不变
+    expect(project.metaElements ?? []).toHaveLength(3); // 保持不变
   });
 
   // ---------- 场景 7：无项目时抛错 ----------

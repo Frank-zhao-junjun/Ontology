@@ -89,7 +89,7 @@ const TechStack = () => {
       title: '建模与校验',
       description: 'Modeling & Validation',
       technologies: [
-        { name: '12大元模型', desc: '5核心+3治理+2增强+2协作' },
+        { name: '8大元模型', desc: '5核心+2治理+1增强' },
         { name: 'EPC全域关联', desc: '71条双向校验规则' },
         { name: 'Excel导入', desc: '8 Sheet模板' },
         { name: '版本审核', desc: '待审核/通过/驳回' },

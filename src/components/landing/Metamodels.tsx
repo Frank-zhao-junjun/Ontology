@@ -188,7 +188,7 @@ const Metamodels = () => {
           ref={titleRef}
           className="heading-2 text-center text-[#171717] mb-4"
         >
-          12大元模型<span className="text-[#ff6e00]">体系</span>
+          8大元模型<span className="text-[#ff6e00]">体系</span>
         </h2>
         <p className="text-center text-[#b7b7b7] mb-16 max-w-2xl mx-auto">
           从核心建模到Agent语义理解，构建企业级本体模型的完整能力矩阵

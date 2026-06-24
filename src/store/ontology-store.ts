@@ -4218,7 +4218,8 @@ export const useOntologyStore = create<OntologyState>()(
         const draft = getModuleDraftRecord(moduleVersionRecords, 'EPC', epcId);
 
         // 构建带新 steps 的 EPC 数据
-        const currentEpc = state.project.epcProcesses[epcIndex];
+        const currentEpc = state.project.epcProcesses?.[epcIndex];
+        if (!currentEpc) return state;
         const nextEpc: EpcProcess = { ...currentEpc, steps };
 
         // fork 规则（三选一）
