@@ -1,55 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { OntologyProject } from '@/types/ontology';
+import { hasSupabaseConfig, getSupabaseClient } from '@/storage/database/supabase-client';
 
-function hasSupabaseEnv(): boolean {
-  return !!(process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY);
-}
-
-// GET /api/projects/[id] - 获取单个项目
+// GET /api/projects/[id] - 获取单个项目详情
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
     
-    // 无 Supabase 环境时返回错误（项目应从本地 localStorage 加载）
-    if (!hasSupabaseEnv()) {
+    if (!id) {
       return NextResponse.json(
-        { success: false, error: '项目应从本地存储加载' },
-        { status: 404 }
+        { success: false, error: '项目 ID 不能为空' },
+        { status: 400 }
       );
+    }
+    
+    // 无 Supabase 环境时返回成功（项目应在本地存储）
+    if (!hasSupabaseConfig()) {
+      console.log('Supabase not configured, project should be in local storage');
+      return NextResponse.json({ 
+        success: true, 
+        data: null 
+      });
     }
 
-    // 延迟导入，避免在无 Supabase 环境时报错
-    const { getSupabaseClient } = await import('@/storage/database/supabase-client');
     const client = getSupabaseClient();
-    
-    const { data, error } = await client
-      .from('ontology_projects')
-      .select('project_data')
-      .eq('id', id)
-      .maybeSingle();
-    
-    if (error) {
-      throw new Error(`查询项目失败: ${error.message}`);
+    if (!client) {
+      return NextResponse.json({ 
+        success: true, 
+        data: null 
+      });
     }
     
-    if (!data) {
-      return NextResponse.json(
-        { success: false, error: '项目不存在' },
-        { status: 404 }
-      );
+    const { data, error } = await client
+      .from('ontology_projects' as any)
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) {
+      throw new Error(`获取项目详情失败: ${error.message}`);
     }
     
     return NextResponse.json({ 
       success: true, 
-      data: data.project_data as OntologyProject 
+      data: data ? (data as any).project_data : null 
     });
   } catch (error) {
-    console.error('获取项目失败:', error);
+    console.error('获取项目详情失败:', error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : '获取项目失败' },
+      { success: false, error: error instanceof Error ? error.message : '获取项目详情失败' },
       { status: 500 }
     );
   }
@@ -61,42 +64,46 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
     const body = await request.json();
     const { project } = body as { project: OntologyProject };
     
-    if (!project) {
+    if (!id || !project) {
       return NextResponse.json(
-        { success: false, error: '项目数据不能为空' },
+        { success: false, error: '项目 ID 和数据不能为空' },
         { status: 400 }
       );
     }
     
     // 无 Supabase 环境时成功返回（项目已在本地存储）
-    if (!hasSupabaseEnv()) {
+    if (!hasSupabaseConfig()) {
+      console.log('Supabase not configured, skipping database update');
       return NextResponse.json({ 
         success: true, 
-        data: { id: project.id } 
+        data: { id } 
       });
     }
 
-    // 延迟导入，避免在无 Supabase 环境时报错
-    const { getSupabaseClient } = await import('@/storage/database/supabase-client');
     const client = getSupabaseClient();
+    if (!client) {
+      return NextResponse.json({ 
+        success: true, 
+        data: { id } 
+      });
+    }
     
-    const { data, error } = await client
+    const { data, error } = await (client as any)
       .from('ontology_projects')
       .update({
         name: project.name,
         description: project.description || null,
-        domain_id: project.domain.id,
-        domain_name: project.domain.name,
         project_data: project,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
       .select()
-      .maybeSingle();
+      .single();
     
     if (error) {
       throw new Error(`更新项目失败: ${error.message}`);
@@ -121,21 +128,35 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
     
-    // 无 Supabase 环境时成功返回（项目已在本地删除）
-    if (!hasSupabaseEnv()) {
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: '项目 ID 不能为空' },
+        { status: 400 }
+      );
+    }
+    
+    // 无 Supabase 环境时成功返回（项目已在本地存储）
+    if (!hasSupabaseConfig()) {
+      console.log('Supabase not configured, skipping database delete');
       return NextResponse.json({ 
-        success: true 
+        success: true, 
+        data: { id } 
       });
     }
 
-    // 延迟导入，避免在无 Supabase 环境时报错
-    const { getSupabaseClient } = await import('@/storage/database/supabase-client');
     const client = getSupabaseClient();
+    if (!client) {
+      return NextResponse.json({ 
+        success: true, 
+        data: { id } 
+      });
+    }
     
     const { error } = await client
-      .from('ontology_projects')
+      .from('ontology_projects' as any)
       .delete()
       .eq('id', id);
     
@@ -144,7 +165,8 @@ export async function DELETE(
     }
     
     return NextResponse.json({ 
-      success: true 
+      success: true, 
+      data: { id } 
     });
   } catch (error) {
     console.error('删除项目失败:', error);
