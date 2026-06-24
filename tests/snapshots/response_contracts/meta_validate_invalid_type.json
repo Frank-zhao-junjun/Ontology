@@ -1,0 +1,38 @@
+{
+  "success": false,
+  "error": {
+    "code": "M4001",
+    "message": "model validation failed",
+    "details": {
+      "is_valid": false,
+      "errors": [
+        {
+          "code": "M4001",
+          "message": "unsupported model_type"
+        }
+      ],
+      "warnings": []
+    }
+  },
+  "error_code": "M4001",
+  "message": "model validation failed",
+  "trace_id": "<TRACE_ID>",
+  "details": {
+    "is_valid": false,
+    "errors": [
+      {
+        "code": "M4001",
+        "message": "unsupported model_type"
+      }
+    ],
+    "warnings": []
+  },
+  "is_valid": false,
+  "errors": [
+    {
+      "code": "M4001",
+      "message": "unsupported model_type"
+    }
+  ],
+  "warnings": []
+}

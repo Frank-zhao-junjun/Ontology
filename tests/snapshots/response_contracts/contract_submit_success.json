@@ -1,0 +1,13 @@
+{
+  "item": {
+    "id": "SNAP-SUBMIT-OK-001",
+    "contract_no": "SNAP-SUBMIT-OK-001",
+    "title": "Snapshot Submit Success",
+    "counterparty": "Acme",
+    "amount": 66.0,
+    "status": "pending_approval",
+    "created_at": "<ISO8601>",
+    "updated_at": "<ISO8601>"
+  },
+  "trace_id": "<TRACE_ID>"
+}

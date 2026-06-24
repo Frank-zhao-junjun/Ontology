@@ -1,0 +1,19 @@
+{
+  "$comment": "P0-12：设计台 manifest-compile-project 编译输出须覆盖的 manufacturing-manifest.yaml 关键 id 子集（非整文件 diff）",
+  "metadataId": "manufacturing-ontology",
+  "version": "0.1.0",
+  "elementIds": [
+    "scenario-mts",
+    "production-order",
+    "operation",
+    "sm-production-order",
+    "action-release-order",
+    "rule-kitting",
+    "evt-order-released"
+  ],
+  "propertyNameEns": {
+    "production-order": ["order_id"],
+    "operation": ["op_number"]
+  },
+  "goldenYaml": "manufacturing-manifest.yaml"
+}

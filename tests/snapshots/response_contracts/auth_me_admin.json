@@ -1,0 +1,22 @@
+{
+  "user": {
+    "username": "admin",
+    "role": "admin",
+    "full_name": "System Admin"
+  },
+  "permissions": {
+    "entities": {
+      "*": [
+        "read",
+        "write"
+      ]
+    },
+    "ai": [
+      "ANALYZE",
+      "NAVIGATE",
+      "QUERY",
+      "WRITE"
+    ],
+    "meta_admin": true
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-03-28T12:55:51.282000+00:00",
+  "all_passed": true,
+  "checks": [
+    {
+      "command": [
+        "D:\\AI\\Ontology\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests"
+      ],
+      "exit_code": 0,
+      "stdout": ".................................................................        [100%]",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "D:\\AI\\Ontology\\.venv\\Scripts\\python.exe",
+        "scripts/validate_mvp.py"
+      ],
+      "exit_code": 0,
+      "stdout": "[1/5] publish runtime models\n[2/5] verify query path\n[3/5] verify contract create and submit path\n[4/5] verify degraded mode\n[5/5] verify unified error and event observability\nvalidation passed",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "D:\\AI\\Ontology\\.venv\\Scripts\\python.exe",
+        "scripts/perf_sample.py"
+      ],
+      "exit_code": 0,
+      "stdout": "{'samples': 22, 'avg_ms': 4.001, 'p50_ms': 3.322, 'p90_ms': 7.372, 'p99_ms': 9.167, 'max_ms': 9.167}",
+      "stderr": ""
+    }
+  ]
+}

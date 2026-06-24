@@ -1,0 +1,11 @@
+{
+  "success": false,
+  "error": {
+    "code": "U4011",
+    "message": "authentication required",
+    "details": {}
+  },
+  "error_code": "U4011",
+  "message": "authentication required",
+  "trace_id": "<TRACE_ID>"
+}

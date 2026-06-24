@@ -1,0 +1,16 @@
+{
+  "success": false,
+  "error": {
+    "code": "C4091",
+    "message": "contract id already exists",
+    "details": {
+      "contract_id": "SNAP-CONFLICT-001"
+    }
+  },
+  "error_code": "C4091",
+  "message": "contract id already exists",
+  "trace_id": "<TRACE_ID>",
+  "details": {
+    "contract_id": "SNAP-CONFLICT-001"
+  }
+}

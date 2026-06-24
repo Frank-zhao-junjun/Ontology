@@ -1,0 +1,13 @@
+{
+  "item": {
+    "id": "SNAP-CUS-001",
+    "customer_no": "SNAP-CNO-001",
+    "name": "Snapshot Customer",
+    "industry": "Software",
+    "status": "active",
+    "created_at": "<ISO8601>",
+    "updated_at": "<ISO8601>"
+  },
+  "entity_type": "customer",
+  "trace_id": "<TRACE_ID>"
+}

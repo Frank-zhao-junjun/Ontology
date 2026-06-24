@@ -1,0 +1,17 @@
+{
+  "assistant_message": "Intent=QUERY",
+  "actions": [],
+  "context_updates": {
+    "focus_entity": null,
+    "model_snapshot_ref": null
+  },
+  "conversation_state": "idle",
+  "plan": [
+    {
+      "step": "intent_route",
+      "intent": "QUERY",
+      "snapshot": null
+    }
+  ],
+  "trace_id": "<TRACE_ID>"
+}

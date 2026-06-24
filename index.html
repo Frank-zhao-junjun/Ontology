@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能本体管理系统</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: calc(100vh - 200px);
+        }
+        
+        .chat-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .visualization-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            max-height: 400px;
+        }
+        
+        .message {
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 8px;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .user-message {
+            background: #007bff;
+            color: white;
+            margin-left: 20%;
+            text-align: right;
+        }
+        
+        .agent-message {
+            background: #e9ecef;
+            color: #333;
+            margin-right: 20%;
+        }
+        
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            outline: none;
+            font-size: 16px;
+        }
+        
+        .chat-input button {
+            padding: 12px 24px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        
+        .chat-input button:hover {
+            background: #218838;
+        }
+        
+        .visualization-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #ontology-graph {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .control-btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .export-json { background: #17a2b8; color: white; }
+        .export-yaml { background: #ffc107; color: black; }
+        .refresh { background: #6c757d; color: white; }
+        
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .ontology-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        
+        .info-item {
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 10px;
+            background: #28a745;
+            color: white;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        
+        .error {
+            background: #dc3545 !important;
+            color: white !important;
+        }
+        
+        .yaml-export-note {
+            margin-top: 10px;
+            padding: 8px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 智能本体管理系统</h1>
+            <p>通过自然语言对话创建和管理本体模型 | 支持可视化和多种格式导出</p>
+        </div>
+        
+        <div class="main-layout">
+            <div class="chat-section">
+                <h3>💬 对话控制台</h3>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message agent-message">
+                        您好！我是本体管理AI助手。您可以通过自然语言告诉我如何创建或修改本体模型。<br>
+                        例如："创建一个人类的类别" 或 "添加学生是人的子类"。
+                    </div>
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="userInput" placeholder="请输入您的指令..." />
+                    <button onclick="sendMessage()">发送</button>
+                </div>
+                
+                <div class="status-indicator">
+                    <span class="loading"></span>
+                    <span>就绪</span>
+                </div>
+            </div>
+            
+            <div class="visualization-section">
+                <h3>🌐 本体可视化</h3>
+                <div class="visualization-container">
+                    <svg id="ontology-graph"></svg>
+                </div>
+                
+                <div class="controls">
+                    <button class="control-btn export-json" onclick="exportJSON()">导出JSON</button>
+                    <button class="control-btn export-yaml" onclick="exportYAML()">导出YAML</button>
+                    <button class="control-btn refresh" onclick="updateVisualization()">刷新视图</button>
+                </div>
+                
+                <div class="yaml-export-note">
+                    <strong>注意：</strong> YAML导出功能需要网络连接以加载js-yaml库
+                </div>
+                
+                <div class="ontology-info" id="ontologyInfo">
+                    <div class="info-item"><strong>实体总数:</strong> <span id="entityCount">0</span></div>
+                    <div class="info-item"><strong>关系总数:</strong> <span id="relationCount">0</span></div>
+                    <div class="info-item"><strong>最后更新:</strong> <span id="lastUpdate">-</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 本体数据结构
+        let ontologyData = {
+            entities: {},
+            relations: [],
+            nextId: 1
+        };
+
+        // 初始化示例数据
+        function initializeSampleData() {
+            // 添加基础实体
+            addEntity('Person', 'Class', '人', '人类的基本类别');
+            addEntity('Student', 'Class', '学生', '学习的人');
+            addEntity('Teacher', 'Class', '教师', '教学的人');
+            addEntity('Course', 'Class', '课程', '教育活动');
+            addEntity('name', 'Property', '姓名', '个体的名称属性');
+            addEntity('age', 'Property', '年龄', '个体的年龄属性');
+            
+            // 添加关系
+            addRelation('Student', 'Person', 'subclass_of', '学生是人的子类');
+            addRelation('Teacher', 'Person', 'subclass_of', '教师是人的子类');
+            addRelation('Student', 'Course', 'enrolled_in', '学生注册课程');
+            addRelation('Teacher', 'Course', 'teaches', '教师教授课程');
+        }
+
+        // 添加实体
+        function addEntity(uri, type, label, description) {
+            const id = `entity_${ontologyData.nextId++}`;
+            ontologyData.entities[id] = {
+                id: id,
+                uri: uri || `http://example.org/${label}`,
+                type: type,
+                label: label,
+                description: description || '',
+                x: Math.random() * 400 + 100,
+                y: Math.random() * 300 + 100
+            };
+            return id;
+        }
+
+        // 添加关系
+        function addRelation(subjectId, objectId, predicate, description) {
+            const subjectEntity = Object.values(ontologyData.entities).find(e => e.label === subjectId);
+            const objectEntity = Object.values(ontologyData.entities).find(e => e.label === objectId);
+            
+            if (subjectEntity && objectEntity) {
+                ontologyData.relations.push({
+                    source: subjectEntity.id,
+                    target: objectEntity.id,
+                    predicate: predicate,
+                    description: description
+                });
+            }
+        }
+
+        // 解析用户指令
+        function parseCommand(command) {
+            command = command.toLowerCase();
+            
+            // 创建实体指令
+            if (command.includes('创建') || command.includes('新建')) {
+                if (command.includes('类') || command.includes('类别')) {
+                    const match = command.match(/(?:创建|新建)[^的是]*(?:是|为)[^的]*类/);
+                    if (match) {
+                        const parts = match[0].replace('创建', '').replace('新建', '').replace('类', '').replace('是', '|').replace('为', '|').split('|');
+                        const className = parts[0].trim();
+                        const superClass = parts[1]?.trim();
+                        
+                        if (className) {
+                            const id = addEntity(`http://example.org/${className}`, 'Class', className, `关于${className}的描述`);
+                            
+                            if (superClass) {
+                                addRelation(className, superClass, 'subclass_of', `${className}是${superClass}的子类`);
+                            }
+                            
+                            return { type: 'create_class', message: `已创建类 "${className}"${superClass ? `，它是"${superClass}"的子类` : ''}` };
+                        }
+                    }
+                    
+                    // 简单创建类
+                    const simpleMatch = command.match(/(?:创建|新建)[^的是]*类/);
+                    if (simpleMatch) {
+                        const className = simpleMatch[0].replace('创建', '').replace('新建', '').replace('类', '').trim();
+                        if (className) {
+                            const id = addEntity(`http://example.org/${className}`, 'Class', className, `关于${className}的描述`);
+                            return { type: 'create_class', message: `已创建类 "${className}"` };
+                        }
+                    }
+                }
+                
+                // 创建属性
+                if (command.includes('属性')) {
+                    const match = command.match(/(?:创建|新建)[^的是]*属性/);
+                    if (match) {
+                        const propName = match[0].replace('创建', '').replace('新建', '').replace('属性', '').trim();
+                        if (propName) {
+                            const id = addEntity(`http://example.org/${propName}`, 'Property', propName, `关于${propName}的属性`);
+                            return { type: 'create_property', message: `已创建属性 "${propName}"` };
+                        }
+                    }
+                }
+            }
+            
+            // 添加关系指令
+            if (command.includes('是') && command.includes('的')) {
+                const match = command.match(/(.+?)是(.+?)的(.+)/);
+                if (match) {
+                    const subject = match[1].trim();
+                    const object = match[2].trim();
+                    const relationType = match[3].trim();
+                    
+                    if (relationType.includes('子类')) {
+                        addRelation(subject, object, 'subclass_of', `${subject}是${object}的子类`);
+                        return { type: 'add_relation', message: `"${subject}"现在是"${object}"的子类` };
+                    }
+                }
+            }
+            
+            // 搜索指令
+            if (command.includes('显示') || command.includes('查找') || command.includes('列出')) {
+                const searchTerm = command.replace('显示', '').replace('查找', '').replace('列出', '').trim();
+                const foundEntities = Object.values(ontologyData.entities).filter(e => 
+                    e.label.toLowerCase().includes(searchTerm) || e.description.toLowerCase().includes(searchTerm)
+                );
+                
+                if (foundEntities.length > 0) {
+                    const labels = foundEntities.map(e => e.label).join(', ');
+                    return { 
+                        type: 'search_result', 
+                        message: `找到以下实体: ${labels}`,
+                        entities: foundEntities
+                    };
+                } else {
+                    return { type: 'search_result', message: `未找到包含"${searchTerm}"的实体` };
+                }
+            }
+            
+            return { type: 'unknown', message: '抱歉，我不太明白您的指令。请尝试更具体的表述。' };
+        }
+
+        // 发送消息
+        function sendMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // 添加用户消息
+            addMessage(message, 'user');
+            input.value = '';
+            
+            // 显示加载状态
+            const statusIndicator = document.querySelector('.status-indicator span:last-child');
+            statusIndicator.textContent = '处理中...';
+            
+            // 模拟处理延迟
+            setTimeout(() => {
+                try {
+                    const result = parseCommand(message);
+                    addMessage(result.message, 'agent');
+                    
+                    // 更新可视化
+                    updateVisualization();
+                    
+                    // 更新统计信息
+                    updateStats();
+                    
+                } catch (error) {
+                    addMessage('处理指令时发生错误: ' + error.message, 'agent');
+                }
+                
+                statusIndicator.textContent = '就绪';
+            }, 1000);
+        }
+
+        // 添加消息到聊天区
+        function addMessage(text, sender) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.innerHTML = text;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSampleData();
+            updateVisualization();
+            updateStats();
+            
+            // 回车发送
+            document.getElementById('userInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        });
+
+        // 更新可视化
+        function updateVisualization() {
+            const svg = d3.select("#ontology-graph");
+            svg.selectAll("*").remove();
+            
+            const width = svg.node().clientWidth;
+            const height = svg.node().clientHeight;
+            
+            const simulation = d3.forceSimulation(Object.values(ontologyData.entities))
+                .force("link", d3.forceLink(ontologyData.relations).id(d => d.id).distance(100))
+                .force("charge", d3.forceManyBody().strength(-300))
+                .force("center", d3.forceCenter(width / 2, height / 2));
+            
+            // 绘制连线
+            const links = svg.append("g")
+                .selectAll("line")
+                .data(ontologyData.relations)
+                .enter()
+                .append("line")
+                .attr("stroke", "#999")
+                .attr("stroke-width", 2);
+            
+            // 绘制节点
+            const nodes = svg.append("g")
+                .selectAll("circle")
+                .data(Object.values(ontologyData.entities))
+                .enter()
+                .append("g");
+            
+            nodes.append("circle")
+                .attr("r", d => d.type === 'Class' ? 20 : 15)
+                .attr("fill", d => d.type === 'Class' ? '#4CAF50' : '#2196F3')
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended));
+            
+            // 添加标签
+            nodes.append("text")
+                .attr("dx", 12)
+                .attr("dy", 4)
+                .text(d => d.label)
+                .attr("font-size", "12px")
+                .attr("fill", "#333");
+            
+            // 更新连线位置
+            simulation.on("tick", () => {
+                links
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+                
+                nodes.attr("transform", d => `translate(${d.x},${d.y})`);
+            });
+            
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+            
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+            
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+        }
+
+        // 更新统计信息
+        function updateStats() {
+            document.getElementById('entityCount').textContent = Object.keys(ontologyData.entities).length;
+            document.getElementById('relationCount').textContent = ontologyData.relations.length;
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+        }
+
+        // 导出JSON
+        function exportJSON() {
+            const dataStr = JSON.stringify(ontologyData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'ontology.json';
+            link.click();
+            
+            // 清理URL对象
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+        }
+
+        // 导出YAML
+        async function exportYAML() {
+            try {
+                // 动态加载js-yaml库
+                if (typeof jsyaml === 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js';
+                    document.head.appendChild(script);
+                    
+                    // 等待库加载完成
+                    await new Promise((resolve, reject) => {
+                        script.onload = resolve;
+                        script.onerror = reject;
+                    });
+                }
+                
+                const yamlData = {
+                    entities: Object.values(ontologyData.entities),
+                    relations: ontologyData.relations
+                };
+                const yamlStr = jsyaml.dump(yamlData);
+                const dataBlob = new Blob([yamlStr], {type: 'text/yaml'});
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'ontology.yaml';
+                link.click();
+                
+                // 清理URL对象
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+            } catch (error) {
+                console.error('YAML导出失败:', error);
+                addMessage('YAML导出失败: ' + error.message, 'agent');
+            }
+        }
+
+        // 键盘事件监听
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

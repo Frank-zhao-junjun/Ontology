@@ -12,7 +12,6 @@ __pycache__/
 *.egg-info/
 /.env
 .env
-.cozeproj/reduction
 
 # JS/TS bundlers & build outputs
 .next
@@ -25,8 +24,12 @@ coverage
 storybook-static
 
 # Package manager artifacts
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
 .pnp*
 .npm
+*.tsbuildinfo
 
 # Python tooling
 .pytest_cache/
@@ -86,7 +89,11 @@ logs/
 *.pptx
 *.xlsx
 *.csv
+.cozeproj/reduction
 
 # Preview files
 .preview
-.codegraph
+
+# Local runtime database
+instance/
+*.db

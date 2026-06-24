@@ -1,0 +1,22 @@
+apiVersion: ontology.platform/v1
+kind: OntologyManifest
+metadata:
+  id: invalid-no-root
+  version: 1.0.0
+  name: 无聚合根样例
+  boundedContext: 测试
+spec:
+  semantic:
+    objectTypes:
+      - id: only-entity
+        nameEn: OnlyEntity
+        kind: entity
+        aggregateRootId: missing-root
+  behavior:
+    actions: []
+    rules: []
+  events:
+    domainEvents: []
+  governance:
+    roles: []
+  dataSources: []

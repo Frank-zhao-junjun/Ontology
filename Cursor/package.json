@@ -1,0 +1,13 @@
+{
+  "name": "ontology-cursor-workspace",
+  "private": true,
+  "description": "一键同时启动 Flask API :5000 与 Vite :5173",
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c cyan,magenta \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "cd backend && python run.py",
+    "dev:web": "cd frontend && npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

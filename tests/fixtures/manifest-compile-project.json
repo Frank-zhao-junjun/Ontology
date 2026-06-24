@@ -1,0 +1,149 @@
+{
+  "id": "manifest-compile-demo",
+  "name": "Manifest 编译验收项目",
+  "description": "最小 OntologyProject fixture，用于 manifest-compiler 单元测试",
+  "domain": {
+    "id": "domain-manufacturing",
+    "name": "生产制造",
+    "nameEn": "Manufacturing",
+    "description": "生产执行限界上下文"
+  },
+  "dataModel": {
+    "id": "dm-compile",
+    "name": "编译测试数据模型",
+    "version": "1.0.0",
+    "domain": "domain-manufacturing",
+    "projects": [],
+    "businessScenarios": [
+      {
+        "id": "scenario-mts",
+        "name": "面向库存生产",
+        "nameEn": "MTS",
+        "projectId": "manifest-compile-demo"
+      }
+    ],
+    "entities": [
+      {
+        "id": "production-order",
+        "name": "生产订单",
+        "nameEn": "ProductionOrder",
+        "projectId": "manifest-compile-demo",
+        "businessScenarioId": "scenario-mts",
+        "entityRole": "aggregate_root",
+        "isAggregateRoot": true,
+        "attributes": [
+          {
+            "id": "attr-order-id",
+            "name": "生产订单号",
+            "nameEn": "order_id",
+            "dataType": "string",
+            "required": true
+          }
+        ],
+        "relations": []
+      },
+      {
+        "id": "operation",
+        "name": "工序",
+        "nameEn": "Operation",
+        "projectId": "manifest-compile-demo",
+        "businessScenarioId": "scenario-mts",
+        "entityRole": "child_entity",
+        "isAggregateRoot": false,
+        "parentAggregateId": "production-order",
+        "attributes": [
+          {
+            "id": "attr-op-number",
+            "name": "工序号",
+            "nameEn": "op_number",
+            "dataType": "integer",
+            "required": true
+          }
+        ],
+        "relations": []
+      }
+    ],
+    "createdAt": "2026-06-04T00:00:00.000Z",
+    "updatedAt": "2026-06-04T00:00:00.000Z"
+  },
+  "behaviorModel": {
+    "id": "bm-compile",
+    "name": "行为模型",
+    "version": "1.0.0",
+    "domain": "domain-manufacturing",
+    "stateMachines": [
+      {
+        "id": "sm-production-order",
+        "name": "生产订单生命周期",
+        "entity": "production-order",
+        "statusField": "status",
+        "states": [
+          { "id": "st-created", "name": "CREATED", "isInitial": true },
+          { "id": "st-released", "name": "RELEASED" }
+        ],
+        "transitions": [
+          {
+            "id": "tr-release",
+            "name": "下达",
+            "from": "st-created",
+            "to": "st-released",
+            "trigger": "manual"
+          }
+        ]
+      }
+    ],
+    "actions": [
+      {
+        "id": "action-release-order",
+        "name": "生产订单下达",
+        "nameEn": "ReleaseProductionOrder",
+        "targetEntityId": "production-order",
+        "actionType": "custom",
+        "ruleRefs": ["rule-kitting"],
+        "publishesEventIds": ["evt-order-released"]
+      }
+    ],
+    "createdAt": "2026-06-04T00:00:00.000Z",
+    "updatedAt": "2026-06-04T00:00:00.000Z"
+  },
+  "ruleModel": {
+    "id": "rm-compile",
+    "name": "规则模型",
+    "version": "1.0.0",
+    "domain": "domain-manufacturing",
+    "rules": [
+      {
+        "id": "rule-kitting",
+        "name": "物料齐套校验",
+        "type": "cross_entity_validation",
+        "entity": "production-order",
+        "condition": { "type": "expression", "expression": "true" },
+        "errorMessage": "物料未齐套"
+      }
+    ],
+    "createdAt": "2026-06-04T00:00:00.000Z",
+    "updatedAt": "2026-06-04T00:00:00.000Z"
+  },
+  "processModel": null,
+  "eventModel": {
+    "id": "em-compile",
+    "name": "事件模型",
+    "version": "1.0.0",
+    "domain": "domain-manufacturing",
+    "events": [
+      {
+        "id": "evt-order-released",
+        "name": "生产订单已下达",
+        "nameEn": "ProductionOrderReleased",
+        "entity": "production-order",
+        "trigger": "custom",
+        "payload": [{ "field": "order_id" }]
+      }
+    ],
+    "subscriptions": [],
+    "createdAt": "2026-06-04T00:00:00.000Z",
+    "updatedAt": "2026-06-04T00:00:00.000Z"
+  },
+  "createdAt": "2026-06-04T00:00:00.000Z",
+  "updatedAt": "2026-06-04T00:00:00.000Z"
+}

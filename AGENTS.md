@@ -1,0 +1,447 @@
+# Ontology 本体模型建模工具
+
+## 项目概述
+
+这是一个基于 Next.js 16 + React 19 + TypeScript 的本体模型可视化建模工具，支持五大元模型（数据、行为、规则、流程、事件）的可视化建模、AI智能生成，并能输出完整的建模手册。
+
+## 技术栈
+
+- **框架**: Next.js 16 (App Router)
+- **核心**: React 19
+- **语言**: TypeScript 5
+- **UI 组件**: shadcn/ui (基于 Radix UI)
+- **样式**: Tailwind CSS 4
+- **状态管理**: Zustand (持久化存储)
+- **AI集成**: coze-coding-dev-sdk (豆包大模型)
+- **文件解析**: xlsx
+
+## 目录结构
+
+```
+src/
+├── app/                          # Next.js App Router
+│   ├── page.tsx                 # 主页面入口（领域选择）
+│   ├── layout.tsx               # 根布局
+│   ├── globals.css              # 全局样式
+│   └── api/                     # API 路由
+│       ├── metadata/init/       # 元数据初始化接口
+│       ├── generate-model/      # AI模型生成接口
+│       ├── excel-template/      # Excel模板下载接口
+│       └── excel-import/        # Excel文件导入接口
+├── components/
+│   └── ontology/                # 本体建模组件
+│       ├── domain-selector.tsx  # 领域选择器
+│       ├── project-creator.tsx  # 项目创建器
+│       ├── modeling-workspace.tsx # 建模工作台
+│       ├── data-model-editor.tsx # 数据模型编辑器
+│       ├── behavior-model-editor.tsx # 行为模型编辑器
+│       ├── rule-model-editor.tsx # 规则模型编辑器
+│       ├── process-model-editor.tsx # 流程模型编辑器
+│       ├── event-model-editor.tsx # 事件模型编辑器
+│       ├── metadata-manager.tsx # 元数据管理器
+│       ├── manual-generator.tsx # 建模手册生成器
+│       └── excel-import-dialog.tsx # Excel导入对话框
+├── store/
+│   └── ontology-store.ts        # Zustand 状态管理
+├── types/
+│   └── ontology.ts              # TypeScript 类型定义
+└── lib/
+    └── utils.ts                 # 工具函数
+```
+
+## 核心功能
+
+### 1. 领域与项目管理
+- **领域选择**：内置8大行业领域模板
+- **项目分组**：支持实体按项目/模块分组
+- **项目导出**：JSON格式项目数据导出
+
+### 2. 数据模型 (Data Model)
+- 实体定义：支持中英文名称、描述
+- 属性定义：支持 9 种数据类型（string, text, integer, decimal, boolean, date, datetime, enum, reference）
+- 关系定义：支持一对一、一对多、多对多关系
+
+### 3. 行为模型 (Behavior Model)
+- 状态机定义：绑定实体、状态字段
+- 状态定义：支持初始状态、终止状态标记
+- 状态转换：支持手动、自动、定时触发
+
+### 4. 规则模型 (Rule Model)
+- 五类规则：字段级校验、跨字段校验、跨实体校验、聚合校验、时序规则
+- 条件类型：正则、范围、表达式、引用检查等
+- 严重程度：错误、警告、提示
+
+### 5. 流程模型 (Process Model)
+- 流程编排：定义业务流程入口点
+- 步骤定义：支持 10 种步骤类型
+- 流程预览：可视化流程步骤
+
+### 6. 事件模型 (Event Model)
+- 事件定义：支持创建、更新、删除、状态变更等触发时机
+- 订阅管理：支持同步/异步处理、技能调用、Webhook、通知等
+
+### 7. 元数据管理 (Metadata Management)
+- **Excel初始化**：从预置Excel导入57条标准元数据字段
+- **CRUD操作**：支持元数据的增删改查
+- **AI优先匹配**：AI生成属性时优先从元数据列表匹配
+- **全局复用**：元数据不属于任何项目，可在所有实体间复用
+
+### 8. AI智能生成
+- **模型建议**：基于实体和领域信息，AI自动生成五大模型建议
+- **一键应用**：可将AI建议一键应用到当前实体
+- **元数据匹配**：生成属性时优先使用预定义元数据
+
+### 9. 建模手册生成
+- Markdown 格式输出
+- JSON 格式导出
+- 实体维度/项目维度手册
+
+### 9.5. 组织体系与岗位模型 (Organization & Position)
+- **部门树**：Department 5种类型(集团/事业部/部门/团队/班组)，parentId 构建组织树
+- **岗位定义**：Position 归属部门、关联治理角色、汇报线、编制、任职要求
+- **结构化职责**：PositionResponsibility 定义职责项(scope+actions+decisionAuthority+delegateToPositionIds)
+- **职责重叠检测**：自动检测两个岗位的职责冲突
+- **HR系统同步**：支持飞书/钉钉/企微/SAP/Workday/自定义API定时同步
+- **同步配置**：HRSyncConfig(source/interval/fieldMapping/conflictStrategy/syncScope)
+- **冲突策略**：HR优先/本地优先/合并/人工审核
+- **EPC集成**：EpcOrganizationalUnit 通过 refType/refId 引用 Department/Position
+- **校验规则**：VM-O(8条)+VM-HR(4条)+VE-O(2条)+VX-O(4条)
+
+### 10. Entity Lifecycle（实体生命周期）
+- **State 增强**：entryActions/exitActions/availableActions/constraints/allowedRoles/timeout/dataVisibility
+- **Transition 增强**：guardCondition/compensationAction/sideEffects/publishEventId/notifyRoleIds/requiresApproval/auditLog
+- **Action 增强**：aliases/triggerPhrases/successMessage/failureMessage/fallbackActionId/requiresConfirmation/idempotencyKeyTemplate
+- **聚合视图**：EntityLifecycle 一站式聚合 StateMachine + Action + Rule + Event 中的生命周期信息
+- **审计追溯**：LifecycleAuditEntry 记录每次状态变更的完整上下文
+- **校验规则**：V-LC-01~15 生命周期完整性与一致性校验
+
+### 11. Agent Semantic Layer（Agent 语义层）
+- **意图映射**：Intent 将自然语言短语映射到 Action，含 triggerPhrases/slotFilling/contextConstraints
+- **槽位填充**：SlotFillingStrategy 定义参数追问顺序、校验规则、默认值、上下文推断
+- **对话上下文**：DialogContext 维护聚焦实体、最近操作、指代消解
+- **语义关系**：SemanticRelation 定义 is-a/part-of/synonym-of/causes/depends-on 等 10 种语义关系
+- **业务术语词典**：BusinessTerm 统一术语定义、同义词、歧义说明、模型引用
+- **错误恢复**：ErrorRecovery 定义操作失败后的重试/回退/升级/补偿策略
+- **时效性标记**：TemporalValidity 为模型元素添加生效/失效时间
+- **字段映射**：SemanticFieldMapping 自动推断跨实体字段等价关系
+- **Agent 策略**：AgentPolicy 定义 Agent 行为边界（允许/拒绝/确认/升级）
+- **完备性仪表盘**：可视化语义层覆盖度（意图覆盖率/术语数/关系数/缺失提醒）
+
+### 12. Excel 导入 (Excel Import)
+- **模板下载**：GET /api/excel-template 生成含8个Sheet（填写说明+7数据Sheet，含部门+岗位）的 .xlsx 模板
+- **文件上传**：POST /api/excel-import 仅接受 .xlsx，5MB上限，Sheet结构校验
+- **数据校验**：必填字段、枚举值、布尔类型、跨Sheet引用完整性校验
+- **数据解析**：校验通过后解析为 Entity/Attribute/Relation/StateMachine/Rule/Event 对象（parsedData）
+- **版本生成**：基于 parsedData 生成 pending_review 状态版本（非工作区快照）
+- **版本审核**：审核通过将 parsedData 应用到工作区（替换当前数据），驳回需填写原因
+- **Store 方法**：`createVersionFromParsedData({ parsedData })` 创建版本，`approveVersion` 应用解析数据
+
+### 13. 参考文档上传辅助 AI 建模 (Reference Document Upload)
+- **文档上传**：支持 Word(.docx)/PDF(.xlsx)/Excel(.xlsx)/TXT/Markdown/CSV 格式，10MB/文件
+- **文档解析**：mammoth(docx)/pdf-parse(pdf)/xlsx(excel) 自动提取纯文本+表格
+- **AI 注入**：generate-model API 自动将参考文档内容注入 Prompt，AI 基于文档生成更精准建议
+- **实体提取**：AI 从文档中自动提取实体候选（含属性、置信度、来源定位）
+- **项目级管理**：ReferenceDocument 存储于项目数据，最多 10 份/项目
+- **文本截断**：智能截断策略，AI 注入文本 ≤ 10000 字符/次
+- **API**：POST /api/reference-documents/upload + DELETE + POST extract-entities
+- **安全**：文档仅存浏览器 localStorage，不上传云端
+
+## 开发命令
+
+```bash
+# 安装依赖
+pnpm install
+
+# 开发模式（端口 5000）
+pnpm dev
+
+# 构建生产版本
+pnpm build
+
+# 启动生产服务
+pnpm start
+
+# 类型检查
+npx tsc --noEmit
+```
+
+## 状态管理
+
+使用 Zustand 进行状态管理，数据自动持久化到 localStorage：
+
+```typescript
+// 访问项目状态
+const { project, metadataList, activeModelType } = useOntologyStore();
+
+// 创建项目
+createProject(name, domain, description);
+
+// 数据模型操作
+addEntity(entity);
+updateEntity(entityId, entity);
+deleteEntity(entityId);
+
+// 项目分组操作
+addEntityProject(project);
+updateEntityProject(projectId, project);
+deleteEntityProject(projectId);
+
+// 元数据操作
+setMetadataList(metadataList);
+addMetadata(metadata);
+updateMetadata(metadataId, metadata);
+deleteMetadata(metadataId);
+
+// 行为模型操作
+addStateMachine(stateMachine);
+updateStateMachine(smId, stateMachine);
+deleteStateMachine(smId);
+
+// ... 其他模型操作类似
+```
+
+## API 接口
+
+### 元数据初始化
+```
+GET /api/metadata/init
+```
+从预置Excel解析并返回标准元数据列表（57条字段）。
+
+**返回格式**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "xxx",
+      "name": "物料唯一编码",
+      "nameEn": "MATERIAL_ID",
+      "description": "全局唯一标识每一种物料",
+      "type": "string",
+      "valueRange": "自定义编码规则",
+      "standard": "GB/T 44063",
+      "source": "PLM/ERP"
+    }
+  ]
+}
+```
+
+### AI模型生成
+```
+POST /api/generate-model
+```
+基于实体信息调用大模型生成五大模型建议。
+
+**请求体**:
+```json
+{
+  "entity": { "name": "物料", "nameEn": "Material", ... },
+  "domain": { "name": "离散制造", ... },
+  "project": { "name": "生产管理", ... },
+  "existingModels": { ... },
+  "metadataList": [ ... ]
+}
+```
+
+**返回格式**:
+```json
+{
+  "success": true,
+  "data": {
+    "dataModel": {
+      "suggestedAttributes": [...],
+      "suggestedRelations": [...]
+    },
+    "behaviorModel": { ... },
+    "ruleModel": { ... },
+    "processModel": { ... },
+    "eventModel": { ... }
+  }
+}
+```
+
+### Excel模板下载
+```
+GET /api/excel-template
+```
+生成含填写说明+8个数据Sheet的 .xlsx 导入模板。
+
+**返回**: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet 二进制文件
+
+### Excel文件导入
+```
+POST /api/excel-import
+```
+上传 .xlsx 文件，校验并解析为项目数据。
+
+**请求**: multipart/form-data, field: `file`
+
+**返回格式**:
+```json
+{
+  "success": true,
+  "validation": { "totalRows": 8, "validRows": 8, "errorCount": 0, "errors": [] },
+  "versionId": "v-xxx",
+  "versionName": "v2026-06-13",
+  "parsedData": {
+    "entities": [{ "name": "物料", "nameEn": "Material", "role": "aggregate_root", ... }],
+    "attributes": [{ "entityNameEn": "Material", "name": "编码", "dataType": "string", ... }],
+    "relations": [...],
+    "stateMachines": [...],
+    "rules": [...],
+    "eventDefinitions": [...],
+    "departments": [{ "name": "生产管理部", "nameEn": "ProductionMgmt", "type": "department", ... }],
+    "positions": [{ "name": "生产主管", "nameEn": "ProductionSupervisor", "responsibilities": [...], ... }]
+  }
+}
+```
+
+**校验规则**:
+- 文件格式: 仅 .xlsx，最大5MB
+- Sheet结构: 至少包含实体/属性/关系/状态机/规则/事件/部门/岗位中1个Sheet
+- 必填字段: 各Sheet的(必填)标记字段
+- 枚举值: 实体角色、数据类型、关系类型、规则类型、触发时机等
+- 跨Sheet引用: 属性/关系/状态机/规则/事件中的实体英文名必须在实体Sheet中存在；岗位.所属部门编码必须在部门Sheet中存在
+- 组织校验: 部门树环检测、职责列对齐、角色引用完整性等 23 条规则 (V-XL-O01~O23)
+- 描述行/示例行: 以 `#DESC#`/`#EXAMPLE#` 开头的行自动跳过
+
+### Entity Lifecycle 导出
+```
+GET /api/entity-lifecycle?entityId=xxx
+```
+返回 EntityLifecycle 聚合视图（actionsByState/rulesByState/eventsByState/rolesByState/auditTrail/stats）。
+
+### Agent 语义层导出
+```
+GET /api/agent-semantic-layer
+```
+返回完整 AgentSemanticLayer JSON（intents/terms/relations/recoveries/policies/mappings + metadata.coverage 统计）。
+
+## 类型定义
+
+所有类型定义位于 `src/types/ontology.ts`，主要包括：
+
+- `Domain` - 领域定义
+- `EntityProject` - 实体项目分组
+- `Entity` - 实体定义
+- `Attribute` - 属性定义
+- `Relation` - 关系定义
+- `StateMachine` - 状态机
+- `Rule` - 规则定义
+- `Orchestration` - 流程编排
+- `EventDefinition` - 事件定义
+- `Subscription` - 事件订阅
+- `Metadata` - 元数据定义
+- `OntologyProject` - 完整项目结构
+- `Intent` - Agent 意图定义
+- `IntentSlot` / `SlotFillingStrategy` - 槽位填充
+- `DialogContext` - 对话上下文
+- `SemanticRelation` - 语义关系
+- `BusinessTerm` - 业务术语
+- `ErrorRecovery` - 错误恢复策略
+- `TemporalValidity` - 时效性标记
+- `SemanticFieldMapping` - 跨实体字段映射
+- `AgentPolicy` - Agent 行为策略
+- `AgentSemanticLayer` - Agent 语义层聚合
+- `EntityLifecycle` - 实体生命周期聚合
+- `LifecycleAuditEntry` - 生命周期审计记录
+- `StateTimeout` / `StateDataVisibility` - 状态增强
+
+## 构建与部署
+
+项目使用 Coze CLI 进行构建和部署：
+
+```bash
+# 开发环境
+coze dev
+
+# 构建生产版本
+coze build
+
+# 启动生产服务
+coze start
+```
+
+## 注意事项
+
+1. 端口固定为 5000，不可修改
+2. 使用 pnpm 作为包管理器，禁止使用 npm 或 yarn
+3. 所有状态数据自动保存在浏览器 localStorage
+4. 导出的 JSON 可用于导入恢复项目
+
+## 相关文档
+
+参考项目 assets 目录下的需求文档：
+- `assets/Ontology.txt` - 完整需求规格说明书
+- `assets/系统架构设计文档.md` - 系统架构设计
+- `assets/2100测试通过.md` - 功能验收清单
+
+### Subagent 测试团队
+
+多 Unit 测试阶段可启用 **6 角色 Subagent 测试团队**（Spec 六步 ③→⑥）：
+
+- 编排索引：`.claude/skills/testing-team/README.md`
+- 角色：Test Lead · Test Designer · Unit/Store · Integration/UI · E2E Smoke · Domain Rule
+- 门禁：`docs/ontology-simplification/UNIT_VALIDATION_CHECKLIST.md`
+- **进展看板**：`docs/ontology-simplification/testing/Progress.md`
+- **测试 TODO**：`docs/ontology-simplification/testing/TODO.md`
+
+#### Phase 回归命令
+
+按精简架构 Phase 1–4 跑 scoped 回归（见 `scripts/test-phase.sh`）：
+
+```bash
+pnpm run test:phase1      # S03–S05 模块版本 + 业务链 + saveEpc
+pnpm run test:phase1.5    # S14 模块确认/归档 UI
+pnpm run test:phase2      # S06–S08 要素选择器 + 库 + C 工作区
+pnpm run test:phase3      # S09–S11 linter + Excel + AI draft
+pnpm run test:phase4      # S12–S13 遗留清理 + compiler golden
+pnpm run test:phase:all   # 以上全部
+```
+
+---
+
+## 开发规范 (Development Standards)
+
+### 提交前必查
+
+每次提交代码前，**必须**执行完整 CI 检查：
+
+```bash
+pnpm run ci:check
+```
+
+包含：lint、ts-check、unit tests、integration tests、e2e smoke tests。
+
+### 分支策略
+
+- **main**：受保护分支，禁止直接推送
+- **feature/***：功能开发分支
+- **fix/***：缺陷修复分支
+- **docs/***：文档更新分支
+
+### 提交规范
+
+遵循 Conventional Commits：
+- `feat:` 新功能
+- `fix:` 缺陷修复
+- `docs:` 文档更新
+- `refactor:` 重构
+- `test:` 测试相关
+
+### 进度外置
+
+- 每次迭代结束更新 `docs/progress.md`
+- PR 必须填写 Checklist 并提供验证证据
+- 详细规范见 [CONTRIBUTING.md](CONTRIBUTING.md)
+
+### 质量门禁
+
+| 检查项 | 命令 | 状态 |
+|--------|------|------|
+| 代码风格 | `pnpm lint` | 必须 0 error |
+| 类型检查 | `pnpm ts-check` | 必须 0 error |
+| 单元测试 | `pnpm test:unit` | 必须 100% pass |
+| 集成测试 | `pnpm test:integration` | 必须 100% pass |
+| E2E 冒烟 | `pnpm test:e2e:smoke` | 必须 100% pass |
