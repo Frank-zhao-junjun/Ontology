@@ -112,13 +112,14 @@ function emptyBehaviorModel(): BehaviorModel {
 
 describe('epc-cross-consistency (US-S17-U02)', () => {
   describe('VX_RULES metadata', () => {
-    it('should export all 10 VX rule definitions', () => {
+    it('should export all 20 VX rule definitions', () => {
       const ids = Object.keys(VX_RULES);
       expect(ids).toContain('VX-01');
       expect(ids).toContain('VX-06');
       expect(ids).toContain('VX-09');
       expect(ids).toContain('VX-12');
-      expect(ids).toHaveLength(10);
+      expect(ids).toContain('VX-20');
+      expect(ids).toHaveLength(20);
     });
 
     it('VX-02 and VX-09 are error severity', () => {
@@ -593,6 +594,272 @@ describe('epc-cross-consistency (US-S17-U02)', () => {
         },
       });
       expect(validateCrossConsistency(input).filter((i) => i.code === 'VX-12')).toHaveLength(0);
+    });
+  });
+
+  describe('VX-07: Dept-Role 一致', () => {
+    it('flags dept position roleId not in governanceModel.roles', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '部门', 'E5', 'dept-1')])],
+        metaElements: [
+          makeMeta('dept-1', 'E5', { name: '采购部', type: 'department' } as any),
+          makeMeta('pos-1', 'E5', { name: '采购专员', parentId: 'dept-1', roleIds: ['role-missing'] } as any),
+        ],
+        governanceModel: {
+          id: 'gm-1', roles: [{ id: 'role-1', name: '审核员', permissions: [] }],
+          fieldPermissions: [], agentPolicies: [], createdAt: NOW, updatedAt: NOW,
+        },
+      });
+      const issues = validateCrossConsistency(input).filter((i) => i.code === 'VX-07');
+      expect(issues).toHaveLength(1);
+      expect(issues[0].severity).toBe('warning');
+    });
+
+    it('passes when all position roleIds exist in governanceModel.roles', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '部门', 'E5', 'dept-1')])],
+        metaElements: [
+          makeMeta('dept-1', 'E5', { name: '采购部', type: 'department' } as any),
+          makeMeta('pos-1', 'E5', { name: '采购专员', parentId: 'dept-1', roleIds: ['role-1'] } as any),
+        ],
+        governanceModel: {
+          id: 'gm-1', roles: [{ id: 'role-1', name: '审核员', permissions: [] }],
+          fieldPermissions: [], agentPolicies: [], createdAt: NOW, updatedAt: NOW,
+        },
+      });
+      expect(validateCrossConsistency(input).filter((i) => i.code === 'VX-07')).toHaveLength(0);
+    });
+  });
+
+  describe('VX-08: Position-Role 一致', () => {
+    it('flags position roleId without confirmed version in metaElements', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '岗位', 'E5', 'pos-1')])],
+        metaElements: [
+          makeMeta('pos-1', 'E5', { name: '采购专员', type: 'position', roleIds: ['role-1'] } as any),
+          makeMeta('role-1', 'E5', { name: '审核员' }), // no confirmedVersion
+        ],
+      });
+      const issues = validateCrossConsistency(input).filter((i) => i.code === 'VX-08');
+      expect(issues).toHaveLength(1);
+      expect(issues[0].severity).toBe('warning');
+    });
+
+    it('passes when position roleId has confirmed version', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '岗位', 'E5', 'pos-1')])],
+        metaElements: [
+          makeMeta('pos-1', 'E5', { name: '采购专员', type: 'position', roleIds: ['role-1'] } as any),
+          makeMeta('role-1', 'E5', { name: '审核员', confirmedVersion: 'v1' }),
+        ],
+      });
+      expect(validateCrossConsistency(input).filter((i) => i.code === 'VX-08')).toHaveLength(0);
+    });
+  });
+
+  describe('VX-13: EPC-C 挂接一致', () => {
+    it('flags EPC with parentId not in scenarios', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc('epc-orphan', 'sc-missing', [step('s1', '步', 'E1', 'e1')])],
+        scenarios: [makeScenario(SCENARIO_ID, '场景')],
+        moduleVersionRecords: [makeRecord('C', SCENARIO_ID), makeRecord('EPC', 'epc-orphan')],
+      });
+      const issues = validateCrossConsistency(input).filter((i) => i.code === 'VX-13');
+      expect(issues).toHaveLength(1);
+      expect(issues[0].severity).toBe('warning');
+    });
+
+    it('passes when EPC parentId matches a scenario', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '步', 'E1', 'e1')])],
+        scenarios: [makeScenario(SCENARIO_ID, '场景')],
+      });
+      expect(validateCrossConsistency(input).filter((i) => i.code === 'VX-13')).toHaveLength(0);
+    });
+  });
+
+  describe('VX-14: C-B 挂接一致', () => {
+    it('flags scenario with parentId not in capabilities', () => {
+      const input = baseInput({
+        scenarios: [makeScenario(SCENARIO_ID, '场景', { parentId: 'cap-missing' })],
+      });
+      const issues = validateCrossConsistency(input).filter((i) => i.code === 'VX-14');
+      expect(issues).toHaveLength(1);
+      expect(issues[0].severity).toBe('warning');
+    });
+
+    it('passes when scenario parentId matches a capability', () => {
+      const input = baseInput({
+        scenarios: [makeScenario(SCENARIO_ID, '场景', { parentId: 'cap-1' })],
+        capabilities: [makeCapability('cap-1', '能力')],
+      });
+      expect(validateCrossConsistency(input).filter((i) => i.code === 'VX-14')).toHaveLength(0);
+    });
+  });
+
+  describe('VX-15: B-A 挂接一致', () => {
+    it('flags capability with parentId not in valueDomains', () => {
+      const input = baseInput({
+        capabilities: [makeCapability('cap-1', '能力')],
+        valueDomains: [], // cap-1.parentId = 'vd-1' but no vd-1
+      });
+      const issues = validateCrossConsistency(input).filter((i) => i.code === 'VX-15');
+      expect(issues).toHaveLength(1);
+      expect(issues[0].severity).toBe('warning');
+    });
+
+    it('passes when capability parentId matches a valueDomain', () => {
+      const input = baseInput({
+        capabilities: [makeCapability('cap-1', '能力')],
+        valueDomains: [makeValueDomain('vd-1', '域')],
+      });
+      expect(validateCrossConsistency(input).filter((i) => i.code === 'VX-15')).toHaveLength(0);
+    });
+  });
+
+  describe('VX-16: Element 维度一致', () => {
+    it('flags step whose declared dimension mismatches element actual dimension', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '动作', 'E2', 'e1')])],
+        metaElements: [makeMeta('e1', 'E1', { name: '订单' })], // e1 is E1, not E2
+      });
+      const issues = validateCrossConsistency(input).filter((i) => i.code === 'VX-16');
+      expect(issues).toHaveLength(1);
+      expect(issues[0].severity).toBe('error');
+    });
+
+    it('passes when step dimension matches element dimension', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '订单', 'E1', 'e1')])],
+        metaElements: [makeMeta('e1', 'E1', { name: '订单' })],
+      });
+      expect(validateCrossConsistency(input).filter((i) => i.code === 'VX-16')).toHaveLength(0);
+    });
+  });
+
+  describe('VX-17: Step 顺序合理性', () => {
+    it('flags E3 event step that is not first or last', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [
+          { id: 's1', name: '开始动作', elementRef: { dimension: 'E2', elementId: 'act-1', versionPin: 'latest_confirmed' } },
+          { id: 's2', name: '事件', elementRef: { dimension: 'E3', elementId: 'ev-1', versionPin: 'latest_confirmed' } },
+          { id: 's3', name: '结束动作', elementRef: { dimension: 'E2', elementId: 'act-2', versionPin: 'latest_confirmed' } },
+        ])],
+        metaElements: [
+          makeMeta('act-1', 'E2', { name: '动作1' }),
+          makeMeta('ev-1', 'E3', { name: '事件' }),
+          makeMeta('act-2', 'E2', { name: '动作2' }),
+        ],
+      });
+      const issues = validateCrossConsistency(input).filter((i) => i.code === 'VX-17');
+      expect(issues).toHaveLength(1);
+      expect(issues[0].severity).toBe('info');
+    });
+
+    it('passes when E3 events are only at first and last positions', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [
+          { id: 's1', name: '开始事件', elementRef: { dimension: 'E3', elementId: 'ev-start', versionPin: 'latest_confirmed' } },
+          { id: 's2', name: '动作', elementRef: { dimension: 'E2', elementId: 'act-1', versionPin: 'latest_confirmed' } },
+          { id: 's3', name: '结束事件', elementRef: { dimension: 'E3', elementId: 'ev-end', versionPin: 'latest_confirmed' } },
+        ])],
+        metaElements: [
+          makeMeta('ev-start', 'E3', { name: '开始' }),
+          makeMeta('act-1', 'E2', { name: '动作' }),
+          makeMeta('ev-end', 'E3', { name: '结束' }),
+        ],
+      });
+      expect(validateCrossConsistency(input).filter((i) => i.code === 'VX-17')).toHaveLength(0);
+    });
+  });
+
+  describe('VX-18: Draft-Confirmed 隔离', () => {
+    it('flags confirmed EPC step referencing draft-only element', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '订单', 'E1', 'e1')])],
+        metaElements: [makeMeta('e1', 'E1', { name: '订单草稿' })], // no confirmedVersion
+      });
+      const issues = validateCrossConsistency(input).filter((i) => i.code === 'VX-18');
+      expect(issues).toHaveLength(1);
+      expect(issues[0].severity).toBe('warning');
+    });
+
+    it('passes when referenced element has confirmed version', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '订单', 'E1', 'e1')])],
+        metaElements: [makeMeta('e1', 'E1', { name: '订单', confirmedVersion: 'v1' })],
+      });
+      expect(validateCrossConsistency(input).filter((i) => i.code === 'VX-18')).toHaveLength(0);
+    });
+  });
+
+  describe('VX-19: Version pin 一致性', () => {
+    it('flags versionPin that does not exist in moduleVersionRecords', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [
+          {
+            id: 's1', name: '订单',
+            elementRef: { dimension: 'E1', elementId: 'e1', versionPin: { version: 'v999' } },
+          },
+        ])],
+        metaElements: [makeMeta('e1', 'E1', { name: '订单' })],
+        moduleVersionRecords: [
+          makeRecord('C', SCENARIO_ID),
+          makeRecord('EPC', EPC_ID),
+          { id: 'vr-E1-e1', moduleKind: 'E1', moduleId: 'e1', status: 'confirmed', version: 'v1', createdAt: NOW, confirmedAt: NOW, snapshot: {} },
+        ],
+      });
+      const issues = validateCrossConsistency(input).filter((i) => i.code === 'VX-19');
+      expect(issues).toHaveLength(1);
+      expect(issues[0].severity).toBe('warning');
+    });
+
+    it('passes when versionPin matches a moduleVersionRecord', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [
+          {
+            id: 's1', name: '订单',
+            elementRef: { dimension: 'E1', elementId: 'e1', versionPin: { version: 'v1' } },
+          },
+        ])],
+        metaElements: [makeMeta('e1', 'E1', { name: '订单' })],
+        moduleVersionRecords: [
+          makeRecord('C', SCENARIO_ID),
+          makeRecord('EPC', EPC_ID),
+          { id: 'vr-E1-e1', moduleKind: 'E1', moduleId: 'e1', status: 'confirmed', version: 'v1', createdAt: NOW, confirmedAt: NOW, snapshot: {} },
+        ],
+      });
+      expect(validateCrossConsistency(input).filter((i) => i.code === 'VX-19')).toHaveLength(0);
+    });
+  });
+
+  describe('VX-20: usageRefs 完整性', () => {
+    it('flags usageRefs pointing to non-existent epcId', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '订单', 'E1', 'e1')])],
+        metaElements: [
+          makeMeta('e1', 'E1', {
+            name: '订单',
+            usageRefs: [{ epcId: 'epc-ghost', stepId: 's1', scenarioId: SCENARIO_ID, versionPin: 'latest_confirmed' }],
+          }),
+        ],
+      });
+      const issues = validateCrossConsistency(input).filter((i) => i.code === 'VX-20');
+      expect(issues).toHaveLength(1);
+      expect(issues[0].severity).toBe('info');
+    });
+
+    it('passes when all usageRefs epcIds exist in epcProcesses', () => {
+      const input = baseInput({
+        epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '订单', 'E1', 'e1')])],
+        metaElements: [
+          makeMeta('e1', 'E1', {
+            name: '订单',
+            usageRefs: [{ epcId: EPC_ID, stepId: 's1', scenarioId: SCENARIO_ID, versionPin: 'latest_confirmed' }],
+          }),
+        ],
+      });
+      expect(validateCrossConsistency(input).filter((i) => i.code === 'VX-20')).toHaveLength(0);
     });
   });
 });
