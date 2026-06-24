@@ -7,6 +7,6 @@ run = ["bash", "./scripts/dev.sh"]
 deps = ["git"]
 
 [deploy]
-build = ["bash", "-c", "echo PWD=$PWD && ls -la && ls -la scripts/ 2>/dev/null || echo 'no scripts dir' && bash ./scripts/build.sh"]
-run = ["bash", "-c", "echo PWD=$PWD && ls -la && bash ./scripts/start.sh"]
+build = ["bash", "./scripts/build.sh"]
+run = ["bash", "./scripts/start.sh"]
 deps = ["git"]
