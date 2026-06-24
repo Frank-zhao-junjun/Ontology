@@ -2,11 +2,11 @@
 requires = ["nodejs-24"]
 
 [dev]
-build = ["bash", "-c", "export HOME=${HOME:-/tmp} && pwd && ls -la && bash ./scripts/prepare.sh"]
-run = ["bash", "-c", "export HOME=${HOME:-/tmp} && pwd && ls -la && bash ./scripts/dev.sh"]
+build = ["bash", "./scripts/prepare.sh"]
+run = ["bash", "./scripts/dev.sh"]
 deps = ["git"]
 
 [deploy]
-build = ["bash", "-c", "export HOME=${HOME:-/tmp} && echo \"Current dir: $(pwd)\" && ls -la && bash ./scripts/build.sh"]
-run = ["bash", "-c", "export HOME=${HOME:-/tmp} && echo \"Current dir: $(pwd)\" && ls -la && bash ./scripts/start.sh"]
+build = ["bash", "./scripts/build.sh"]
+run = ["bash", "./scripts/start.sh"]
 deps = ["git"]
