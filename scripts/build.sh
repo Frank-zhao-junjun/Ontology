@@ -1,15 +1,12 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-COZE_WORKSPACE_PATH="${COZE_WORKSPACE_PATH:-$(pwd)}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# If running from parent directory (Ontology as subdir), adjust path
-if [[ -f "Ontology/package.json" ]]; then
-  cd "Ontology"
-elif [[ -f "package.json" ]]; then
-  # Already in Ontology directory, stay here
-  :
-fi
+cd "$PROJECT_DIR"
+
+export HOME="${HOME:-/tmp}"
 
 echo "Installing dependencies..."
 pnpm install --prefer-frozen-lockfile --prefer-offline --loglevel debug --reporter=append-only

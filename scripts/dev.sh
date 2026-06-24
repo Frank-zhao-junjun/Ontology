@@ -1,18 +1,15 @@
 #!/bin/bash
 set -Eeuo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+cd "$PROJECT_DIR"
+
+export HOME="${HOME:-/tmp}"
 
 PORT=5000
-COZE_WORKSPACE_PATH="${COZE_WORKSPACE_PATH:-$(pwd)}"
 DEPLOY_RUN_PORT="${DEPLOY_RUN_PORT:-${PORT}}"
-
-# If running from parent directory (Ontology as subdir), adjust path
-if [[ -f "Ontology/package.json" ]]; then
-  cd "Ontology"
-elif [[ -f "package.json" ]]; then
-  # Already in Ontology directory, stay here
-  :
-fi
 
 kill_port_if_listening() {
     local pids
