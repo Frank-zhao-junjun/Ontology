@@ -1,5 +1,8 @@
 [project]
 requires = ["nodejs-24"]
+template = "nextjs"
+version = "legacy"
+appliedPatches = ["nextjs/next-output-tracing-root@0.0.13"]
 
 [dev]
 build = ["bash", "./scripts/prepare.sh"]
