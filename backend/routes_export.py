@@ -47,7 +47,8 @@ def export_yaml(release_no):
     return Response(yaml_str, mimetype='text/yaml')
 
 
-def _write_sheet(ws, headers: list[str], rows: list[list[str]]):
+def _write_sheet(ws, headers: list[str], rows: list[list]):
+    """写入表头行+蓝色样式，然后写入数据行。"""
     for c, h in enumerate(headers, 1):
         cell = ws.cell(row=1, column=c, value=h)
         cell.font = HEADER_FONT_WHITE
@@ -57,90 +58,230 @@ def _write_sheet(ws, headers: list[str], rows: list[list[str]]):
             ws.cell(row=r, column=c, value=str(val) if val is not None else '')
 
 
+def _json_str(val):
+    """将值转为 JSON 字符串（用于 语义(JSON) / 步骤(JSON) 列）。"""
+    if val is None:
+        return ''
+    import json
+    if isinstance(val, str):
+        return val
+    return json.dumps(val, ensure_ascii=False)
+
+
 def _build_xlsx(result: dict) -> BytesIO:
-    """从 result dict 生成多 Sheet Excel 工作簿。"""
+    """
+    构建与前端 excel-schema.ts 一致的 Excel 工作簿。
+    生成 Sheet：A, B, C, EPC, E1-E8（+隐藏引用表 _要素引用表）。
+    """
+    import json
+
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
 
-    # Sheet 1: 领域总览
-    ws1 = wb.create_sheet('领域总览')
-    domains = Domain.query.all()
-    _write_sheet(ws1, ['名称', '描述', '标签'], [[d.name, d.description or '', d.tags or ''] for d in domains])
+    # ── 构建引用表数据 ──
+    ref_entries = []  # [{id, name, dimension}]
 
-    # Sheet 2: 维1_静态结构
+    # ── Sheet A：价值域 ──
+    domains = Domain.query.all()
+    a_rows = []
+    for d in domains:
+        ref_entries.append({'id': d.name, 'name': d.name, 'dimension': 'A'})
+        a_rows.append([
+            d.name,
+            d.name,
+            '',
+            d.description or '',
+            _json_str(d.tags) if hasattr(d, 'tags') else '',
+        ])
+    ws_a = wb.create_sheet('A')
+    _write_sheet(ws_a, ['ID', '名称', '英文名', '描述', '语义(JSON)'], a_rows)
+
+    # ── Sheet B：能力 ──
+    b = result.get('behavioral', {})
+    actions = b.get('actions', [])
+    b_rows = []
+    for act in actions:
+        aid = act.get('id', '')
+        aname = act.get('name', '')
+        ref_entries.append({'id': aid, 'name': aname, 'dimension': 'B'})
+        b_rows.append([
+            aid,
+            aname,
+            '',
+            act.get('description', '') or act.get('output', ''),
+            _json_str(act.get('input', '')),
+            act.get('domain', ''),
+        ])
+    ws_b = wb.create_sheet('B')
+    _write_sheet(ws_b, ['ID', '名称', '英文名', '描述', '语义(JSON)', '父节点ID'], b_rows)
+
+    # ── Sheet C：场景 ──
+    ws_c = wb.create_sheet('C')
+    _write_sheet(ws_c, ['ID', '名称', '英文名', '描述', '语义(JSON)', '父节点ID'], [])
+
+    # ── Sheet EPC ──
+    epc = result.get('epc', {})
+    steps = epc.get('steps', [])
+    epc_rows = []
+    for step in steps:
+        sid = step.get('id', step.get('event_trigger', ''))
+        sname = step.get('action', '')
+        ref_entries.append({'id': sid, 'name': sname, 'dimension': 'EPC'})
+        epc_rows.append([
+            sid,
+            sname,
+            '',
+            '',
+            '',
+            '',
+            '',
+            _json_str([step]),
+        ])
+    ws_epc = wb.create_sheet('EPC')
+    _write_sheet(ws_epc, [
+        'ID', '名称', '英文名', '描述', '语义(JSON)', '父节点ID', '归属场景ID', '步骤(JSON)',
+    ], epc_rows)
+
+    # ── Sheet E1：数据（来自 structural.entities） ──
     s = result.get('structural', {})
     entities = s.get('entities', [])
-    rows_v1 = []
+    e1_rows = []
     for e in entities:
-        for a in e.get('attributes', []):
-            rows_v1.append([e.get('id',''), e.get('name',''), a.get('id',''), a.get('type',''), str(a.get('required','')), str(a.get('unique',''))])
-    for r in s.get('relations', []):
-        rows_v1.append(['', '', r.get('type',''), r.get('source',''), r.get('target',''), r.get('inverseOf','')])
-    ws2 = wb.create_sheet('维1_静态结构')
-    _write_sheet(ws2, ['实体ID', '实体名', '属性/关系', '类型', '必填', '唯一/inverseOf'], rows_v1)
+        eid = e.get('id', '')
+        ename = e.get('name', '')
+        ref_entries.append({'id': eid, 'name': ename, 'dimension': 'E1'})
+        e1_rows.append([
+            eid,
+            ename,
+            '',
+            'E1',
+            'project',
+            e.get('description', ''),
+        ])
+    ws_e1 = wb.create_sheet('E1')
+    _write_sheet(ws_e1, ['ID', '名称', '英文名', '维度', '可见性', '描述'], e1_rows)
 
-    # Sheet 3: 维2_动态行为
-    b = result.get('behavioral', {})
-    rows_v2 = []
-    for a in b.get('actions', []):
-        rows_v2.append([a.get('id',''), a.get('name',''), a.get('input',''), a.get('output',''), a.get('domain','')])
-    for sm in b.get('stateMachines', []):
-        for t in sm.get('transitions', []):
-            rows_v2.append([sm.get('id',''), sm.get('name',''), t.get('from',''), t.get('to',''), t.get('trigger','')])
-    for ind in b.get('indicators', []):
-        rows_v2.append([ind.get('id',''), ind.get('name',''), ind.get('formula',''), ind.get('target',''), ind.get('warningThreshold','')])
-    ws3 = wb.create_sheet('维2_动态行为')
-    _write_sheet(ws3, ['ID', '名称', '输入/From', '输出/To', '触发/目标'], rows_v2)
+    # ── Sheet E2：行为 ──
+    state_machines = b.get('stateMachines', [])
+    e2_rows = []
+    for sm in state_machines:
+        smid = sm.get('id', '')
+        smname = sm.get('name', '')
+        ref_entries.append({'id': smid, 'name': smname, 'dimension': 'E2'})
+        e2_rows.append([
+            smid,
+            smname,
+            '',
+            'E2',
+            'project',
+            '',
+        ])
+    ws_e2 = wb.create_sheet('E2')
+    _write_sheet(ws_e2, ['ID', '名称', '英文名', '维度', '可见性', '描述'], e2_rows)
 
-    # Sheet 4: 维3_规则约束
-    r = result.get('rules', {})
-    rows_v3 = []
-    for v in r.get('validations', []):
-        rows_v3.append(['校验', v.get('id',''), v.get('type',''), v.get('entity',''), v.get('field',''), v.get('expression','')])
-    for g in r.get('guardrails', []):
-        rows_v3.append(['护栏', g.get('id',''), g.get('name',''), g.get('condition',''), g.get('action',''), ''])
-    for p in r.get('policies', []):
-        rows_v3.append(['策略', p.get('id',''), p.get('name',''), p.get('rules',''), '', ''])
-    for perm in r.get('permissions', []):
-        rows_v3.append(['权限', perm.get('role',''), perm.get('resource',''), perm.get('operations',''), '', ''])
-    for pr in r.get('probes', []):
-        rows_v3.append(['探针', pr.get('id',''), pr.get('name',''), pr.get('target',''), pr.get('frequency',''), pr.get('alertCondition','')])
-    ws4 = wb.create_sheet('维3_规则约束')
-    _write_sheet(ws4, ['类型', 'ID', '名称/表达式', '作用域', '字段/条件', '补充'], rows_v3)
+    # ── Sheet E3：规则 ──
+    rules = result.get('rules', {})
+    all_rules = []
+    for v in rules.get('validations', []):
+        all_rules.append(v)
+    for g in rules.get('guardrails', []):
+        all_rules.append(g)
+    for p in rules.get('policies', []):
+        all_rules.append(p)
+    for pr in rules.get('probes', []):
+        all_rules.append(pr)
 
-    # Sheet 5: 维4_事件消息
-    e = result.get('events', {})
-    rows_v4 = []
-    for et in e.get('eventTypes', []):
-        rows_v4.append([et.get('id',''), et.get('name',''), et.get('severity',''), et.get('source',''), et.get('targetEntity','')])
-    for ca in e.get('causalities', []):
-        rows_v4.append(['因果链', ca.get('cause',''), ca.get('effect',''), '', ''])
-    ws5 = wb.create_sheet('维4_事件消息')
-    _write_sheet(ws5, ['事件ID', '名称', '级别', '事件源', '作用实体'], rows_v4)
+    e3_rows = []
+    for rule in all_rules:
+        rid = rule.get('id', '')
+        rname = rule.get('name', '')
+        ref_entries.append({'id': rid, 'name': rname, 'dimension': 'E3'})
+        e3_rows.append([
+            rid,
+            rname,
+            '',
+            'E3',
+            'project',
+            rule.get('expression', rule.get('condition', '')),
+        ])
+    ws_e3 = wb.create_sheet('E3')
+    _write_sheet(ws_e3, ['ID', '名称', '英文名', '维度', '可见性', '描述'], e3_rows)
 
-    # Sheet 6: 维5_外部接口
-    i = result.get('interfaces', {})
-    rows_v5 = []
-    for api in i.get('apis', []):
-        rows_v5.append(['API', api.get('id',''), api.get('name',''), api.get('url',''), api.get('method','')])
-    for q in i.get('queries', []):
-        rows_v5.append(['查询', q.get('id',''), q.get('name',''), q.get('type',''), q.get('template','')])
-    for comp in i.get('compute', []):
-        rows_v5.append(['计算', comp.get('id',''), comp.get('name',''), comp.get('input',''), comp.get('formula','')])
-    for n in i.get('notifications', []):
-        rows_v5.append(['通知', n.get('id',''), n.get('name',''), n.get('channel',''), n.get('template','')])
-    for rep in i.get('reports', []):
-        rows_v5.append(['报表', rep.get('id',''), rep.get('name',''), rep.get('format',''), rep.get('fields','')])
-    ws6 = wb.create_sheet('维5_外部接口')
-    _write_sheet(ws6, ['类型', 'ID', '名称', 'URL/渠道/公式', '方法/模板'], rows_v5)
+    # ── Sheet E4：事件 ──
+    events = result.get('events', {})
+    event_types = events.get('eventTypes', [])
+    e4_rows = []
+    for et in event_types:
+        etid = et.get('id', '')
+        etname = et.get('name', '')
+        ref_entries.append({'id': etid, 'name': etname, 'dimension': 'E4'})
+        e4_rows.append([
+            etid,
+            etname,
+            '',
+            'E4',
+            'project',
+            et.get('severity', ''),
+        ])
+    ws_e4 = wb.create_sheet('E4')
+    _write_sheet(ws_e4, ['ID', '名称', '英文名', '维度', '可见性', '描述'], e4_rows)
 
-    # Sheet 7: EPC流程
-    epc = result.get('epc', {})
-    rows_epc = []
-    for step in epc.get('steps', []):
-        rows_epc.append([step.get('event_trigger',''), step.get('action',''), ','.join(step.get('conditions', [])), ','.join(step.get('guards', []))])
-    ws7 = wb.create_sheet('EPC流程')
-    _write_sheet(ws7, ['触发事件', '行为', '条件', '护栏'], rows_epc)
+    # ── Sheet E5：岗位角色 ──
+    ws_e5 = wb.create_sheet('E5')
+    _write_sheet(ws_e5, ['ID', '名称', '英文名', '维度', '可见性', '描述'], [])
+
+    # ── Sheet E6：指标（来自 behavioral.indicators） ──
+    indicators = b.get('indicators', [])
+    e6_rows = []
+    for ind in indicators:
+        iid = ind.get('id', '')
+        iname = ind.get('name', '')
+        ref_entries.append({'id': iid, 'name': iname, 'dimension': 'E6'})
+        e6_rows.append([
+            iid,
+            iname,
+            '',
+            'E6',
+            'project',
+            ind.get('formula', ''),
+        ])
+    ws_e6 = wb.create_sheet('E6')
+    _write_sheet(ws_e6, ['ID', '名称', '英文名', '维度', '可见性', '描述'], e6_rows)
+
+    # ── Sheet E7：边界约束 ──
+    ws_e7 = wb.create_sheet('E7')
+    _write_sheet(ws_e7, ['ID', '名称', '英文名', '维度', '可见性', '描述'], [])
+
+    # ── Sheet E8：数据源（来自 interfaces.apis/queries/compute） ──
+    interfaces = result.get('interfaces', {})
+    all_ifaces = []
+    for api in interfaces.get('apis', []):
+        all_ifaces.append(api)
+    for q in interfaces.get('queries', []):
+        all_ifaces.append(q)
+
+    e8_rows = []
+    for iface in all_ifaces:
+        fid = iface.get('id', '')
+        fname = iface.get('name', '')
+        ref_entries.append({'id': fid, 'name': fname, 'dimension': 'E8'})
+        e8_rows.append([
+            fid,
+            fname,
+            '',
+            'E8',
+            'project',
+            iface.get('url', iface.get('template', '')),
+        ])
+    ws_e8 = wb.create_sheet('E8')
+    _write_sheet(ws_e8, ['ID', '名称', '英文名', '维度', '可见性', '描述'], e8_rows)
+
+    # ── 隐藏引用表 _要素引用表 ──
+    ws_ref = wb.create_sheet('_要素引用表')
+    _write_sheet(ws_ref, ['ID', '名称', '维度'],
+                 [[e['id'], e['name'], e['dimension']] for e in ref_entries])
+    # 隐藏引用表
+    ws_ref.sheet_state = 'hidden'
 
     output = BytesIO()
     wb.save(output)
