@@ -1,5 +1,5 @@
 /**
- * API 集成测试 — 21 routes
+ * API 集成测试 — 19 routes
  * 使用 vitest + node-fetch 对 localhost:5000 发起真实 HTTP 请求
  */
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -80,34 +80,10 @@ describe('Excel Import API', () => {
   });
 });
 
-// ==================== 7. Entity Lifecycle ====================
-
-describe('Entity Lifecycle API', () => {
-  it('POST /api/entity-lifecycle requires project', async () => {
-    const { status, body } = await fetchJson(`${BASE}/api/entity-lifecycle`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    expect(status).toBe(400);
-  });
-});
-
-// ==================== 8. Agent Semantic Layer ====================
-
-describe('Agent Semantic Layer API', () => {
-  it('POST /api/agent-semantic-layer returns structure', async () => {
-    const { status, body } = await fetchJson(`${BASE}/api/agent-semantic-layer`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project: { dataModel: { entities: [] } } }),
-    });
-    expect(status).toBe(200);
-    expect(body).toHaveProperty('intents');
-    expect(body).toHaveProperty('businessTerms');
-    expect(body).toHaveProperty('semanticRelations');
-  });
-});
+// ==================== 7-8. Entity Lifecycle & Agent Semantic Layer ====================
+// NOTE: These API routes were removed in commit a9d6ee7 (EPC v3.1 refactor)
+// and are listed as legacy routes in src/lib/legacy-audit/index.ts.
+// Tests removed to avoid CI failures from 404 responses.
 
 // ==================== 9-12. HR Sync ====================
 
