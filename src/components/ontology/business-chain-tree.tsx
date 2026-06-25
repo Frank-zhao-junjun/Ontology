@@ -54,10 +54,10 @@ function NodeRow({
   return (
     <div>
       <div
-        className={`flex items-center gap-1 py-1.5 px-2 rounded-md cursor-pointer text-sm transition-colors ${
+        className={`flex items-center gap-1 py-1.5 px-1.5 rounded-md cursor-pointer text-sm transition-colors min-w-0 ${
           isSelected ? 'bg-primary/10 border-l-2 border-primary' : 'hover:bg-muted border-l-2 border-transparent'
         }`}
-        style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        style={{ paddingLeft: `${depth * 12 + 6}px` }}
         data-testid={`business-chain-node-${node.kind}-${node.id}`}
         onClick={() => onSelect(node.kind, node.id)}
       >
@@ -76,7 +76,7 @@ function NodeRow({
             <span className="w-3.5 inline-block" />
           )}
         </button>
-        <span className="flex-1 truncate">{node.name}</span>
+        <span className="flex-1 truncate text-xs leading-5">{node.name}</span>
         <ModuleStatusBadge status={status} />
       </div>
       {hasChildren && isOpen && (
@@ -229,33 +229,35 @@ export function BusinessChainTree() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 border-b flex flex-wrap gap-2">
+      <div className="p-2 border-b flex items-center gap-1.5 flex-nowrap overflow-x-auto">
         <Button
           size="sm"
           variant="outline"
+          className="h-7 px-2 text-xs shrink-0"
           onClick={() => openCreate('A', '')}
         >
-          <Plus className="w-3.5 h-3.5 mr-1" />
-          新建价值域
+          <Plus className="w-3 h-3 mr-1" />
+          价值域
         </Button>
         {canAddChild && childKindForAdd && childKindForAdd !== 'A' && selected && (
           <Button
             size="sm"
             variant="outline"
+            className="h-7 px-2 text-xs shrink-0"
             onClick={() => openCreate(childKindForAdd, selected.id)}
           >
-            <Plus className="w-3.5 h-3.5 mr-1" />
-            新建{KIND_LABEL[childKindForAdd]}
+            <Plus className="w-3 h-3 mr-1" />
+            {KIND_LABEL[childKindForAdd]}
           </Button>
         )}
         {canDeleteSelected && (
-          <Button size="sm" variant="ghost" className="text-destructive" onClick={handleDeleteSelected}>
-            <Trash2 className="w-3.5 h-3.5 mr-1" />
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-destructive shrink-0" onClick={handleDeleteSelected}>
+            <Trash2 className="w-3 h-3 mr-1" />
             删除
           </Button>
         )}
       </div>
-      <ScrollArea className="flex-1 p-2">
+      <ScrollArea className="flex-1 p-1.5">
         {tree.length === 0 ? (
           <p className="text-sm text-muted-foreground p-2">暂无业务链，请新建价值域 (A)</p>
         ) : (

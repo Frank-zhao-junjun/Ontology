@@ -334,11 +334,11 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
             {/* Business Chain: tree + detail with resizable split */}
             {activeTab === 'businessChain' && (
               <ResizablePanelGroup orientation="horizontal" className="flex-1">
-                <ResizablePanel defaultSize={20} minSize={12} maxSize={40}>
+                <ResizablePanel defaultSize={28} minSize={18} maxSize={50}>
                   <BusinessChainTree />
                 </ResizablePanel>
-                <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={80} minSize={30}>
+                <ResizableHandle withHandle className="w-1.5 hover:w-2 transition-all after:w-2.5" />
+                <ResizablePanel defaultSize={72} minSize={30}>
                   <BusinessChainDetail
                     onNavigateToElement={(elementId, dimension) => {
                       setElementLibraryFocus({ elementId, dimension });
