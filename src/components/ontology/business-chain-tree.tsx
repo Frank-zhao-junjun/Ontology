@@ -117,7 +117,7 @@ function NodeRow({
         </button>
         {/* A/B/C/EPC 类型标签 */}
         <span
-          className={`shrink-0 inline-flex items-center px-1 h-4 text-[10px] font-semibold rounded border whitespace-nowrap ${KIND_COLOR[node.kind]}`}
+          className={`shrink-0 inline-flex items-center px-1.5 h-5 text-[10px] font-semibold rounded border whitespace-nowrap ${KIND_COLOR[node.kind]}`}
           title={KIND_LABEL[node.kind]}
         >
           {KIND_SHORT[node.kind]}
@@ -290,7 +290,7 @@ export function BusinessChainTree() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-2 border-b flex items-center gap-1.5 flex-nowrap overflow-x-auto">
+      <div className="p-2 border-b flex items-center gap-1 flex-wrap">
         {addButtons.map((btn) => {
           const enabled = canAddKind(btn.kind);
           return (
@@ -298,7 +298,12 @@ export function BusinessChainTree() {
               key={btn.kind}
               size="sm"
               variant="outline"
-              className={`h-7 px-2 text-xs shrink-0 ${!enabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+              className={`h-7 px-2 text-xs shrink-0 border-border/60 ${
+                btn.kind === 'A' ? 'border-blue-200 text-blue-700 hover:bg-blue-50' :
+                btn.kind === 'B' ? 'border-violet-200 text-violet-700 hover:bg-violet-50' :
+                btn.kind === 'C' ? 'border-cyan-200 text-cyan-700 hover:bg-cyan-50' :
+                'border-orange-200 text-orange-700 hover:bg-orange-50'
+              } ${!enabled ? 'opacity-50' : ''}`}
               disabled={!enabled}
               onClick={() => handleToolbarAdd(btn.kind)}
             >
@@ -307,10 +312,11 @@ export function BusinessChainTree() {
             </Button>
           );
         })}
+        <div className="flex-1 min-w-0" />
         <Button
           size="sm"
           variant="ghost"
-          className="h-7 px-2 text-xs text-destructive shrink-0"
+          className="h-7 px-2 text-xs text-destructive shrink-0 hover:bg-red-50"
           disabled={!canDeleteSelected}
           onClick={handleDeleteSelected}
         >
@@ -320,7 +326,7 @@ export function BusinessChainTree() {
       </div>
       <ScrollArea className="flex-1 p-1.5">
         {tree.length === 0 ? (
-          <p className="text-sm text-muted-foreground p-2">暂无业务链，请新建价值域 (A)</p>
+          <p className="text-sm text-muted-foreground p-2">暂无业务链，请点击上方 +A-价值域 新建</p>
         ) : (
           tree.map((node, idx) => (
             <NodeRow
