@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Network, Library, AlertTriangle, Gauge, ShieldCheck, Database, BookOpen, Download, Box, GitBranch, ScrollText, Bell, Package } from 'lucide-react';
+import { Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Network, Library, AlertTriangle, Gauge, ShieldCheck, Database, BookOpen, Download, Box, GitBranch, ScrollText, Bell, Package, RefreshCw, Bot } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ManualGenerator } from './manual-generator';
 import { MetadataManager } from './metadata-manager';
@@ -29,6 +29,8 @@ import { BusinessChainDetail } from './business-chain-detail';
 import { ElementLibrary } from './element-library';
 import { WarningCenter } from './warning-center';
 import { ExcelImportExportDialog } from './excel-import-export-dialog';
+import { HRSyncManager } from './hr-sync-manager';
+import { AgentSkillsManager } from './agent-skills-manager';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { updateProject, deleteProject } from '@/services/project-service';
 import { cn } from '@/lib/utils';
@@ -40,7 +42,7 @@ interface ModelingWorkspaceProps {
   project: OntologyProject;
 }
 
-type ContentTab = 'businessChain' | 'elementLibrary' | 'warnings' | 'metrics' | 'governance' | 'dataSources';
+type ContentTab = 'businessChain' | 'elementLibrary' | 'warnings' | 'metrics' | 'governance' | 'dataSources' | 'hrSync' | 'agent';
 
 export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   useProjectSync();
@@ -165,6 +167,8 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
     { id: 'metrics', label: '指标', icon: Gauge },
     { id: 'governance', label: '治理', icon: ShieldCheck },
     { id: 'dataSources', label: '数据源', icon: Database },
+    { id: 'hrSync', label: 'HR同步', icon: RefreshCw },
+    { id: 'agent', label: 'Agent', icon: Bot },
   ];
 
   if (showManual) {
@@ -425,6 +429,20 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
             {activeTab === 'dataSources' && (
               <div className="flex-1 overflow-auto p-6">
                 <DataSourceEditor />
+              </div>
+            )}
+
+            {/* HR Sync */}
+            {activeTab === 'hrSync' && (
+              <div className="flex-1 overflow-auto p-6">
+                <HRSyncManager />
+              </div>
+            )}
+
+            {/* Agent Skills */}
+            {activeTab === 'agent' && (
+              <div className="flex-1 overflow-auto p-6">
+                <AgentSkillsManager />
               </div>
             )}
           </div>
