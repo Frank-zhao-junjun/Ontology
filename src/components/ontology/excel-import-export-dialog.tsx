@@ -1,37 +1,32 @@
-'use client';
+"use client";
 
-import { useMemo, useState, useRef, type DragEvent } from 'react';
-import { Download, Upload, FileSpreadsheet, AlertTriangle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useState, useRef } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { useOntologyStore } from '@/store/ontology-store';
-import { exportModulesToExcel } from '@/lib/excel/export-excel';
-import {
-  parseExcelImport,
-  executeImport,
-} from '@/lib/excel/import-excel';
-import type { ImportPreview } from '@/lib/excel/excel-schema';
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger,
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Download, Upload, FileSpreadsheet, FileText, AlertTriangle, FileDown } from "lucide-react";
+import { useOntologyStore } from "@/store/ontology-store";
+import { parseExcelImport, executeImport } from "@/lib/excel/import-excel";
+import { exportModulesToExcel } from "@/lib/excel/export-excel";
+import { type ImportPreview } from "@/lib/excel/excel-schema";
+import { parseMarkdownImport, generateMarkdownTemplate, exportModulesToMarkdown, type ExistingModule } from "@/lib/markdown/markdown-import";
+import { type ModuleKind } from "@/types/ontology";
 
-function downloadExcel(buf: Uint8Array, filename: string) {
-  const blob = new Blob([buf as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+function downloadBlob(content: BlobPart, filename: string, type: string) {
+  const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }
+
+type ImportFormat = "excel" | "markdown";
 
 interface ExcelImportExportDialogProps {
   open?: boolean;
@@ -47,6 +42,7 @@ export function ExcelImportExportDialog({ open: controlledOpen, onOpenChange: co
     else setInternalOpen(v);
   };
   const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
+  const [importFormat, setImportFormat] = useState<ImportFormat>("excel");
   const [importStep, setImportStep] = useState<'select' | 'preview'>('select');
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -54,7 +50,6 @@ export function ExcelImportExportDialog({ open: controlledOpen, onOpenChange: co
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 仅订阅最小值避免重渲染；其余在 handler 中用 getState() 读取
   const saveModuleDraft = useOntologyStore((s) => s.saveModuleDraft);
   const rebuildUsageIndex = useOntologyStore((s) => s.rebuildUsageIndex);
 
@@ -72,16 +67,40 @@ export function ExcelImportExportDialog({ open: controlledOpen, onOpenChange: co
     };
   }
 
-  // 导出
-  const handleExport = () => {
+  // Excel 导出
+  const handleExportExcel = () => {
     try {
       const data = getStoreData();
       const buf = exportModulesToExcel(data);
       const name = (data.project?.name || 'ontology').replace(/[^\w一-鿿-]/g, '_');
-      downloadExcel(buf, `${name}-modules.xlsx`);
+      downloadBlob(buf as BlobPart, `${name}-modules.xlsx`, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       setError(null);
     } catch (err) {
       setError((err as Error).message || '导出失败');
+    }
+  };
+
+  // Markdown 导出
+  const handleExportMarkdown = () => {
+    try {
+      const data = getStoreData();
+      const md = exportModulesToMarkdown(data);
+      const name = (data.project?.name || 'ontology').replace(/[^\w一-鿿-]/g, '_');
+      downloadBlob(md, `${name}-modules.md`, "text/markdown;charset=utf-8");
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message || '导出失败');
+    }
+  };
+
+  // Markdown 模板下载
+  const handleDownloadTemplate = () => {
+    try {
+      const md = generateMarkdownTemplate();
+      downloadBlob(md, "ontology-import-template.md", "text/markdown;charset=utf-8");
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message || '模板下载失败');
     }
   };
 
@@ -91,14 +110,25 @@ export function ExcelImportExportDialog({ open: controlledOpen, onOpenChange: co
     setImportFile(file);
     try {
       const data = getStoreData();
-      const result = await parseExcelImport({
-        file,
-        existingValueDomains: data.valueDomains,
-        existingCapabilities: data.capabilities,
-        existingScenarios: data.scenarios,
-        existingMetaElements: data.metaElements,
-        existingModuleVersionRecords: data.moduleVersionRecords,
-      });
+      let result: ImportPreview;
+      if (importFormat === "excel") {
+        result = await parseExcelImport({
+          file,
+          existingValueDomains: data.valueDomains,
+          existingCapabilities: data.capabilities,
+          existingScenarios: data.scenarios,
+          existingMetaElements: data.metaElements,
+          existingModuleVersionRecords: data.moduleVersionRecords,
+        });
+      } else {
+        const text = await file.text();
+        const existingModules: ExistingModule[] = [
+          ...data.valueDomains.map(m => ({ moduleKind: 'value_domain' as ModuleKind, moduleId: m.id })),
+          ...data.capabilities.map(m => ({ moduleKind: 'capability' as ModuleKind, moduleId: m.id })),
+          ...data.scenarios.map(m => ({ moduleKind: 'scenario' as ModuleKind, moduleId: m.id })),
+        ];
+        result = parseMarkdownImport({ text, existingModules });
+      }
       setPreview(result);
       setImportStep('preview');
     } catch (err) {
@@ -134,21 +164,28 @@ export function ExcelImportExportDialog({ open: controlledOpen, onOpenChange: co
 
   // 拖放支持
   const [dragOver, setDragOver] = useState(false);
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragOver(true);
   };
   const handleDragLeave = () => setDragOver(false);
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];
-    if (file && file.name.endsWith('.xlsx')) {
-      handleFileSelect(file);
-    } else {
-      setError('请选择 .xlsx 文件');
+    if (file) {
+      const ext = importFormat === "excel" ? '.xlsx' : '.md';
+      if (file.name.endsWith(ext)) {
+        handleFileSelect(file);
+      } else {
+        setError(`请选择 ${ext} 文件`);
+      }
     }
   };
+
+  const acceptedExt = importFormat === "excel" ? ".xlsx" : ".md,.markdown,.txt";
+  const fileIcon = importFormat === "excel" ? FileSpreadsheet : FileText;
+  const Icon = fileIcon;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetImportState(); }}>
@@ -163,9 +200,9 @@ export function ExcelImportExportDialog({ open: controlledOpen, onOpenChange: co
 
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Excel 分模块导入/导出</DialogTitle>
+          <DialogTitle>分模块导入/导出</DialogTitle>
           <DialogDescription>
-            按 A/B/C/EPC/E1–E8 模块导入导出，仅生成草稿不自动确认
+            按 A/B/C/EPC/E1–E8 模块导入导出，仅生成草稿不自动确认。支持 Excel 和 Markdown 两种格式。
           </DialogDescription>
         </DialogHeader>
 
@@ -183,26 +220,59 @@ export function ExcelImportExportDialog({ open: controlledOpen, onOpenChange: co
           <TabsContent value="export" className="space-y-4 pt-4">
             <div className="rounded-lg border bg-muted/30 p-4">
               <p className="text-sm text-muted-foreground">
-                将项目中所有已确认（confirmed）模块导出为 Excel 文件，包含 12 个模块 Sheet。
-                导出的 Excel 中引用列（parentId）带有下拉验证，便于离线编辑。
+                将项目中所有已确认（confirmed）模块导出为 Excel 或 Markdown 文件，包含 12 个模块。
               </p>
               <ul className="mt-2 list-inside list-disc text-xs text-muted-foreground space-y-1">
                 <li>仅导出 latest confirmed 版本</li>
                 <li>draft 状态的模块不会导出</li>
-                <li>Excel 编辑后可通过「导入」Tab 重新导入为 draft</li>
+                <li>编辑后可通过「导入」Tab 重新导入为 draft</li>
               </ul>
             </div>
 
-            <Button onClick={handleExport} className="w-full" data-testid="export-btn">
-              <Download className="mr-2 h-4 w-4" />
-              导出 Excel
-            </Button>
+            <div className="grid grid-cols-2 gap-3">
+              <Button onClick={handleExportExcel} variant="outline" data-testid="export-excel-btn">
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                导出 Excel
+              </Button>
+              <Button onClick={handleExportMarkdown} variant="outline" data-testid="export-md-btn">
+                <FileText className="mr-2 h-4 w-4" />
+                导出 Markdown
+              </Button>
+            </div>
           </TabsContent>
 
           {/* 导入 Tab */}
           <TabsContent value="import" className="space-y-4 pt-4">
+
             {importStep === 'select' && (
               <>
+                {/* 格式选择 */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium whitespace-nowrap">格式:</span>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant={importFormat === "excel" ? "default" : "outline"}
+                      onClick={() => { setImportFormat("excel"); resetImportState(); }}
+                    >
+                      <FileSpreadsheet className="mr-1 h-3.5 w-3.5" /> Excel
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={importFormat === "markdown" ? "default" : "outline"}
+                      onClick={() => { setImportFormat("markdown"); resetImportState(); }}
+                    >
+                      <FileText className="mr-1 h-3.5 w-3.5" /> Markdown
+                    </Button>
+                  </div>
+                  {importFormat === "markdown" && (
+                    <Button size="sm" variant="ghost" onClick={handleDownloadTemplate} className="ml-auto">
+                      <FileDown className="mr-1 h-3.5 w-3.5" /> 下载模板
+                    </Button>
+                  )}
+                </div>
+
+                {/* 拖放区 */}
                 <div
                   className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors ${
                     dragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
@@ -212,13 +282,15 @@ export function ExcelImportExportDialog({ open: controlledOpen, onOpenChange: co
                   onDrop={handleDrop}
                   data-testid="import-dropzone"
                 >
-                  <FileSpreadsheet className="mb-3 h-10 w-10 text-muted-foreground" />
-                  <p className="mb-2 text-sm font-medium">拖放 .xlsx 文件到此处</p>
+                  <Icon className="mb-3 h-10 w-10 text-muted-foreground" />
+                  <p className="mb-2 text-sm font-medium">
+                    拖放 {importFormat === "excel" ? ".xlsx" : ".md"} 文件到此处
+                  </p>
                   <p className="mb-4 text-xs text-muted-foreground">或点击下方按钮选择文件</p>
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".xlsx"
+                    accept={acceptedExt}
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
@@ -239,6 +311,13 @@ export function ExcelImportExportDialog({ open: controlledOpen, onOpenChange: co
                     父节点（A/B/C）缺失时自动创建占位 draft。
                     EPC 步骤引用缺失的要素会产生 warning，不阻断导入。
                   </p>
+                  {importFormat === "markdown" && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      <strong>Markdown 格式说明：</strong>使用 <code className="text-primary"># 模块名</code> 作为模块分隔，
+                      <code className="text-primary">| 列1 | 列2 |</code> 表格语法定义数据行。
+                      建议先下载模板查看格式。
+                    </p>
+                  )}
                 </div>
               </>
             )}
