@@ -29,6 +29,20 @@ const KIND_LABEL: Record<BusinessChainNodeKind, string> = {
   EPC: 'EPC',
 };
 
+const KIND_SHORT: Record<BusinessChainNodeKind, string> = {
+  A: 'A',
+  B: 'B',
+  C: 'C',
+  EPC: 'E',
+};
+
+const KIND_COLOR: Record<BusinessChainNodeKind, string> = {
+  A: 'bg-blue-100 text-blue-700 border-blue-200',
+  B: 'bg-violet-100 text-violet-700 border-violet-200',
+  C: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+  EPC: 'bg-orange-100 text-orange-700 border-orange-200',
+};
+
 function NodeRow({
   node,
   depth,
@@ -37,6 +51,8 @@ function NodeRow({
   selectedId,
   onSelect,
   getStatus,
+  isLastChild,
+  parentLevels,
 }: {
   node: BusinessChainTreeNode;
   depth: number;
@@ -45,25 +61,48 @@ function NodeRow({
   selectedId: string | null;
   onSelect: (kind: BusinessChainNodeKind, id: string) => void;
   getStatus: (kind: BusinessChainNodeKind, id: string) => ModuleStatus;
+  isLastChild?: boolean;
+  parentLevels?: boolean[];
 }) {
   const hasChildren = node.children.length > 0;
   const isOpen = expanded.has(node.id);
   const isSelected = selectedId === node.id;
   const status = getStatus(node.kind, node.id);
+  const levels = parentLevels ?? [];
 
   return (
     <div>
       <div
-        className={`flex items-center gap-1 py-1.5 px-1.5 rounded-md cursor-pointer text-sm transition-colors min-w-0 ${
+        className={`flex items-center gap-1 py-1.5 pr-1.5 rounded-md cursor-pointer text-sm transition-colors min-w-0 relative ${
           isSelected ? 'bg-primary/10 border-l-2 border-primary' : 'hover:bg-muted border-l-2 border-transparent'
         }`}
-        style={{ paddingLeft: `${depth * 12 + 6}px` }}
+        style={{ paddingLeft: `${depth * 20 + 6}px` }}
         data-testid={`business-chain-node-${node.kind}-${node.id}`}
         onClick={() => onSelect(node.kind, node.id)}
       >
+        {/* 树连接线 */}
+        {levels.map((isParentLast, i) => (
+          <span
+            key={i}
+            className="absolute top-0 bottom-0 border-l border-border"
+            style={{ left: `${i * 20 + 13}px` }}
+          />
+        ))}
+        {/* 当前层级的角线 */}
+        {depth > 0 && (
+          <span
+            className="absolute border-l border-b border-border rounded-bl-md"
+            style={{
+              left: `${(depth - 1) * 20 + 13}px`,
+              top: 0,
+              width: '14px',
+              height: isLastChild ? '50%' : '50%',
+            }}
+          />
+        )}
         <button
           type="button"
-          className="p-0.5"
+          className="p-0.5 shrink-0 z-10"
           aria-label={isOpen ? '折叠' : '展开'}
           onClick={(e) => {
             e.stopPropagation();
@@ -76,12 +115,19 @@ function NodeRow({
             <span className="w-3.5 inline-block" />
           )}
         </button>
+        {/* A/B/C/EPC 类型标签 */}
+        <span
+          className={`shrink-0 inline-flex items-center justify-center w-4 h-4 text-[10px] font-semibold rounded border ${KIND_COLOR[node.kind]}`}
+          title={KIND_LABEL[node.kind]}
+        >
+          {KIND_SHORT[node.kind]}
+        </span>
         <span className="flex-1 truncate text-xs leading-5">{node.name}</span>
         <ModuleStatusBadge status={status} />
       </div>
       {hasChildren && isOpen && (
         <div>
-          {node.children.map((child) => (
+          {node.children.map((child, idx) => (
             <NodeRow
               key={child.id}
               node={child}
@@ -91,6 +137,8 @@ function NodeRow({
               selectedId={selectedId}
               onSelect={onSelect}
               getStatus={getStatus}
+              isLastChild={idx === node.children.length - 1}
+              parentLevels={[...levels, isLastChild ?? false]}
             />
           ))}
         </div>
@@ -261,7 +309,7 @@ export function BusinessChainTree() {
         {tree.length === 0 ? (
           <p className="text-sm text-muted-foreground p-2">暂无业务链，请新建价值域 (A)</p>
         ) : (
-          tree.map((node) => (
+          tree.map((node, idx) => (
             <NodeRow
               key={node.id}
               node={node}
@@ -271,6 +319,8 @@ export function BusinessChainTree() {
               selectedId={selected?.id ?? null}
               onSelect={handleSelect}
               getStatus={getStatus}
+              isLastChild={idx === tree.length - 1}
+              parentLevels={[]}
             />
           ))
         )}
