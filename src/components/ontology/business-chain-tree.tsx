@@ -23,17 +23,17 @@ import { Label } from '@/components/ui/label';
 import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
 
 const KIND_LABEL: Record<BusinessChainNodeKind, string> = {
-  A: '价值域',
-  B: '能力',
-  C: '场景',
-  EPC: 'EPC',
+  A: 'A-价值域',
+  B: 'B-能力',
+  C: 'C-场景',
+  EPC: 'EPC流程',
 };
 
 const KIND_SHORT: Record<BusinessChainNodeKind, string> = {
-  A: 'A',
-  B: 'B',
-  C: 'C',
-  EPC: 'E',
+  A: 'A-价值域',
+  B: 'B-能力',
+  C: 'C-场景',
+  EPC: 'EPC',
 };
 
 const KIND_COLOR: Record<BusinessChainNodeKind, string> = {
@@ -117,7 +117,7 @@ function NodeRow({
         </button>
         {/* A/B/C/EPC 类型标签 */}
         <span
-          className={`shrink-0 inline-flex items-center justify-center w-4 h-4 text-[10px] font-semibold rounded border ${KIND_COLOR[node.kind]}`}
+          className={`shrink-0 inline-flex items-center px-1 h-4 text-[10px] font-semibold rounded border whitespace-nowrap ${KIND_COLOR[node.kind]}`}
           title={KIND_LABEL[node.kind]}
         >
           {KIND_SHORT[node.kind]}
@@ -244,21 +244,6 @@ export function BusinessChainTree() {
     }
   };
 
-  const canAddChild =
-    !selected ||
-    selected.kind === 'A' ||
-    selected.kind === 'B' ||
-    selected.kind === 'C';
-
-  const childKindForAdd: BusinessChainNodeKind | null = !selected
-    ? 'A'
-    : selected.kind === 'A'
-      ? 'B'
-      : selected.kind === 'B'
-        ? 'C'
-        : selected.kind === 'C'
-          ? 'EPC'
-          : null;
 
   const canDeleteSelected =
     selected &&
@@ -275,35 +260,63 @@ export function BusinessChainTree() {
         selected.id,
       ));
 
+  // 工具栏始终展示四个新增按钮 + 删除
+  const addButtons: { kind: BusinessChainNodeKind; label: string }[] = [
+    { kind: 'A', label: 'A-价值域' },
+    { kind: 'B', label: 'B-能力' },
+    { kind: 'C', label: 'C-场景' },
+    { kind: 'EPC', label: 'EPC流程' },
+  ];
+
+  const handleToolbarAdd = (kind: BusinessChainNodeKind) => {
+    if (kind === 'A') {
+      openCreate('A', '');
+    } else if (!selected) {
+      // 没有选中节点时，B/C/EPC 需要父节点
+      return;
+    } else {
+      openCreate(kind, selected.id);
+    }
+  };
+
+  const canAddKind = (kind: BusinessChainNodeKind): boolean => {
+    if (kind === 'A') return true;
+    if (!selected) return false;
+    if (kind === 'B') return selected.kind === 'A';
+    if (kind === 'C') return selected.kind === 'B';
+    if (kind === 'EPC') return selected.kind === 'C';
+    return false;
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-2 border-b flex items-center gap-1.5 flex-nowrap overflow-x-auto">
+        {addButtons.map((btn) => {
+          const enabled = canAddKind(btn.kind);
+          return (
+            <Button
+              key={btn.kind}
+              size="sm"
+              variant="outline"
+              className={`h-7 px-2 text-xs shrink-0 ${!enabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+              disabled={!enabled}
+              onClick={() => handleToolbarAdd(btn.kind)}
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              {btn.label}
+            </Button>
+          );
+        })}
         <Button
           size="sm"
-          variant="outline"
-          className="h-7 px-2 text-xs shrink-0"
-          onClick={() => openCreate('A', '')}
+          variant="ghost"
+          className="h-7 px-2 text-xs text-destructive shrink-0"
+          disabled={!canDeleteSelected}
+          onClick={handleDeleteSelected}
         >
-          <Plus className="w-3 h-3 mr-1" />
-          价值域
+          <Trash2 className="w-3 h-3 mr-1" />
+          删除
         </Button>
-        {canAddChild && childKindForAdd && childKindForAdd !== 'A' && selected && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 px-2 text-xs shrink-0"
-            onClick={() => openCreate(childKindForAdd, selected.id)}
-          >
-            <Plus className="w-3 h-3 mr-1" />
-            {KIND_LABEL[childKindForAdd]}
-          </Button>
-        )}
-        {canDeleteSelected && (
-          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-destructive shrink-0" onClick={handleDeleteSelected}>
-            <Trash2 className="w-3 h-3 mr-1" />
-            删除
-          </Button>
-        )}
       </div>
       <ScrollArea className="flex-1 p-1.5">
         {tree.length === 0 ? (
