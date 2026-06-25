@@ -355,7 +355,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                     <ResizablePanel defaultSize={25} minSize={15} maxSize={45}>
                       <BusinessChainTree />
                     </ResizablePanel>
-                    <ResizableHandle withHandle className="w-1.5 hover:w-2 transition-all after:w-2.5" />
+                    <ResizableHandle withHandle />
                     <ResizablePanel defaultSize={75} minSize={30}>
                       <BusinessChainDetail
                         onNavigateToElement={(elementId, dimension) => {

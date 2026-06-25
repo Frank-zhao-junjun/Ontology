@@ -46,14 +46,14 @@ function ResizableHandle({
     <Separator
       data-slot="resizable-handle"
       className={cn(
-        'bg-border focus-visible:ring-ring relative flex w-1.5 items-center justify-center after:absolute after:inset-y-0 after:left-1/2 after:w-2.5 after:-translate-x-1/2 hover:bg-primary/20 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-hidden data-[panel-group-direction=vertical]:h-1.5 data-[panel-group-direction=vertical]:w-full data-[panel-group-direction=vertical]:after:left-0 data-[panel-group-direction=vertical]:after:h-2.5 data-[panel-group-direction=vertical]:after:w-full data-[panel-group-direction=vertical]:after:translate-x-0 data-[panel-group-direction=vertical]:after:-translate-y-1/2 [&[data-panel-group-direction=vertical]>div]:rotate-90',
+        'bg-border focus-visible:ring-ring relative flex w-2 items-center justify-center hover:bg-primary/20 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-hidden data-[panel-group-direction=vertical]:h-2 data-[panel-group-direction=vertical]:w-full cursor-col-resize data-[panel-group-direction=vertical]:cursor-row-resize',
         className,
       )}
       {...props}
     >
       {withHandle && (
-        <div className="bg-border z-10 flex h-8 w-4 items-center justify-center rounded-xs border shadow-sm">
-          <GripVerticalIcon className="size-3" />
+        <div className="bg-border z-10 flex h-10 w-4 items-center justify-center rounded-xs border shadow-sm cursor-col-resize">
+          <GripVerticalIcon className="size-3.5" />
         </div>
       )}
     </Separator>
