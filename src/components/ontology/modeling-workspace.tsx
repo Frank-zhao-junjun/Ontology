@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { Pencil, Trash2, ChevronDown, MoreHorizontal, Network, Library, AlertTriangle, Gauge, ShieldCheck, Database, BookOpen, Download, Box, GitBranch, ScrollText, Bell, Package } from 'lucide-react';
+import { Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Network, Library, AlertTriangle, Gauge, ShieldCheck, Database, BookOpen, Download, Box, GitBranch, ScrollText, Bell, Package } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ManualGenerator } from './manual-generator';
 import { MetadataManager } from './metadata-manager';
@@ -75,6 +75,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   const [showExcelImportExport, setShowExcelImportExport] = useState(false);
   const [showPublishSnap, setShowPublishSnap] = useState(false);
   const [showPublishHistory, setShowPublishHistory] = useState(false);
+  const [treeCollapsed, setTreeCollapsed] = useState(false);
 
   const stats = {
     entities: project.dataModel?.entities.length || 0,
@@ -333,20 +334,51 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
           <div className="flex-1 flex overflow-hidden min-h-0">
             {/* Business Chain: tree + detail with resizable split */}
             {activeTab === 'businessChain' && (
-              <ResizablePanelGroup orientation="horizontal" className="flex-1">
-                <ResizablePanel defaultSize={28} minSize={18} maxSize={50}>
-                  <BusinessChainTree />
-                </ResizablePanel>
-                <ResizableHandle withHandle className="w-1.5 hover:w-2 transition-all after:w-2.5" />
-                <ResizablePanel defaultSize={72} minSize={30}>
-                  <BusinessChainDetail
-                    onNavigateToElement={(elementId, dimension) => {
-                      setElementLibraryFocus({ elementId, dimension });
-                      setActiveTab('elementLibrary');
-                    }}
-                  />
-                </ResizablePanel>
-              </ResizablePanelGroup>
+              <div className="flex flex-1 overflow-hidden">
+                {/* Collapse / Expand toggle */}
+                <button
+                  type="button"
+                  onClick={() => setTreeCollapsed((v) => !v)}
+                  className="w-5 shrink-0 flex flex-col items-center justify-start pt-2 border-r bg-muted/40 hover:bg-muted transition-colors group"
+                  title={treeCollapsed ? '展开业务链' : '收起业务链'}
+                >
+                  {treeCollapsed ? (
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
+                  ) : (
+                    <ChevronLeft className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
+                  )}
+                </button>
+
+                {/* Tree panel */}
+                {!treeCollapsed && (
+                  <ResizablePanelGroup orientation="horizontal" className="flex-1">
+                    <ResizablePanel defaultSize={25} minSize={15} maxSize={45}>
+                      <BusinessChainTree />
+                    </ResizablePanel>
+                    <ResizableHandle withHandle className="w-1.5 hover:w-2 transition-all after:w-2.5" />
+                    <ResizablePanel defaultSize={75} minSize={30}>
+                      <BusinessChainDetail
+                        onNavigateToElement={(elementId, dimension) => {
+                          setElementLibraryFocus({ elementId, dimension });
+                          setActiveTab('elementLibrary');
+                        }}
+                      />
+                    </ResizablePanel>
+                  </ResizablePanelGroup>
+                )}
+
+                {/* When collapsed, detail takes full width */}
+                {treeCollapsed && (
+                  <div className="flex-1 overflow-hidden">
+                    <BusinessChainDetail
+                      onNavigateToElement={(elementId, dimension) => {
+                        setElementLibraryFocus({ elementId, dimension });
+                        setActiveTab('elementLibrary');
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Element Library */}
