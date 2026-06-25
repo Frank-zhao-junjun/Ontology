@@ -351,20 +351,19 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
 
                 {/* Tree panel */}
                 {!treeCollapsed && (
-                  <ResizablePanelGroup orientation="horizontal" className="flex-1">
-                    <ResizablePanel defaultSize={25} minSize={15} maxSize={45}>
+                  <div className="flex-1 flex overflow-hidden">
+                    <div className="w-1/4 min-w-[240px] max-w-[480px] overflow-hidden border-r border-border">
                       <BusinessChainTree />
-                    </ResizablePanel>
-                    <ResizableHandle withHandle />
-                    <ResizablePanel defaultSize={75} minSize={30}>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
                       <BusinessChainDetail
                         onNavigateToElement={(elementId, dimension) => {
                           setElementLibraryFocus({ elementId, dimension });
                           setActiveTab('elementLibrary');
                         }}
                       />
-                    </ResizablePanel>
-                  </ResizablePanelGroup>
+                    </div>
+                  </div>
                 )}
 
                 {/* When collapsed, detail takes full width */}
