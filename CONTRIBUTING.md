@@ -1,4 +1,4 @@
-# 贡贡献指南 (Contributing Guide)
+# 贡献指南 (Contributing Guide)
 
 > 欢迎参与 Ontology 本体模型建模工具的开发！请遵循以下规范，确保代码质量和协作效率。
 
@@ -15,8 +15,9 @@ main (受保护)
 
 ### 规则
 
-1. **禁止直接推送到 `main`**：所有变更必须通过 PR 合并
-2. **分支命名**：
+1. **禁止直接推送到 `main`**：所有变更必须通过 PR 合并（含文档与配置）
+2. **仓库管理员同样遵守**：请在 GitHub → Settings → Branches → `main` 规则中开启 **Include administrators**，避免绕过 Review
+3. **分支命名**：
    - 功能开发：`feature/clear-model-data`
    - 缺陷修复：`fix/entity-delete-bug`
    - 文档更新：`docs/update-readme`
@@ -36,8 +37,32 @@ git add .
 git commit -m "feat: 简短描述"
 
 # 4. 推送并创建 PR
-git push origin feature/your-feature-name
-# 在 GitHub 上创建 Pull Request
+git push -u origin feature/your-feature-name
+
+# 5. 用 GitHub CLI 创建 PR（推荐）
+gh pr create --base main --title "feat: 简短描述" --body "$(cat <<'EOF'
+## Summary
+- 
+
+## Verification
+- [ ] `pnpm run ci:check` 全绿（本地或 CI Actions 日志）
+
+EOF
+)"
+```
+
+> **CI 门禁**：合并前需通过 GitHub Actions 工作流 **CI / ci:check**（与本地 `pnpm run ci:check` 相同）。首次启用 CI 后，在仓库 Settings → Branches 将 `ci-check` 设为 Required status check。
+
+### 日常流程速查
+
+```bash
+git checkout main && git pull origin main
+git checkout -b feature/my-change
+# … 开发 …
+pnpm run ci:check          # 推送前本地全绿
+git push -u origin feature/my-change
+gh pr create --base main
+# Review 通过后 Squash merge，再 git pull origin main
 ```
 
 ---
@@ -179,9 +204,11 @@ PR 模板中的每一项都必须勾选并提供证据：
 
 ### 6.4 合并
 
-- 使用 Squash and Merge 保持历史干净
+- 使用 **Squash and Merge** 保持历史干净
+- **禁止**向 `main` force-push（请在分支保护规则中关闭 Allow force pushes）
+- 合并前确认 **CI / ci:check** 已通过
 - 合并后删除远程分支
-- 本地同步：`git pull origin main && git branch -d feature/xxx`
+- 本地同步：`git checkout main && git pull origin main && git branch -d feature/xxx`
 
 ---
 
@@ -217,6 +244,9 @@ A: 先本地复现 `pnpm run ci:check`，修复后再推送。不要跳过 CI。
 ### Q: 小改动也需要 PR 吗？
 A: 是的。即使是 typo 修复也走 PR 流程，保持审计追踪。
 
+### Q: 为什么之前能直接 push 到 main？
+A: 当前 `main` 分支保护未对管理员生效（`Include administrators` 未开启），且尚未绑定 Required status check。请一律走 feature 分支 + PR；配置完善后 direct push 将被拒绝。
+
 ### Q: 如何处理紧急 hotfix？
 A: 从 main 创建 `fix/hotfix-xxx` 分支，走加急 PR，合并后立即打 tag。
 
@@ -228,6 +258,7 @@ A: 从 main 创建 `fix/hotfix-xxx` 分支，走加急 PR，合并后立即打 t
 - [迭代计划 v2.0](docs/iteration-plan-v2.md) - 产品路线图
 - [AGENTS.md](AGENTS.md) - 项目技术规范
 - [PR Template](.github/PULL_REQUEST_TEMPLATE.md) - PR 提交模板
+- [CI Workflow](.github/workflows/ci.yml) - GitHub Actions（PR 门禁）
 
 ---
 

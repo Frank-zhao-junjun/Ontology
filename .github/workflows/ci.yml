@@ -1,0 +1,54 @@
+# Ontology 建模工具 — CI（PR / main）
+# 与本地 pnpm run ci:check 一致
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci-check:
+    name: ci:check
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        # version from package.json "packageManager": "pnpm@9.0.0"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # pnpm-lock.yaml is gitignored in this repo; install without frozen lockfile
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: lint
+        run: pnpm run lint
+
+      - name: ts-check
+        run: pnpm run ts-check
+
+      - name: test:unit
+        run: pnpm run test:unit
+
+      - name: test:integration
+        run: pnpm run test:integration
+
+      - name: test:e2e:smoke
+        run: pnpm run test:e2e:smoke
