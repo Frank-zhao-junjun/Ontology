@@ -17,7 +17,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: ['src/lib/**', 'src/store/**', 'src/app/api/**'],
+      include: ['src/lib/**', 'src/store/**', 'src/components/**', 'src/hooks/**', 'src/app/api/**'],
       exclude: ['src/test/**', 'src/types/**', 'tests/**'],
     },
     testTimeout: 10000,
