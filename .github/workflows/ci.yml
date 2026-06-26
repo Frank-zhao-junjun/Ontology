@@ -33,10 +33,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
 
+      # pnpm-lock.yaml is gitignored in this repo; install without frozen lockfile
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: lint
         run: pnpm run lint
