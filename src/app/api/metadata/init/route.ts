@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { METADATA_LIST } from '@/lib/metadata-local';
-
-const generateId = () => Math.random().toString(36).substring(2, 10);
+import { generateId } from '@/lib/id';
 
 export async function GET() {
   try {

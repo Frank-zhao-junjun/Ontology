@@ -14,13 +14,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { isEntityAggregateRoot } from '@/lib/entity-role';
 import type { EventDefinition, Subscription } from '@/types/ontology';
 import { toast } from 'sonner';
+import { generateId } from '@/lib/id';
 
 interface EventModelEditorProps {
   mode?: 'full' | 'entity-detail';
   entityId?: string;
 }
 
-const generateId = () => Math.random().toString(36).substring(2, 10);
 
 const EVENT_TRIGGERS: { value: EventDefinition['trigger']; label: string }[] = [
   { value: 'create', label: '创建时' },

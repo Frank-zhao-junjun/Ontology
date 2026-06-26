@@ -12,8 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import type { BusinessMetric } from '@/types/ontology';
+import { generateId } from '@/lib/id';
 
-const generateId = () => Math.random().toString(36).substring(2, 10);
 
 const MEASUREMENT_TYPES: { value: BusinessMetric['measurementType']; label: string }[] = [
   { value: 'automatic', label: '自动' },

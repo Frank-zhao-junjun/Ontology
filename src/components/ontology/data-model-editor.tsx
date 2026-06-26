@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { getAggregateRootEntities, normalizeEntityRoleFields, resolveEntityRole } from '@/lib/entity-role';
 import { toast } from 'sonner';
 import type { Entity, Attribute, Relation, ComputedProperty, SourceMapping, EventDefinition } from '@/types/ontology';
+import { generateId } from '@/lib/id';
 
 interface IndexDraft {
   fields: string;
@@ -51,7 +52,6 @@ const RELATION_TYPES = [
   { value: 'many_to_many', label: '多对多 (N:M)' },
 ];
 
-const generateId = () => Math.random().toString(36).substring(2, 10);
 
 function parseMasterDataFields(fieldNames?: string): string[] {
   if (!fieldNames) {

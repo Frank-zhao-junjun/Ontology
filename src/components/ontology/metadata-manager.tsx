@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Metadata } from '@/types/ontology';
+import { generateId } from '@/lib/id';
 
 const ATTRIBUTE_TYPES = [
   { value: 'string', label: '字符串 (String)' },
@@ -26,7 +27,6 @@ const ATTRIBUTE_TYPES = [
   { value: 'reference', label: '引用 (Reference)' },
 ];
 
-const generateId = () => Math.random().toString(36).substring(2, 10);
 
 export function MetadataManager() {
   const { metadataList, setMetadataList, addMetadata, updateMetadata, deleteMetadata } = useOntologyStore();

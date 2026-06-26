@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FetchClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
+import { generateId } from '@/lib/id';
 
 // 主数据文件 URL 可通过环境变量覆盖，默认仍回落到示例数据。
 const MASTERDATA_EXCEL_URL = process.env.MASTERDATA_EXCEL_URL || '';
-
-const generateId = () => Math.random().toString(36).substring(2, 10);
 
 // 示例主数据（当没有Excel文件时使用）
 const SAMPLE_MASTERDATA = [

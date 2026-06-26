@@ -14,13 +14,13 @@ import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Rule, RuleType, RuleCondition } from '@/types/ontology';
+import { generateId } from '@/lib/id';
 
 interface RuleModelEditorProps {
   mode?: 'full' | 'entity-detail';
   entityId?: string;
 }
 
-const generateId = () => Math.random().toString(36).substring(2, 10);
 
 const RULE_TYPES: { value: RuleType; label: string; description: string }[] = [
   { value: 'field_validation', label: '字段级校验', description: '单字段格式或范围校验' },

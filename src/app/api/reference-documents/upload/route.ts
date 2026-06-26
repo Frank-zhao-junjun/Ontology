@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { generateId } from '@/lib/id';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES: Record<string, string> = {
@@ -9,10 +10,6 @@ const ALLOWED_TYPES: Record<string, string> = {
   'text/markdown': 'md',
   'text/csv': 'csv',
 };
-
-function generateId() {
-  return 'ref-' + Math.random().toString(36).substring(2, 15);
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -103,4 +100,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: `上传失败: ${message}` }, { status: 500 });
   }
 }
-

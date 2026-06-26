@@ -123,6 +123,7 @@ import {
   mergeAiDraftSuggestion,
   type ModuleDraftSuggestion,
 } from '@/lib/ai-draft';
+import { generateId } from '@/lib/id';
 
 export type BusinessChainNodeRef = { kind: BusinessChainNodeKind; id: string };
 
@@ -410,7 +411,6 @@ interface OntologyState {
   generateCodePackage: (versionId: string, config: PublishConfig) => Promise<string>;
 }
 
-const generateId = () => Math.random().toString(36).substring(2, 15);
 
 function buildRuleCondition(conditionType: string, conditionValue?: string) {
   const condition: Rule['condition'] = { type: 'expression' };

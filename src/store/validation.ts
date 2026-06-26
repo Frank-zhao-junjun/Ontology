@@ -3,8 +3,7 @@ import type {
 } from '@/types/ontology';
 import { resolveEntityRole } from '@/lib/entity-role';
 import { normalizeEntity } from '@/lib/ontology-normalizer';
-
-export const generateId = () => Math.random().toString(36).substring(2, 15);
+import { generateId } from '@/lib/id';
 
 export function ensureEntityScenario(entity: Entity, stateProject: OntologyProject | null): Entity {
   const scenarios = stateProject?.dataModel?.businessScenarios || [];

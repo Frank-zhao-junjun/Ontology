@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import type { Entity } from '@/types/ontology';
 import { toast } from 'sonner';
+import { generateId } from '@/lib/id';
 
 type E1ModelTab = 'data' | 'behavior' | 'rule' | 'event';
 
@@ -38,7 +39,6 @@ const ENTITY_ROLE_OPTIONS = [
   { value: 'child_entity', label: '聚合内子实体' },
 ] as const;
 
-const generateId = () => Math.random().toString(36).substring(2, 10);
 
 export function E1EntityPanel() {
   const project = useOntologyStore((s) => s.project);

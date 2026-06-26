@@ -21,8 +21,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { EpcProcess, MetaDimension, ModuleVersionRecord, Scenario } from '@/types/ontology';
+import { generateId } from '@/lib/id';
 
-const generateId = () => Math.random().toString(36).substring(2, 15);
 
 export interface BusinessChainDetailProps {
   onNavigateToElement?: (elementId: string, dimension: MetaDimension) => void;

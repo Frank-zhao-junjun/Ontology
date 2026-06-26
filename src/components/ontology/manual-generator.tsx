@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import type { Entity, Attribute, Relation, StateMachine, State, Transition, Action, Rule, EventDefinition, Subscription, Department, Position, PositionResponsibility, BusinessMetric, TransactionBoundary, DataSourceDefinition } from '@/types/ontology';
+import { generateId } from '@/lib/id';
 
 interface RelatedModels {
   entity?: Entity;
@@ -57,7 +58,6 @@ interface AISuggestions {
   };
 }
 
-const generateId = () => Math.random().toString(36).substring(2, 10);
 
 export function ManualGenerator({ onBack, selectedEntityId, relatedModels }: ManualGeneratorProps) {
   const { project, addEntity, updateEntity, addStateMachine, addAction, addRule, addEventDefinition, addSubscription, addDepartment, addPosition, addMetric, addDataSource, metadataList, masterDataList } = useOntologyStore();

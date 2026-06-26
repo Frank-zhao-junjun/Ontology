@@ -14,13 +14,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { StateMachine, State, Transition, Action, FunctionDefinition, TransactionBoundary, BehaviorIndicator, BehaviorConstraint, IndicatorType } from '@/types/ontology';
 import { SideEffectSection } from './side-effect-section';
 import { toast } from 'sonner';
+import { generateId } from '@/lib/id';
 
 interface BehaviorModelEditorProps {
   mode?: 'full' | 'entity-detail';
   entityId?: string;
 }
 
-const generateId = () => Math.random().toString(36).substring(2, 10);
 
 const STATE_COLORS = [
   { value: '#3B82F6', label: '蓝色' },

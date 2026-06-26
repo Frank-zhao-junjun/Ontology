@@ -5,10 +5,7 @@ import type {
   Department,
   Position,
 } from '@/types/ontology';
-
-function generateId() {
-  return Math.random().toString(36).substring(2, 15);
-}
+import { generateId } from '@/lib/id';
 
 export async function POST(request: NextRequest) {
   try {

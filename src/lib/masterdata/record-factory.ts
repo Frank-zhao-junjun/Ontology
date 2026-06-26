@@ -1,7 +1,6 @@
 import type { MasterDataField, MasterDataRecord } from '@/types/ontology';
 import { buildRecordValues } from './field-parser';
-
-const generateId = () => Math.random().toString(36).substring(2, 10);
+import { generateId } from '@/lib/id';
 
 export function createEmptyMasterDataRecord(
   definitionId: string,

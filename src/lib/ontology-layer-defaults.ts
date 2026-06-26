@@ -1,6 +1,5 @@
 import type { DataSourcesModel, GovernanceModel } from '@/types/ontology';
-
-const generateId = () => Math.random().toString(36).substring(2, 15);
+import { generateId } from '@/lib/id';
 
 export function createEmptyGovernanceModel(): GovernanceModel {
   const now = new Date().toISOString();

@@ -15,6 +15,7 @@ import { ArrowLeft, Plus, Pencil, Trash2, Search, Table2 } from 'lucide-react';
 import type { MasterData, MasterDataRecord } from '@/types/ontology';
 import { parseFieldNames, tryParseFieldNames } from '@/lib/masterdata/field-parser';
 import { createEmptyMasterDataRecord, normalizeMasterDataRecord } from '@/lib/masterdata/record-factory';
+import { generateId } from '@/lib/id';
 
 // 业务领域分类
 const DOMAIN_OPTIONS = [
@@ -50,7 +51,6 @@ const MASTERDATA_FIELD_TEMPLATES = [
   },
 ];
 
-const generateId = () => Math.random().toString(36).substring(2, 10);
 
 interface MasterDataManagerProps {
   onBack?: () => void;

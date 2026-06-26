@@ -11,6 +11,7 @@ import type {
   EpcValidationSummary,
   OntologyProject,
 } from '@/types/ontology';
+import { generatePrefixedId } from '@/lib/id';
 
 interface FlowEventNode {
   id: string;
@@ -64,10 +65,6 @@ interface SelfCheckRow {
   item: string;
   status: string;
   note: string;
-}
-
-function generateId(prefix: string): string {
-  return `${prefix}-${Math.random().toString(36).substring(2, 10)}`;
 }
 
 function getNow(): string {
@@ -806,7 +803,7 @@ function deriveValidationSummary(project: OntologyProject, profile: EpcAggregate
 
 export function createEmptyEpcModel(): EpcModel {
   return {
-    id: generateId('epc'),
+    id: generatePrefixedId('epc'),
     name: 'EPC业务活动规格说明书',
     version: '1.0.0',
     profiles: [],
