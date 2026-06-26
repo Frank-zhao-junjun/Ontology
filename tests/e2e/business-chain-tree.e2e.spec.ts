@@ -115,7 +115,7 @@ describe('E2E-BUSINESS-CHAIN-001: 业务链树导航 @smoke', () => {
     render(React.createElement(ModelingWorkspace, { project: createProject() }));
 
     fireEvent.click(screen.getByRole('tab', { name: /业务链/i }));
-    fireEvent.click(screen.getByRole('button', { name: /新建价值域/i }));
+    fireEvent.click(screen.getByRole('button', { name: /A-价值域/i }));
 
     fireEvent.change(screen.getByLabelText(/名称/i), { target: { value: '生产域' } });
     fireEvent.click(screen.getByRole('button', { name: /^创建$/i }));
@@ -134,13 +134,13 @@ describe('E2E-BUSINESS-CHAIN-001: 业务链树导航 @smoke', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: /业务链/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: /新建价值域/i }));
+    fireEvent.click(screen.getByRole('button', { name: /A-价值域/i }));
     fireEvent.change(screen.getByLabelText(/名称/i), { target: { value: '生产域' } });
     fireEvent.click(screen.getByRole('button', { name: /^创建$/i }));
 
     const aId = useOntologyStore.getState().project?.valueDomains?.[0]?.id as string;
 
-    fireEvent.click(screen.getByRole('button', { name: /新建能力/i }));
+    fireEvent.click(screen.getByRole('button', { name: /B-能力/i }));
     const createDialog = screen.getByRole('dialog');
     fireEvent.change(within(createDialog).getByLabelText(/名称/), { target: { value: '计划能力' } });
     fireEvent.click(within(createDialog).getByRole('button', { name: /^创建$/i }));
@@ -158,17 +158,17 @@ describe('E2E-BUSINESS-CHAIN-001: 业务链树导航 @smoke', () => {
     });
   });
 
-  it('should hide delete when value domain has child capability', async () => {
+  it('should disable delete when value domain has child capability', async () => {
     render(React.createElement(ModelingWorkspace, { project: createProject() }));
 
     fireEvent.click(screen.getByRole('tab', { name: /业务链/i }));
-    fireEvent.click(screen.getByRole('button', { name: /新建价值域/i }));
+    fireEvent.click(screen.getByRole('button', { name: /A-价值域/i }));
     fireEvent.change(screen.getByLabelText(/名称/i), { target: { value: '生产域' } });
     fireEvent.click(screen.getByRole('button', { name: /^创建$/i }));
 
     const aId = useOntologyStore.getState().project?.valueDomains?.[0]?.id as string;
 
-    fireEvent.click(screen.getByRole('button', { name: /新建能力/i }));
+    fireEvent.click(screen.getByRole('button', { name: /B-能力/i }));
     const createDialog = screen.getByRole('dialog');
     fireEvent.change(within(createDialog).getByLabelText(/名称/), { target: { value: '计划能力' } });
     fireEvent.click(within(createDialog).getByRole('button', { name: /^创建$/i }));
@@ -176,7 +176,7 @@ describe('E2E-BUSINESS-CHAIN-001: 业务链树导航 @smoke', () => {
     fireEvent.click(screen.getByTestId(`business-chain-node-A-${aId}`));
 
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /删除/i })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /删除/i })).toBeDisabled();
     });
   });
 });

@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { OntologyProject } from '@/types/ontology';
 import { hasSupabaseConfig, getSupabaseClient } from '@/storage/database/supabase-client';
 
+interface OntologyProjectRow {
+  id: string;
+  name: string;
+  description: string | null;
+  project_data: OntologyProject;
+  created_at: string;
+  updated_at: string;
+}
+
 // GET /api/projects - 获取所有项目列表
 export async function GET() {
   try {
@@ -22,6 +31,8 @@ export async function GET() {
       });
     }
     
+    // Supabase schema types not code-generated; use untyped client for ontology_projects table.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (client as any)
       .from('ontology_projects')
       .select('*')
@@ -33,7 +44,7 @@ export async function GET() {
     
     return NextResponse.json({ 
       success: true, 
-      data: data || [] 
+      data: (data as OntologyProjectRow[] | null) || [] 
     });
   } catch (error) {
     console.error('获取项目列表失败:', error);
@@ -74,6 +85,7 @@ export async function POST(request: NextRequest) {
       });
     }
     
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (client as any)
       .from('ontology_projects')
       .insert({
@@ -93,7 +105,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ 
       success: true, 
-      data: data 
+      data: data as OntologyProjectRow 
     });
   } catch (error) {
     console.error('创建项目失败:', error);

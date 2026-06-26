@@ -52,10 +52,16 @@ function makeValueDomain(id: string, name: string): ValueDomain {
   return { id, name };
 }
 
+type MetaElementTestOverrides = Partial<MetaElement> & {
+  type?: 'department' | 'position';
+  parentId?: string;
+  roleIds?: string[];
+};
+
 function makeMeta(
   id: string,
   dimension: MetaElement['dimension'],
-  overrides: Partial<MetaElement> = {},
+  overrides: MetaElementTestOverrides = {},
 ): MetaElement {
   return {
     id,
@@ -602,8 +608,8 @@ describe('epc-cross-consistency (US-S17-U02)', () => {
       const input = baseInput({
         epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '部门', 'E5', 'dept-1')])],
         metaElements: [
-          makeMeta('dept-1', 'E5', { name: '采购部', type: 'department' } as any),
-          makeMeta('pos-1', 'E5', { name: '采购专员', parentId: 'dept-1', roleIds: ['role-missing'] } as any),
+          makeMeta('dept-1', 'E5', { name: '采购部', type: 'department' }),
+          makeMeta('pos-1', 'E5', { name: '采购专员', parentId: 'dept-1', roleIds: ['role-missing'] }),
         ],
         governanceModel: {
           id: 'gm-1', roles: [{ id: 'role-1', name: '审核员', permissions: [] }],
@@ -619,8 +625,8 @@ describe('epc-cross-consistency (US-S17-U02)', () => {
       const input = baseInput({
         epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '部门', 'E5', 'dept-1')])],
         metaElements: [
-          makeMeta('dept-1', 'E5', { name: '采购部', type: 'department' } as any),
-          makeMeta('pos-1', 'E5', { name: '采购专员', parentId: 'dept-1', roleIds: ['role-1'] } as any),
+          makeMeta('dept-1', 'E5', { name: '采购部', type: 'department' }),
+          makeMeta('pos-1', 'E5', { name: '采购专员', parentId: 'dept-1', roleIds: ['role-1'] }),
         ],
         governanceModel: {
           id: 'gm-1', roles: [{ id: 'role-1', name: '审核员', permissions: [] }],
@@ -636,7 +642,7 @@ describe('epc-cross-consistency (US-S17-U02)', () => {
       const input = baseInput({
         epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '岗位', 'E5', 'pos-1')])],
         metaElements: [
-          makeMeta('pos-1', 'E5', { name: '采购专员', type: 'position', roleIds: ['role-1'] } as any),
+          makeMeta('pos-1', 'E5', { name: '采购专员', type: 'position', roleIds: ['role-1'] }),
           makeMeta('role-1', 'E5', { name: '审核员' }), // no confirmedVersion
         ],
       });
@@ -649,7 +655,7 @@ describe('epc-cross-consistency (US-S17-U02)', () => {
       const input = baseInput({
         epcProcesses: [makeEpc(EPC_ID, SCENARIO_ID, [step('s1', '岗位', 'E5', 'pos-1')])],
         metaElements: [
-          makeMeta('pos-1', 'E5', { name: '采购专员', type: 'position', roleIds: ['role-1'] } as any),
+          makeMeta('pos-1', 'E5', { name: '采购专员', type: 'position', roleIds: ['role-1'] }),
           makeMeta('role-1', 'E5', { name: '审核员', confirmedVersion: 'v1' }),
         ],
       });

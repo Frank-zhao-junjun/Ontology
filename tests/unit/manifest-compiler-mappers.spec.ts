@@ -1,4 +1,5 @@
-﻿import { describe, expect, it } from "vitest";
+﻿/* eslint-disable @typescript-eslint/no-explicit-any -- partial Entity/Relation fixtures in mapper tests */
+import { describe, expect, it } from "vitest";
 import type { OntologyProject } from "@/types/ontology";
 
 // ============================================================

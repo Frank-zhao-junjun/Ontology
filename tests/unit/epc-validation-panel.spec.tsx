@@ -145,8 +145,8 @@ describe("EpcValidationPanel — TC-04 VX Tab切换", () => {
     expect(screen.getByTestId("vp-panel-vx")).toBeInTheDocument();
     expect(screen.getByTestId("vp-vx-filters")).toBeInTheDocument();
     expect(screen.getByTestId("vp-vx-list")).toBeInTheDocument();
-    // Each severity group has idx=0
-    expect(screen.getAllByTestId("vp-vx-0").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByTestId("vp-vx-0")).toBeInTheDocument();
+    expect(screen.getByTestId("vp-vx-1")).toBeInTheDocument();
   });
 });
 
@@ -218,10 +218,10 @@ describe("EpcValidationPanel — TC-07 VX严重度着色", () => {
     expect(within(errorGroup).getByTestId("vp-vx-0")).toHaveAttribute("data-severity", "error");
 
     const warningGroup = screen.getByTestId("vp-vx-group-warning");
-    expect(within(warningGroup).getByTestId("vp-vx-0")).toHaveAttribute("data-severity", "warning");
+    expect(within(warningGroup).getByTestId("vp-vx-1")).toHaveAttribute("data-severity", "warning");
 
     const infoGroup = screen.getByTestId("vp-vx-group-info");
-    expect(within(infoGroup).getByTestId("vp-vx-0")).toHaveAttribute("data-severity", "info");
+    expect(within(infoGroup).getByTestId("vp-vx-2")).toHaveAttribute("data-severity", "info");
   });
 });
 

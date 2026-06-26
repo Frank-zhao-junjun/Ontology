@@ -189,15 +189,25 @@ export function AgentSkillsManager() {
   }, []);
 
   useEffect(() => {
-    loadSuperpowers();
+    queueMicrotask(() => {
+      void loadSuperpowers();
+    });
   }, [loadSuperpowers]);
 
   useEffect(() => {
-    if (activeTab === 'gstack' && workflows.length === 0) loadGstack();
+    if (activeTab === 'gstack' && workflows.length === 0) {
+      queueMicrotask(() => {
+        void loadGstack();
+      });
+    }
   }, [activeTab, workflows.length, loadGstack]);
 
   useEffect(() => {
-    if (activeTab === 'ralph' && !ralphState) loadRalph();
+    if (activeTab === 'ralph' && !ralphState) {
+      queueMicrotask(() => {
+        void loadRalph();
+      });
+    }
   }, [activeTab, ralphState, loadRalph]);
 
   const handleToggleSkill = async (skillId: string, enabled: boolean) => {

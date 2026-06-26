@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { OntologyProject } from '@/types/ontology';
 import { hasSupabaseConfig, getSupabaseClient } from '@/storage/database/supabase-client';
 
+interface OntologyProjectRow {
+  id: string;
+  name: string;
+  description: string | null;
+  project_data: OntologyProject;
+  created_at: string;
+  updated_at: string;
+}
+
 // GET /api/projects/[id] - 获取单个项目详情
 export async function GET(
   request: NextRequest,
@@ -35,8 +44,9 @@ export async function GET(
       });
     }
     
-    const { data, error } = await client
-      .from('ontology_projects' as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (client as any)
+      .from('ontology_projects')
       .select('*')
       .eq('id', id)
       .single();
@@ -45,9 +55,10 @@ export async function GET(
       throw new Error(`获取项目详情失败: ${error.message}`);
     }
     
+    const row = data as OntologyProjectRow | null;
     return NextResponse.json({ 
       success: true, 
-      data: data ? (data as any).project_data : null 
+      data: row ? row.project_data : null 
     });
   } catch (error) {
     console.error('获取项目详情失败:', error);
@@ -93,6 +104,7 @@ export async function PUT(
       });
     }
     
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (client as any)
       .from('ontology_projects')
       .update({
@@ -111,7 +123,7 @@ export async function PUT(
     
     return NextResponse.json({ 
       success: true, 
-      data: data 
+      data: data as OntologyProjectRow 
     });
   } catch (error) {
     console.error('更新项目失败:', error);
@@ -155,8 +167,9 @@ export async function DELETE(
       });
     }
     
-    const { error } = await client
-      .from('ontology_projects' as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (client as any)
+      .from('ontology_projects')
       .delete()
       .eq('id', id);
     

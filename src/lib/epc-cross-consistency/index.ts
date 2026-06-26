@@ -24,6 +24,17 @@ import type {
 export { VX_RULES } from "./types";
 export type { CrossConsistencyIssue, ValidateCrossConsistencyInput, VxRuleId } from "./types";
 
+/** E5 组织要素在 MetaElement 上的扩展字段（部门/岗位） */
+type E5OrganizationMeta = MetaElement & {
+  type?: "department" | "position";
+  parentId?: string;
+  roleIds?: string[];
+};
+
+function asE5OrganizationMeta(meta: MetaElement): E5OrganizationMeta {
+  return meta as E5OrganizationMeta;
+}
+
 function issue(
   code: VxRuleId,
   severity: "error" | "warning" | "info",
@@ -614,17 +625,18 @@ export function validateCrossConsistency(
     // Build department → children positions map
     const deptChildren = new Map<string, { name: string; roleIds: string[] }[]>();
     for (const el of metaElements ?? []) {
-      const pId = (el as any).parentId;
+      const orgMeta = asE5OrganizationMeta(el);
+      const pId = orgMeta.parentId;
       if (!pId) continue;
       const children = deptChildren.get(pId) ?? [];
-      children.push({ name: el.name, roleIds: (el as any).roleIds ?? [] });
+      children.push({ name: el.name, roleIds: orgMeta.roleIds ?? [] });
       deptChildren.set(pId, children);
     }
     for (const { epc, step } of epcSteps) {
       if (step.elementRef!.dimension !== "E5") continue;
       const eid = step.elementRef!.elementId;
       const meta = metaById.get(eid);
-      if (!meta || (meta as any).type !== "department") continue;
+      if (!meta || asE5OrganizationMeta(meta).type !== "department") continue;
       const childPositions = deptChildren.get(eid) ?? [];
       const missingRoleIds = new Set<string>();
       for (const pos of childPositions) {
@@ -663,12 +675,12 @@ export function validateCrossConsistency(
       const eid = step.elementRef!.elementId;
       const meta = metaById.get(eid);
       if (!meta) continue;
-      const metaType = (meta as any).type;
-      if (metaType !== "position") continue;
-      const roleIds: string[] = (meta as any).roleIds ?? [];
+      const orgMeta = asE5OrganizationMeta(meta);
+      if (orgMeta.type !== "position") continue;
+      const roleIds: string[] = orgMeta.roleIds ?? [];
       for (const roleId of roleIds) {
         const roleMeta = metaById.get(roleId);
-        if (!roleMeta || !(roleMeta as any).confirmedVersion) {
+        if (!roleMeta || !roleMeta.confirmedVersion) {
           issues.push(
             issue(
               "VX-08",
@@ -759,7 +771,7 @@ export function validateCrossConsistency(
     if (!step.elementRef) continue;
     const eid = step.elementRef.elementId;
     const meta = metaById.get(eid);
-    if (meta && !(meta as any).confirmedVersion) {
+    if (meta && !meta.confirmedVersion) {
       issues.push(
         issue(
           "VX-18",

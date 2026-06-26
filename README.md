@@ -111,12 +111,24 @@ EPC 通过 **A→B→C→EPC 业务树** 将八维要素（E1–E8）串联为�
 
 | 层 | 用例数 | 目录 |
 |---|:---:|------|
-| Unit 测试 | 405 | `tests/unit/` (82 文件) |
-| Integration 测试 | 100 | `tests/integration/` (~30 文件) |
-| E2E smoke | 10+ | `tests/e2e/` (10 文件) |
-| **合计** | **851** | |
+| Unit 测试 | 760 | `tests/unit/`（102 文件）+ `src/lib/**` / API route inline |
+| Integration 测试 | 259 | `tests/integration/`（63 文件） |
+| E2E | 30（24 @smoke） | `tests/e2e/`（15 文件） |
+| **合计** | **~1049** | |
 
-`pnpm run ci:check` 全绿：lint 0 error · ts-check pass · unit 405 · integration 100 · e2e smoke pass
+`pnpm run ci:check` 全绿（2026-06-26）：lint **0 error**（107 warnings）· ts-check pass · unit **760** · integration **259** · e2e smoke **24**
+
+## 与项目2（Ontology Platform）对接
+
+| 项目 | 路径 | 角色 |
+|------|------|------|
+| **项目1**（本仓库） | `D:\AI\Ontology` | Next.js 建模工作台，产出 `OntologyProject` / Manifest |
+| **项目2** | `../ontology-platform` | Spring Boot 治理平台 + MCP，持久化 / 发布 / Agent 编排 |
+
+- **导出**：`compileSimplifiedChain` → Manifest v2，供项目2 `POST /api/v1/ontologies/import` 消费
+- **共享文档权威源**：[`../ontology-platform/docs/shared/`](../ontology-platform/docs/shared/)（本仓库 `docs/shared/` 为跳转说明）
+- **差距分析**：[`../ontology-platform/docs/shared/项目1-项目2对接差距分析.md`](../ontology-platform/docs/shared/项目1-项目2对接差距分析.md)
+- **跨项目 E2E**：项目2 `Project1ToProject2E2ETest`（6 场景）已覆盖导入 / 发布 / 导出链路
 
 ## 技术栈
 
@@ -315,3 +327,19 @@ POST   /api/hr-sync/resolve-conflict
 - `docs/progress.md` — 工作日志
 - `CONTRIBUTING.md` — 贡献规范
 - `docs/agentic-engineering-checklist.md` — AI 工程检查清单
+- [`../ontology-platform/docs/shared/`](../ontology-platform/docs/shared/) — 与项目2 共享 PRD / API 契约 / Manifest 规范
+
+## 知识图谱（Graphify）
+
+项目代码已通过 [graphify](https://github.com/safishamsi/graphify) 构建知识图谱，帮助 AI Agent 快速理解项目结构：
+
+| 指标 | 值（全项目） | 值（源码） |
+|------|:----------:|:---------:|
+| 节点数 | **4,939** | 1,634 |
+| 关系边数 | **9,467** | 4,583 |
+| 社区数 | **624** | 86 |
+| 图谱路径 | `graphify-out/` | `src/graphify-out/` |
+| 报告 | `graphify-out/GRAPH_REPORT.md` | `src/graphify-out/GRAPH_REPORT.md` |
+| Codex Hook | ✅ `AGENTS.md` + `.codex/hooks.json` |
+
+进入项目目录后，Codex 等 AI Agent 会自动加载图谱代替全文搜索。使用 `graphify update src/` 可在代码变更后快速更新图谱（仅 AST，无 API 费用）。

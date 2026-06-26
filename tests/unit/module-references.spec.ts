@@ -1,35 +1,75 @@
 ﻿import { describe, expect, it } from "vitest";
-import type { OntologyProject } from "@/types/ontology";
+import type { Domain, ElementUsageRef, OntologyProject } from "@/types/ontology";
 import { listIncomingModuleReferences, listOutgoingModuleReferences } from "@/lib/module-version/module-references";
 
+const domain: Domain = {
+  id: "d1",
+  name: "离散制造",
+  nameEn: "Mfg",
+  description: "",
+  icon: "factory",
+  color: "#000",
+};
+
+const usageRef = (epcId: string, stepId: string): ElementUsageRef => ({
+  epcId,
+  stepId,
+  scenarioId: "c1",
+  versionPin: "latest_confirmed",
+});
+
+const baseProject: OntologyProject = {
+  id: "p1",
+  name: "refs-test",
+  domain,
+  dataModel: null,
+  behaviorModel: null,
+  ruleModel: null,
+  processModel: null,
+  eventModel: null,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  valueDomains: [
+    { id: "a1", name: "生产域" },
+  ],
+  capabilities: [
+    { id: "b1", name: "计划能力", parentId: "a1" },
+    { id: "b2", name: "执行能力", parentId: "a1" },
+    { id: "b3", name: "无父能力", parentId: "" },
+  ],
+  scenarios: [
+    { id: "c1", name: "排产场景", parentId: "b1" },
+    { id: "c2", name: "报工场景", parentId: "b2" },
+  ],
+  epcProcesses: [
+    {
+      id: "epc1",
+      name: "排产流程",
+      parentId: "c1",
+      steps: [
+        {
+          id: "s1",
+          name: "步骤1",
+          elementRef: { elementId: "el1", dimension: "E1", versionPin: "latest_confirmed" },
+        },
+        {
+          id: "s2",
+          name: "步骤2",
+          elementRef: { elementId: "el2", dimension: "E2", versionPin: "latest_confirmed" },
+        },
+      ],
+    },
+    { id: "epc2", name: "报工流程", parentId: "c2", steps: [] },
+  ],
+  metaElements: [
+    { id: "el1", name: "订单", dimension: "E1", usageRefs: [usageRef("epc1", "s1")] },
+    { id: "el2", name: "物料", dimension: "E2", usageRefs: [usageRef("epc1", "s2")] },
+    { id: "el3", name: "未引用要素", dimension: "E3", usageRefs: [] },
+  ],
+};
+
 function project(overrides: Partial<OntologyProject> = {}): OntologyProject {
-  return {
-    valueDomains: [
-      { id: "a1", name: "生产域", parentId: undefined },
-    ],
-    capabilities: [
-      { id: "b1", name: "计划能力", parentId: "a1" },
-      { id: "b2", name: "执行能力", parentId: "a1" },
-      { id: "b3", name: "无父能力", parentId: undefined },
-    ],
-    scenarios: [
-      { id: "c1", name: "排产场景", parentId: "b1" },
-      { id: "c2", name: "报工场景", parentId: "b2" },
-    ],
-    epcProcesses: [
-      { id: "epc1", name: "排产流程", parentId: "c1", steps: [
-        { elementRef: { elementId: "el1", dimension: "E1" } },
-        { elementRef: { elementId: "el2", dimension: "E2" } },
-      ] },
-      { id: "epc2", name: "报工流程", parentId: "c2", steps: [] },
-    ],
-    metaElements: [
-      { id: "el1", name: "订单", dimension: "E1", usageRefs: [{ epcId: "epc1" }] },
-      { id: "el2", name: "物料", dimension: "E2", usageRefs: [{ epcId: "epc1" }] },
-      { id: "el3", name: "未引用要素", dimension: "E3", usageRefs: [] },
-    ],
-    ...overrides,
-  } as any;
+  return { ...baseProject, ...overrides };
 }
 
 describe("module-references", () => {

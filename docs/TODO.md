@@ -1,7 +1,8 @@
 ﻿# Ontology 项目待办清单
 
-> 最后更新: 2026-06-26 (审计修正 · Markdown 导出 · HR 同步 · Agent skills 管理器)
+> 最后更新: 2026-06-26 (ci:check 全绿 · Q-T3 API/Store 测试扩充 · 跨项目文档同步)
 > 简化重构详情: [docs/ontology-simplification/](./ontology-simplification/)
+> 项目2 待办: [`../../ontology-platform/TODO.md`](../../ontology-platform/TODO.md)
 
 ---
 
@@ -28,7 +29,7 @@
 | 4 | US-S12 | 遗留代码删除（legacy-audit + migration） | ✅ |
 | 4 | US-S13 | compiler 迁移 + golden（compileSimplifiedChain） | ✅ |
 
-**验证**：`ci:check` 全绿 · lint 0 error · ts-check pass · unit 405 · integration 100 · e2e smoke pass
+**验证**：`ci:check` 全绿 · lint 0 error · ts-check pass · unit **760** · integration **259** · e2e smoke **24**
 
 ---
 
@@ -158,12 +159,28 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
 - [x] **Q-T2b**: US-S16 覆盖率全层测试（unit 10 + store 4 + integration 1 + e2e 1 = **16**）
 - [x] **Q-T2c**: US-S17 交叉一致性测试（`epc-cross-consistency.spec.ts` **28/28**）
 - [x] **Q-T2d**: US-S18 推导 + Badge 测试（**29/29**）
-|- [x] **Q-T3a**: 覆盖率配置修复 — 加入 components/hooks/API routes（2026-06-26）
-|- [ ] **Q-T3b**: 覆盖率从 ~15-20% → 80%（持续进行，当前基线 15-20%）
-  - 新增测试 7 cases（HR sync 4 + Agent skills 3）
-  - 测试总量：**851**（unit 560+ · integration 146 · e2e 30 · inline 115）
-  - 最大空白区域：store/ontology-store.ts (4432 lines, ~2% cov), API routes (17 routes, ~0%), components (23 files, ~0%)
-  - 待做：为 API 路由和 store action 方法添加结构化测试
+- [x] **Q-T3a**: 覆盖率配置修复 — 加入 components/hooks/API routes（2026-06-26）
+- [x] **Q-T3c**: `ci:check` 全绿修复（2026-06-26）
+  - lint 78 error → **0 error**（类型收紧、`react-hooks`、测试 fixture 对齐）
+  - ts-check：integration/unit fixture 与 `ontology-store-crud.spec.ts` 对齐当前 store API
+  - integration：Excel 导入对话框 Radix Tabs + MSW masterdata
+  - e2e smoke：业务链按钮文案 `A-价值域` / `B-能力`、删除按钮 disabled 断言
+- [ ] **Q-T3b**: 覆盖率从 ~15-20% → 80%（持续进行，当前基线 15-20%）
+  - 新增 API 路由单元测试 **20 cases**（2026-06-26 第一波）：
+    - `api-init-routes.spec.ts` — metadata/masterdata init（2）
+    - `api-hr-sync-routes.spec.ts` — config/trigger/history（6）
+    - `api-agent-skills-route.spec.ts` — GET/POST skills（7）
+    - `api-projects-route.spec.ts` — GET/POST projects（3）
+    - `api-export-routes.spec.ts` — export template + excel-template（2）
+  - 新增测试（2026-06-26 第二波，**48 cases**）：
+    - `api-codegen-route.spec.ts` — POST /api/codegen（2）
+    - `api-generate-element-draft.spec.ts` — POST /api/generate-element-draft（1）
+    - `api-generate-model-route.spec.ts` — AI 模型生成路由（11）
+    - `api-reference-documents-route.spec.ts` — 参考文档上传+实体提取（14）
+    - `ontology-store-crud.spec.ts` — Store CRUD（13）
+  - **当前测试总量**：**~1049**（unit **760** · integration **259** · e2e **30** / smoke **24**）
+  - 最大空白：`ontology-store.ts`（~4500 行，~2% cov）、部分 components（~0%）、剩余 store action 结构化测试
+  - 待做：store action 方法分层测试 + 高价值 components 集成覆盖
 
 ---
 
@@ -174,7 +191,7 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
 - [x] **TD-04**: README.md 更新（2026-06-18 已完成）
 - [x] **TD-05**: TODO.md 本文档同步（2026-06-18）
 
-> ✅ **2026-06-26 技术债务全部清零** · `ci:check` 全绿 · lint 0 error · ts-check 0 error · unit 560+ · integration 146 · e2e 30 · inline 115
+> ✅ **2026-06-26** · `ci:check` 全绿 · lint 0 error（107 warnings）· ts-check pass · unit **760** · integration **259** · e2e smoke **24**
 
 ---
 
@@ -202,3 +219,4 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
 - [x] **P5**: EPC v3.1 W-EPC 扩展（US-S15 U01–U06）
 - [x] **P6**: Phase 1–3 缺失 Testing Case 补完（US-S07~S09 ×12 Units）
 - [x] **P7**: EPC v3.1 覆盖率分析（US-S16 U01–U04，16 测试全绿）
+- [x] **P8**: Q-T3 API/Store 测试扩充 + `ci:check` 全绿（2026-06-26）

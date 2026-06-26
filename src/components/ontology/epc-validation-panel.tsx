@@ -270,9 +270,9 @@ export function EpcValidationPanel({ scenarioId, onNavigateToElement, onNavigate
                 renderEmptyState("当前场景下未发现交叉一致性问题")
               ) : (
                 <div className="space-y-3 max-h-[420px] overflow-auto" data-testid="vp-vx-list">
-                  {vxGroups.map((group) => {
-                    let idx = 0;
-                    return (
+                  {(() => {
+                    let vxListIdx = 0;
+                    return vxGroups.map((group) => (
                       <div key={group.severity} data-testid={`vp-vx-group-${group.severity}`}>
                         <div className="flex items-center gap-2 text-sm font-medium mb-1.5 px-1" data-testid={`vp-vx-group-header-${group.severity}`}>
                           <span>{sevIcon(group.severity).label}</span>
@@ -281,7 +281,7 @@ export function EpcValidationPanel({ scenarioId, onNavigateToElement, onNavigate
                         </div>
                         <ul className="space-y-1.5">
                           {group.items.map((v) => {
-                            const thisIdx = idx++;
+                            const thisIdx = vxListIdx++;
                             return (
                               <li key={`${v.code}-${thisIdx}`} className="rounded border px-3 py-2 text-sm flex items-center justify-between gap-2" data-testid={`vp-vx-${thisIdx}`} data-severity={v.severity}>
                                 <div className="flex items-center gap-2 min-w-0">
@@ -310,8 +310,8 @@ export function EpcValidationPanel({ scenarioId, onNavigateToElement, onNavigate
                           })}
                         </ul>
                       </div>
-                    );
-                  })}
+                    ));
+                  })()}
                 </div>
               )}
             </>

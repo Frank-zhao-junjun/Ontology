@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { SideEffectSection } from '@/components/ontology/side-effect-section';
+import type { SideEffect } from '@/types/ontology';
 
-const sampleSideEffects = [
+const sampleSideEffects: SideEffect[] = [
   { id: 'se-1', type: 'notification', description: '发送邮件通知', async: true },
   { id: 'se-2', type: 'sync', description: '同步到 ERP', async: false },
   { id: 'se-3', type: 'log', description: '', async: true },

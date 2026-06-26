@@ -1,8 +1,9 @@
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MasterDataManager } from '@/components/ontology/masterdata-manager';
 import { useOntologyStore } from '@/store/ontology-store';
+import { materialDefinition, mockMasterdataInit } from './helpers/masterdata-msw';
 
 describe('IT-MASTERDATA-DEF-001: 主数据类型字段变更同步记录', () => {
   beforeEach(() => {
@@ -11,42 +12,21 @@ describe('IT-MASTERDATA-DEF-001: 主数据类型字段变更同步记录', () =>
       masterDataRecords: {},
     });
 
-    vi.mocked(global.fetch).mockResolvedValue({
-      json: async () => ({
-        success: true,
-        data: {
-          definitions: [
-            {
-              id: 'md-material',
-              domain: '研发管理',
-              name: '物料主数据',
-              nameEn: 'MaterialMaster',
-              code: 'MATERIAL',
-              description: '物料基础信息',
-              coreData: '是',
-              fieldNames: '物料编码,物料名称',
-              sourceSystem: 'ERP',
-              apiUrl: '',
-              status: '00',
-              createdAt: '2026-04-01T00:00:00.000Z',
-              updatedAt: '2026-04-01T00:00:00.000Z',
-            },
-          ],
-          records: {
-            'md-material': [
-              {
-                id: 'rec-1',
-                definitionId: 'md-material',
-                values: { 物料编码: 'M-001', 物料名称: '钢材Q235A' },
-                status: '00',
-                createdAt: '2026-04-01T00:00:00.000Z',
-                updatedAt: '2026-04-01T00:00:00.000Z',
-              },
-            ],
+    mockMasterdataInit(
+      {
+        'md-material': [
+          {
+            id: 'rec-1',
+            definitionId: 'md-material',
+            values: { 物料编码: 'M-001', 物料名称: '钢材Q235A' },
+            status: '00',
+            createdAt: '2026-04-01T00:00:00.000Z',
+            updatedAt: '2026-04-01T00:00:00.000Z',
           },
-        },
-      }),
-    } as Response);
+        ],
+      },
+      [{ ...materialDefinition, fieldNames: '物料编码,物料名称' }],
+    );
   });
 
   it('编辑字段清单后动态表应切换为新字段并保留可映射值', async () => {

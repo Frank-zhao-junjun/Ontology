@@ -148,8 +148,10 @@ export function HRSyncManager() {
   }, []);
 
   useEffect(() => {
-    loadConfig();
-    loadHistory();
+    queueMicrotask(() => {
+      void loadConfig();
+      void loadHistory();
+    });
   }, [loadConfig, loadHistory]);
 
   const handleSaveConfig = async () => {

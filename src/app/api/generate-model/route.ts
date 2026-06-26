@@ -9,8 +9,8 @@ interface GenerateModelRequest {
     description?: string;
     projectId?: string;
     projectName?: string;
-    attributes: unknown[];
-    relations: unknown[];
+    attributes: Array<{ name?: string }>;
+    relations: Array<{ name?: string }>;
   };
   domain?: {
     name: string;
@@ -31,8 +31,8 @@ interface GenerateModelRequest {
     boundaries?: unknown[];
     dataSources?: unknown[];
   };
-  metadataList?: unknown[];
-  masterDataList?: unknown[];
+  metadataList?: Array<{ name: string; nameEn: string; description?: string; type?: string }>;
+  masterDataList?: Array<{ name: string; nameEn?: string; description?: string }>;
   referenceDocuments?: string[];
 }
 
@@ -77,11 +77,11 @@ function createPrompt(request: GenerateModelRequest): string {
   const { entity, domain, project, existingModels, metadataList, masterDataList, referenceDocuments } = request;
 
   const metadataContext = metadataList && metadataList.length > 0
-    ? `\n可用标准元数据字段（生成属性时请优先从此列表匹配，名称/含义接近则直接复用）：\n${metadataList.map((m: any) => `- ${m.name} (${m.nameEn}): ${m.description || ''} [类型: ${m.type || 'string'}]`).join('\n')}`
+    ? `\n可用标准元数据字段（生成属性时请优先从此列表匹配，名称/含义接近则直接复用）：\n${metadataList.map((m) => `- ${m.name} (${m.nameEn}): ${m.description || ''} [类型: ${m.type || 'string'}]`).join('\n')}`
     : '';
 
   const masterDataContext = masterDataList && masterDataList.length > 0
-    ? `\n可用主数据（生成关系/引用时请优先从此列表匹配）：\n${masterDataList.map((m: any) => `- ${m.name} (${m.nameEn || ''}): ${m.description || ''}`).join('\n')}`
+    ? `\n可用主数据（生成关系/引用时请优先从此列表匹配）：\n${masterDataList.map((m) => `- ${m.name} (${m.nameEn || ''}): ${m.description || ''}`).join('\n')}`
     : '';
 
   const existingContext = existingModels
@@ -102,8 +102,8 @@ function createPrompt(request: GenerateModelRequest): string {
 - 描述：${entity.description || '暂无'}
 - 所属项目：${entity.projectName || project?.name || '默认项目'}
 - 领域：${domain?.name || '通用领域'}
-- 现有属性：${(entity.attributes || []).map((a: any) => a.name).join('、') || '无'}
-- 现有关系：${(entity.relations || []).map((r: any) => r.name).join('、') || '无'}
+- 现有属性：${(entity.attributes || []).map((a) => a.name).join('、') || '无'}
+- 现有关系：${(entity.relations || []).map((r) => r.name).join('、') || '无'}
 ${metadataContext}${masterDataContext}${existingContext}${referenceContext}
 
 ## E1-E8 八维元模型定义

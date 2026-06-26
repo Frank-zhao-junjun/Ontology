@@ -1,5 +1,7 @@
 # Agent LLM 与本体 MCP Server 互动设计
 
+> ⚠️ 本文档的权威源位于项目2（ontology-platform）：`docs/mcp-agent-ontology-interaction.md`。请以项目2 版本为准。
+
 本文定义 Agent LLM 与本体模型 MCP Server 的典型互动方式。目标是把本体从“被动知识库”提升为 Agent 的语义标准、规则推理、冲突裁决和经验沉淀层。
 
 ## 1. 设计目标

@@ -5,6 +5,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { BehaviorModelEditor } from '@/components/ontology/behavior-model-editor';
 import { useOntologyStore } from '@/store/ontology-store';
 import { createFrozenProject } from '../unit/test-helpers';
+import * as idModule from '@/lib/id';
 
 function resetStore() {
   useOntologyStore.setState({
@@ -81,8 +82,7 @@ describe('US-4.1 / IT-STATE-UI-001: behavior editor enforces visible state rules
   });
 
   it('生成出的状态码与已有状态重复时应提示错误并拒绝保存', async () => {
-    const randomValue = 0.314159265;
-    const duplicateStateId = randomValue.toString(36).substring(2, 10);
+    const duplicateStateId = 'duplicate-state-id';
     const project = createProject();
 
     project.behaviorModel?.stateMachines[0].states.push({
@@ -92,14 +92,13 @@ describe('US-4.1 / IT-STATE-UI-001: behavior editor enforces visible state rules
     });
 
     toastError.mockClear();
+    const idSpy = vi.spyOn(idModule, 'generateId').mockReturnValue(duplicateStateId);
     await renderEditor(project);
 
     fireEvent.click(screen.getByRole('button', { name: '+ 添加状态' }));
     fireEvent.change(screen.getByPlaceholderText('如：草稿'), { target: { value: '重复编码状态' } });
-
-    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(randomValue);
     fireEvent.click(screen.getByRole('button', { name: '添加' }));
-    randomSpy.mockRestore();
+    idSpy.mockRestore();
 
     expect(toastError).toHaveBeenCalledWith('状态编码不能重复');
     expect(useOntologyStore.getState().project?.behaviorModel?.stateMachines[0].states.map((state) => state.name)).not.toContain('重复编码状态');

@@ -1,0 +1,1 @@
+{"nodes": [{"id": "concept_spec_compliance_review", "label": "Spec Compliance Review", "file_type": "concept", "source_file": ".goose/skills/subagent-driven-development/spec-reviewer-prompt.md"}], "edges": [], "hyperedges": []}

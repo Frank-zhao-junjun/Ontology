@@ -22,8 +22,8 @@ function makeStates(overrides?: Partial<EntityLifecycle['stateMachine']>): Entit
       { id: 's3', name: '已生效', isInitial: false, isFinal: true, color: undefined, availableActions: [], constraints: [], triggerableEvents: [], allowedRoles: [], timeout: undefined, dataVisibility: undefined, semanticTag: undefined },
     ],
     transitions: [
-      { id: 't1', name: '提交审批', from: 's1', to: 's2', trigger: 'manual' as const, guardCondition: undefined, requiresApproval: false, targetState: undefined, sourceEntity: undefined, entityField: undefined },
-      { id: 't2', name: '审批通过', from: 's2', to: 's3', trigger: 'manual' as const, guardCondition: undefined, requiresApproval: false, targetState: undefined, sourceEntity: undefined, entityField: undefined },
+      { id: 't1', name: '提交审批', from: 's1', to: 's2', trigger: 'manual' as const, guardCondition: undefined, requiresApproval: false },
+      { id: 't2', name: '审批通过', from: 's2', to: 's3', trigger: 'manual' as const, guardCondition: undefined, requiresApproval: false },
     ],
     ...overrides,
   };
@@ -94,8 +94,8 @@ describe('LifecycleTab — Integration', () => {
           { id: 'st3', name: '已完成', isInitial: false, isFinal: true, color: undefined, availableActions: [], constraints: [], triggerableEvents: [], allowedRoles: [], timeout: undefined, dataVisibility: undefined, semanticTag: undefined },
         ],
         transitions: [
-          { id: 'tr1', name: '提交', from: 'st1', to: 'st2', trigger: 'manual' as const, guardCondition: undefined, requiresApproval: false, targetState: undefined, sourceEntity: undefined, entityField: undefined },
-          { id: 'tr2', name: '审核通过', from: 'st2', to: 'st3', trigger: 'manual' as const, guardCondition: undefined, requiresApproval: false, targetState: undefined, sourceEntity: undefined, entityField: undefined },
+          { id: 'tr1', name: '提交', from: 'st1', to: 'st2', trigger: 'manual' as const, guardCondition: undefined, requiresApproval: false },
+          { id: 'tr2', name: '审核通过', from: 'st2', to: 'st3', trigger: 'manual' as const, guardCondition: undefined, requiresApproval: false },
         ],
       },
       actionsByState: {}, rulesByState: {}, eventsByState: {}, rolesByState: {},
@@ -123,7 +123,7 @@ describe('LifecycleTab — Integration', () => {
           { id: 'cs2', name: '生效', isInitial: false, isFinal: true, color: undefined, availableActions: [], constraints: [], triggerableEvents: [], allowedRoles: [], timeout: undefined, dataVisibility: undefined, semanticTag: undefined },
         ],
         transitions: [
-          { id: 'ct1', name: '生效', from: 'cs1', to: 'cs2', trigger: 'manual' as const, guardCondition: undefined, requiresApproval: false, targetState: undefined, sourceEntity: undefined, entityField: undefined },
+          { id: 'ct1', name: '生效', from: 'cs1', to: 'cs2', trigger: 'manual' as const, guardCondition: undefined, requiresApproval: false },
         ],
       },
       actionsByState: {}, rulesByState: {}, eventsByState: {}, rolesByState: {},

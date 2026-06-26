@@ -50,7 +50,7 @@ describe('business-chain confirm flow (US-S14-U04)', () => {
 
   it('should confirm draft A node to v1 and refresh badge', () => {
     render(<ChainPanel />);
-    fireEvent.click(screen.getByRole('button', { name: /新建价值域/i }));
+    fireEvent.click(screen.getByRole('button', { name: /A-价值域/i }));
 
     fireEvent.change(screen.getByLabelText(/名称/i), { target: { value: '生产域' } });
     fireEvent.click(screen.getByRole('button', { name: /^创建$/i }));

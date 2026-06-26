@@ -773,17 +773,15 @@ describe('Behavior Model CRUD', () => {
       name: '创建订单',
       nameEn: 'CreateOrder',
       description: '创建采购订单',
-      entity: 'ent-1',
-      stateMachine: 'sm-1',
-      trigger: 'manual',
-      inputAttributes: [],
-      outputAttributes: [],
+      targetEntityId: 'ent-1',
+      actionType: 'create',
+      transition: 'sm-1',
     });
 
     const model = useOntologyStore.getState().project?.behaviorModel;
     expect(model?.actions).toHaveLength(1);
     expect(model?.actions![0].name).toBe('创建订单');
-    expect(model?.actions![0].stateMachine).toBe('sm-1');
+    expect(model?.actions![0].transition).toBe('sm-1');
   });
 
   it('should update an action', () => {
@@ -792,26 +790,29 @@ describe('Behavior Model CRUD', () => {
       id: 'a-1',
       name: '创建订单',
       nameEn: 'CreateOrder',
-      entity: 'ent-1',
-      trigger: 'manual',
-      inputAttributes: [],
-      outputAttributes: [],
+      targetEntityId: 'ent-1',
+      actionType: 'create',
     });
 
     store.updateAction('a-1', {
       id: 'a-1',
       name: '更新订单',
       nameEn: 'UpdateOrder',
-      entity: 'ent-1',
-      trigger: 'manual',
-      inputAttributes: ['field-1'],
-      outputAttributes: [],
+      targetEntityId: 'ent-1',
+      actionType: 'update',
+      parameters: [{
+        id: 'field-1',
+        name: '数量',
+        nameEn: 'quantity',
+        dataType: 'integer',
+        required: false,
+      }],
     });
 
     const model = useOntologyStore.getState().project?.behaviorModel;
     expect(model?.actions).toHaveLength(1);
     expect(model?.actions![0].name).toBe('更新订单');
-    expect(model?.actions![0].inputAttributes).toContain('field-1');
+    expect(model?.actions![0].parameters?.[0].id).toBe('field-1');
   });
 
   it('should delete an action', () => {
@@ -820,19 +821,15 @@ describe('Behavior Model CRUD', () => {
       id: 'a-1',
       name: '创建订单',
       nameEn: 'CreateOrder',
-      entity: 'ent-1',
-      trigger: 'manual',
-      inputAttributes: [],
-      outputAttributes: [],
+      targetEntityId: 'ent-1',
+      actionType: 'create',
     });
     store.addAction({
       id: 'a-2',
       name: '审核订单',
       nameEn: 'ApproveOrder',
-      entity: 'ent-1',
-      trigger: 'manual',
-      inputAttributes: [],
-      outputAttributes: [],
+      targetEntityId: 'ent-1',
+      actionType: 'validate',
     });
 
     store.deleteAction('a-1');
@@ -850,9 +847,8 @@ describe('Behavior Model CRUD', () => {
       name: '计算金额',
       nameEn: 'CalculateAmount',
       description: '计算订单总金额',
-      entity: 'ent-1',
-      inputAttributes: ['quantity', 'price'],
-      outputAttributes: ['totalAmount'],
+      parameters: [],
+      returnType: 'number',
     });
 
     const model = useOntologyStore.getState().project?.behaviorModel;
@@ -866,18 +862,22 @@ describe('Behavior Model CRUD', () => {
       id: 'f-1',
       name: '计算金额',
       nameEn: 'CalculateAmount',
-      entity: 'ent-1',
-      inputAttributes: [],
-      outputAttributes: [],
+      parameters: [],
+      returnType: 'number',
     });
 
     store.updateFunction('f-1', {
       id: 'f-1',
       name: '重新计算金额',
       nameEn: 'RecalculateAmount',
-      entity: 'ent-1',
-      inputAttributes: ['qty'],
-      outputAttributes: ['total'],
+      parameters: [{
+        id: 'qty',
+        name: '数量',
+        nameEn: 'quantity',
+        dataType: 'integer',
+        required: true,
+      }],
+      returnType: 'number',
     });
 
     const model = useOntologyStore.getState().project?.behaviorModel;
@@ -890,17 +890,15 @@ describe('Behavior Model CRUD', () => {
       id: 'f-1',
       name: '函数1',
       nameEn: 'Func1',
-      entity: 'ent-1',
-      inputAttributes: [],
-      outputAttributes: [],
+      parameters: [],
+      returnType: 'void',
     });
     store.addFunction({
       id: 'f-2',
       name: '函数2',
       nameEn: 'Func2',
-      entity: 'ent-1',
-      inputAttributes: [],
-      outputAttributes: [],
+      parameters: [],
+      returnType: 'void',
     });
 
     store.deleteFunction('f-1');
@@ -932,6 +930,7 @@ describe('Behavior Model CRUD', () => {
       formula: 'endTime - startTime',
       warningThreshold: 3600,
       criticalThreshold: 7200,
+      isKPI: true,
     });
 
     const model = useOntologyStore.getState().project?.behaviorModel;
@@ -956,6 +955,7 @@ describe('Behavior Model CRUD', () => {
       name: '订单处理时长',
       type: 'duration',
       targetEntity: 'ent-1',
+      isKPI: false,
     });
 
     store.updateBehaviorIndicator('bi-1', {
@@ -964,6 +964,7 @@ describe('Behavior Model CRUD', () => {
       type: 'duration',
       targetEntity: 'ent-1',
       warningThreshold: 1800,
+      isKPI: false,
     });
 
     const model = useOntologyStore.getState().project?.behaviorModel;
@@ -983,10 +984,10 @@ describe('Behavior Model CRUD', () => {
     });
 
     store.addBehaviorIndicator({
-      id: 'bi-1', name: '时长', type: 'duration', targetEntity: 'ent-1',
+      id: 'bi-1', name: '时长', type: 'duration', targetEntity: 'ent-1', isKPI: false,
     });
     store.addBehaviorIndicator({
-      id: 'bi-2', name: '数量', type: 'count', targetEntity: 'ent-1',
+      id: 'bi-2', name: '数量', type: 'count', targetEntity: 'ent-1', isKPI: false,
     });
 
     store.deleteBehaviorIndicator('bi-1');

@@ -132,7 +132,7 @@ describe('E2E-AI-DRAFT-001 @smoke', () => {
     render(React.createElement(ModelingWorkspace, { project: createProject() }));
 
     fireEvent.click(screen.getByRole('tab', { name: /业务链/i }));
-    fireEvent.click(screen.getByRole('button', { name: /新建价值域/i }));
+    fireEvent.click(screen.getByRole('button', { name: /A-价值域/i }));
     fireEvent.change(screen.getByLabelText(/名称/i), { target: { value: '生产域' } });
     fireEvent.click(screen.getByRole('button', { name: /^创建$/i }));
 

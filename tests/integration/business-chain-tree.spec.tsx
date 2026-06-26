@@ -42,7 +42,7 @@ describe('business-chain tree UI (US-S04-U03)', () => {
 
   it('should create value domain and show draft badge', () => {
     render(<ChainPanel />);
-    fireEvent.click(screen.getByRole('button', { name: /新建价值域/i }));
+    fireEvent.click(screen.getByRole('button', { name: /A-价值域/i }));
 
     const nameInput = screen.getByLabelText(/名称/i);
     fireEvent.change(nameInput, { target: { value: '生产域' } });

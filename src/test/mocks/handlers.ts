@@ -18,7 +18,7 @@ export const handlers = [
     ],
   })),
   http.post('/api/agent/skills', async ({ request }) => {
-    const body = await request.json() as any;
+    const body = await request.json() as Record<string, unknown>;
     return HttpResponse.json({ id: 'sk-new', ...body, enabled: true }, { status: 201 });
   }),
   http.delete('/api/agent/skills/:id', () => new HttpResponse(null, { status: 204 })),
