@@ -3,7 +3,8 @@ import { useOntologyStore } from '../../src/store/ontology-store';
 import type {
   PositionResponsibility, Intent, StateMachine,
   BusinessMetric, TransactionBoundary, BehaviorIndicator, BehaviorConstraint,
-  BehaviorModel,
+  BehaviorModel, MasterDataRecord, EpcStep, MetaElement,
+  HRSyncConfig, HRSyncResult,
 } from '../../src/types/ontology';
 
 // Helper to reset store between tests
@@ -1079,5 +1080,302 @@ describe('Behavior Model CRUD', () => {
     const model = useOntologyStore.getState().project?.behaviorModel;
     expect(model?.constraints).toHaveLength(1);
     expect(model?.constraints![0].id).toBe('bc-2');
+  });
+});
+
+// ============================================================
+// MasterData Records Tests
+// ============================================================
+describe('MasterData Records', () => {
+  beforeEach(() => {
+    resetStore();
+    useOntologyStore.setState({ masterDataList: [], masterDataRecords: {} });
+    createTestProject();
+  });
+
+  function makeRecord(id: string, values: Record<string, string>): MasterDataRecord {
+    return {
+      id,
+      definitionId: 'md-def-1',
+      values,
+      status: '00',
+      createdAt: '2026-06-26T00:00:00.000Z',
+      updatedAt: '2026-06-26T00:00:00.000Z',
+    };
+  }
+
+  it('should add a record and appear in masterDataRecords map', () => {
+    const store = useOntologyStore.getState();
+    store.setMasterDataList([{ id: 'md-def-1', domain: '生产管理', name: '客户主数据', nameEn: 'Customer', code: 'MD-CUST', description: '', coreData: '', fieldNames: '', sourceSystem: 'SAP', status: '00', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }]);
+    store.addMasterDataRecord('md-def-1', makeRecord('rec-1', { 客户编码: 'C-001', 客户名称: '华中客户' }));
+
+    const records = useOntologyStore.getState().masterDataRecords;
+    expect(records['md-def-1']).toHaveLength(1);
+    expect(records['md-def-1'][0].values['客户编码']).toBe('C-001');
+  });
+
+  it('should update a record field and updatedAt timestamp', () => {
+    const store = useOntologyStore.getState();
+    store.setMasterDataList([{ id: 'md-def-1', domain: '生产管理', name: '客户主数据', nameEn: 'Customer', code: 'MD-CUST', description: '', coreData: '', fieldNames: '', sourceSystem: 'SAP', status: '00', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }]);
+    store.addMasterDataRecord('md-def-1', makeRecord('rec-1', { 客户编码: 'C-001', 客户名称: '华中客户' }));
+
+    store.updateMasterDataRecord('md-def-1', 'rec-1', { values: { 客户编码: 'C-001', 客户名称: '华中重点客户' } });
+
+    const records = useOntologyStore.getState().masterDataRecords;
+    expect(records['md-def-1'][0].values['客户名称']).toBe('华中重点客户');
+    expect(records['md-def-1'][0].updatedAt).not.toBe('2026-06-26T00:00:00.000Z');
+  });
+
+  it('should toggle status from 00 to 99 and back', () => {
+    const store = useOntologyStore.getState();
+    store.setMasterDataList([{ id: 'md-def-1', domain: '生产管理', name: '客户主数据', nameEn: 'Customer', code: 'MD-CUST', description: '', coreData: '', fieldNames: '', sourceSystem: 'SAP', status: '00', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }]);
+    store.addMasterDataRecord('md-def-1', makeRecord('rec-1', { 客户编码: 'C-001', 客户名称: '华中客户' }));
+
+    // Initially '00' (active)
+    expect(useOntologyStore.getState().masterDataRecords['md-def-1'][0].status).toBe('00');
+
+    // Toggle to '99' (inactive)
+    store.toggleMasterDataRecordStatus('md-def-1', 'rec-1');
+    expect(useOntologyStore.getState().masterDataRecords['md-def-1'][0].status).toBe('99');
+
+    // Toggle back to '00'
+    store.toggleMasterDataRecordStatus('md-def-1', 'rec-1');
+    expect(useOntologyStore.getState().masterDataRecords['md-def-1'][0].status).toBe('00');
+  });
+
+  it('should delete a record and remove from map', () => {
+    const store = useOntologyStore.getState();
+    store.setMasterDataList([{ id: 'md-def-1', domain: '生产管理', name: '客户主数据', nameEn: 'Customer', code: 'MD-CUST', description: '', coreData: '', fieldNames: '', sourceSystem: 'SAP', status: '00', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }]);
+    store.addMasterDataRecord('md-def-1', makeRecord('rec-1', { 客户编码: 'C-001' }));
+
+    store.deleteMasterDataRecord('md-def-1', 'rec-1');
+
+    const records = useOntologyStore.getState().masterDataRecords;
+    expect(records['md-def-1']).toHaveLength(0);
+  });
+});
+
+// ============================================================
+// HR Sync Tests
+// ============================================================
+describe('HR Sync', () => {
+  beforeEach(() => {
+    resetStore();
+    createTestProject();
+  });
+
+  it('should update HR sync config on project.organizationModel', () => {
+    const store = useOntologyStore.getState();
+    const config: HRSyncConfig = {
+      enabled: true,
+      source: 'dingtalk',
+      syncInterval: 'daily',
+      fieldMapping: {
+        department: { name: 'dept_name', code: 'dept_code' },
+        position: { name: 'pos_name', code: 'pos_code' },
+      },
+      conflictStrategy: 'hr_wins',
+      syncScope: { syncDepartments: true, syncPositions: true, syncResponsibilities: false, includeInactive: false },
+    };
+
+    store.updateHRSyncConfig(config);
+
+    const project = useOntologyStore.getState().project!;
+    expect(project.organizationModel).toBeDefined();
+    expect(project.organizationModel!.syncConfig).toBeDefined();
+    expect(project.organizationModel!.syncConfig!.enabled).toBe(true);
+    expect(project.organizationModel!.syncConfig!.source).toBe('dingtalk');
+    expect(project.organizationModel!.syncConfig!.syncInterval).toBe('daily');
+    expect(project.organizationModel!.syncConfig!.conflictStrategy).toBe('hr_wins');
+  });
+
+  it('should set last sync result on organizationModel', () => {
+    const store = useOntologyStore.getState();
+    // Ensure organizationModel exists first by setting sync config
+    const config: HRSyncConfig = {
+      enabled: true,
+      source: 'feishu',
+      syncInterval: 'manual',
+      fieldMapping: { department: {}, position: {} },
+      conflictStrategy: 'local_wins',
+      syncScope: { syncDepartments: true, syncPositions: true, syncResponsibilities: false, includeInactive: false },
+    };
+    store.updateHRSyncConfig(config);
+
+    const result: HRSyncResult = {
+      syncId: 'sync-001',
+      triggeredAt: '2026-06-26T08:00:00.000Z',
+      completedAt: '2026-06-26T08:05:00.000Z',
+      status: 'success',
+      source: 'feishu',
+      summary: {
+        departments: { total: 10, created: 2, updated: 3, deactivated: 1, unchanged: 4 },
+        positions: { total: 20, created: 5, updated: 5, deactivated: 0, unchanged: 10 },
+      },
+    };
+    store.setLastSyncResult(result);
+
+    const project = useOntologyStore.getState().project!;
+    expect(project.organizationModel!.lastSyncResult).toBeDefined();
+    expect(project.organizationModel!.lastSyncResult!.syncId).toBe('sync-001');
+    expect(project.organizationModel!.lastSyncResult!.status).toBe('success');
+    expect(project.organizationModel!.lastSyncResult!.summary.departments.created).toBe(2);
+    expect(project.organizationModel!.lastSyncResult!.summary.positions.created).toBe(5);
+  });
+
+  it('should update config then result in sequence preserving both', () => {
+    const store = useOntologyStore.getState();
+    store.updateHRSyncConfig({
+      enabled: true,
+      source: 'sap',
+      syncInterval: 'weekly',
+      fieldMapping: { department: {}, position: {} },
+      conflictStrategy: 'manual',
+      syncScope: { syncDepartments: true, syncPositions: true, syncResponsibilities: false, includeInactive: false },
+    });
+    store.setLastSyncResult({
+      syncId: 'sync-002',
+      triggeredAt: '2026-06-26T10:00:00.000Z',
+      status: 'partial',
+      source: 'sap',
+      summary: { departments: { total: 5, created: 1, updated: 1, deactivated: 0, unchanged: 3 }, positions: { total: 8, created: 2, updated: 2, deactivated: 1, unchanged: 3 } },
+      conflicts: [{ type: 'department', externalId: 'ext-1', localId: 'dept-1', field: 'name', hrValue: '采购部', localValue: '采购管理部' }],
+    });
+
+    const project = useOntologyStore.getState().project!;
+    expect(project.organizationModel!.syncConfig!.source).toBe('sap');
+    expect(project.organizationModel!.lastSyncResult!.status).toBe('partial');
+    expect(project.organizationModel!.lastSyncResult!.conflicts).toHaveLength(1);
+  });
+
+  it('should handle setLastSyncResult gracefully when no project exists', () => {
+    resetStore(); // project = null
+    const store = useOntologyStore.getState();
+    // Should not throw
+    expect(() => {
+      store.setLastSyncResult({
+        syncId: 'sync-003',
+        triggeredAt: new Date().toISOString(),
+        status: 'success',
+        source: 'custom_api',
+        summary: { departments: { total: 0, created: 0, updated: 0, deactivated: 0, unchanged: 0 }, positions: { total: 0, created: 0, updated: 0, deactivated: 0, unchanged: 0 } },
+      });
+    }).not.toThrow();
+  });
+});
+
+// ============================================================
+// AI Drafts Tests
+// ============================================================
+describe('AI Drafts', () => {
+  beforeEach(() => {
+    resetStore();
+    useOntologyStore.getState().createProject('AI Drafts Test', { id: 'dm-1', name: '离散制造', nameEn: 'Discrete Manufacturing', description: '离散制造领域' });
+  });
+
+  // ---------- applyAiEpcDraft ----------
+
+  it('should apply AI EPC draft steps and update epcProcesses', () => {
+    const store = useOntologyStore.getState();
+    // Set up business chain: valueDomain -> capability -> scenario -> epcProcess
+    const a = store.addValueDomain({ name: '生产域' });
+    const b = store.addCapability(a.id, { name: '生产管理' });
+    const c = store.addScenario(b.id, { name: '生产场景' });
+    const epc = store.addEpcProcess(c.id, { name: '测试 EPC' });
+
+    const aiSteps: EpcStep[] = [
+      { id: 'step-1', name: '接收订单' },
+      { id: 'step-2', name: '审核订单' },
+    ];
+
+    store.applyAiEpcDraft(epc.id, aiSteps);
+
+    const project = useOntologyStore.getState().project!;
+    const updatedEpc = project.epcProcesses!.find((e) => e.id === epc.id);
+    expect(updatedEpc).toBeDefined();
+    expect(updatedEpc!.steps).toHaveLength(2);
+    expect(updatedEpc!.steps[0].name).toBe('接收订单');
+    expect(updatedEpc!.steps[1].name).toBe('审核订单');
+  });
+
+  it('should create a draft version record when no prior versions exist', () => {
+    const store = useOntologyStore.getState();
+    const a = store.addValueDomain({ name: '测试域' });
+    const b = store.addCapability(a.id, { name: '测试能力' });
+    const c = store.addScenario(b.id, { name: '测试场景' });
+    const epc = store.addEpcProcess(c.id, { name: '测试 EPC' });
+
+    store.applyAiEpcDraft(epc.id, [{ id: 's-1', name: '新步骤' }]);
+
+    const project = useOntologyStore.getState().project!;
+    const draftRecord = (project.moduleVersionRecords ?? []).find(
+      (r) => r.moduleKind === 'EPC' && r.moduleId === epc.id && r.status === 'draft',
+    );
+    expect(draftRecord).toBeDefined();
+  });
+
+  it('should throw error when EPC does not exist', () => {
+    const store = useOntologyStore.getState();
+    expect(() => {
+      store.applyAiEpcDraft('non-existent-epc', []);
+    }).toThrow();
+  });
+
+  // ---------- applyAiElementDrafts ----------
+
+  it('should insert new elements into metaElements', () => {
+    const store = useOntologyStore.getState();
+
+    const result = store.applyAiElementDrafts([
+      { name: '用户管理', dimension: 'E1' },
+      { name: '订单审核', dimension: 'E2' },
+    ]);
+
+    expect(result.inserted).toBe(2);
+    expect(result.skipped).toEqual([]);
+
+    const project = useOntologyStore.getState().project!;
+    const metaElements = project.metaElements ?? [];
+    expect(metaElements).toHaveLength(2);
+    expect(metaElements[0].name).toBe('用户管理');
+    expect(metaElements[0].dimension).toBe('E1');
+  });
+
+  it('should skip existing elements (dimension + name match)', () => {
+    const store = useOntologyStore.getState();
+    // First insert
+    store.applyAiElementDrafts([{ name: '用户管理', dimension: 'E1' }]);
+
+    // Second insert with mix of new and duplicate
+    const result = store.applyAiElementDrafts([
+      { name: '用户管理', dimension: 'E1' },  // duplicate
+      { name: '新要素', dimension: 'E3' },     // new
+    ]);
+
+    expect(result.inserted).toBe(1);
+    expect(result.skipped).toEqual([{ name: '用户管理', dimension: 'E1' }]);
+
+    const project = useOntologyStore.getState().project!;
+    expect(project.metaElements ?? []).toHaveLength(2);
+  });
+
+  it('should handle empty input gracefully', () => {
+    const store = useOntologyStore.getState();
+
+    const result = store.applyAiElementDrafts([]);
+
+    expect(result.inserted).toBe(0);
+    expect(result.skipped).toEqual([]);
+
+    const project = useOntologyStore.getState().project!;
+    expect(project.metaElements ?? []).toHaveLength(0);
+  });
+
+  it('should throw error when no active project', () => {
+    resetStore();
+    const store = useOntologyStore.getState();
+    expect(() => {
+      store.applyAiElementDrafts([{ name: '测试', dimension: 'E1' }]);
+    }).toThrow();
   });
 });
