@@ -158,7 +158,12 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
 - [x] **Q-T2b**: US-S16 覆盖率全层测试（unit 10 + store 4 + integration 1 + e2e 1 = **16**）
 - [x] **Q-T2c**: US-S17 交叉一致性测试（`epc-cross-consistency.spec.ts` **28/28**）
 - [x] **Q-T2d**: US-S18 推导 + Badge 测试（**29/29**）
-- [ ] **Q-T3**: 测试覆盖率提升至 80%+
+|- [x] **Q-T3a**: 覆盖率配置修复 — 加入 components/hooks/API routes（2026-06-26）
+|- [ ] **Q-T3b**: 覆盖率从 ~15-20% → 80%（持续进行，当前基线 15-20%）
+  - 新增测试 7 cases（HR sync 4 + Agent skills 3）
+  - 测试总量：**851**（unit 560+ · integration 146 · e2e 30 · inline 115）
+  - 最大空白区域：store/ontology-store.ts (4432 lines, ~2% cov), API routes (17 routes, ~0%), components (23 files, ~0%)
+  - 待做：为 API 路由和 store action 方法添加结构化测试
 
 ---
 
