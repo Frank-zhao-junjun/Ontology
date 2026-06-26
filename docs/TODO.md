@@ -172,15 +172,21 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
     - `api-agent-skills-route.spec.ts` — GET/POST skills（7）
     - `api-projects-route.spec.ts` — GET/POST projects（3）
     - `api-export-routes.spec.ts` — export template + excel-template（2）
-  - 新增测试（2026-06-26 第二波，**48 cases**）：
+  - 新增测试（2026-06-26 第二波，**49 cases**）：
     - `api-codegen-route.spec.ts` — POST /api/codegen（2）
     - `api-generate-element-draft.spec.ts` — POST /api/generate-element-draft（1）
     - `api-generate-model-route.spec.ts` — AI 模型生成路由（11）
     - `api-reference-documents-route.spec.ts` — 参考文档上传+实体提取（14）
-    - `ontology-store-crud.spec.ts` — Store CRUD（13）
-  - **当前测试总量**：**~1049**（unit **760** · integration **259** · e2e **30** / smoke **24**）
+    - `ontology-store-crud.spec.ts` — Store CRUD Entity/Project/BehaviorModel（13）
+    - `ontology-store-crud-2.spec.ts` — Store createProject/updateName/updateDesc（1）
+  - **当前测试总量**：**~1050**（unit **761** · integration **259** · e2e **30** / smoke **24**）
   - 最大空白：`ontology-store.ts`（~4500 行，~2% cov）、部分 components（~0%）、剩余 store action 结构化测试
   - 待做：store action 方法分层测试 + 高价值 components 集成覆盖
+  - 用户文档新增（2026-06-26）：
+    - `docs/concepts-guide.md` — 概念指南（非技术人员）
+    - `docs/quickstart.md` — 5 分钟快速入门
+    - `docs/user-manual.md` — 完整用户手册
+  - 文档体系已覆盖：概念 → 入门 → 操作 → 技术规格 → 架构决策
 
 ---
 

@@ -1,5 +1,7 @@
 # Ontology 本体模型建模工具
 
+> 此项目也被称为**项目1**。
+
 Ontology 是一个面向业务架构师和系统设计师的本体模型可视化建模平台。基于 Next.js 16、React 19 和 TypeScript 5 构建，核心架构采用 **A→B→C→EPC 业务树 + E1–E8 八维要素库** 的简化模型体系。
 
 ```text
@@ -312,6 +314,11 @@ POST   /api/hr-sync/resolve-conflict
 - 提交前运行 `ci:check` 确保全绿。
 
 ## 相关文档
+
+### 用户文档
+- `docs/concepts-guide.md` — 核心概念通俗解释（面向非技术人员）
+- `docs/quickstart.md` — 5 分钟快速入门教程
+- `docs/user-manual.md` — 完整用户操作手册
 
 ### 架构与设计
 - `docs/adr-simplified-ontology-model.md` — 简化架构决策记录
