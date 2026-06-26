@@ -185,11 +185,6 @@
   50% { box-shadow: 0 0 0 15px rgba(255, 110, 0, 0); }
 }
 
-@keyframes data-flow {
-  0% { stroke-dashoffset: 100; }
-  100% { stroke-dashoffset: 0; }
-}
-
 @keyframes center-pulse {
   0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 110, 0, 0.3); }
   50% { transform: scale(1.05); box-shadow: 0 0 40px rgba(255, 110, 0, 0.5); }
@@ -225,7 +220,7 @@
 }
 
 .animate-data-flow {
-  animation: data-flow 2s linear infinite;
+  animation: flow-line 2s linear infinite;
 }
 
 .animate-center-pulse {
