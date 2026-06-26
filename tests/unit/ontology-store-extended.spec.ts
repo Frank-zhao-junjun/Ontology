@@ -5,6 +5,8 @@ import type {
   BusinessMetric, TransactionBoundary, BehaviorIndicator, BehaviorConstraint,
   BehaviorModel, MasterDataRecord, EpcStep, MetaElement,
   HRSyncConfig, HRSyncResult,
+  GovernanceModel, GovernanceRole, GovernanceFieldPermission, GovernanceAgentPolicy,
+  DataSourcesModel, DataSourceDefinition,
 } from '../../src/types/ontology';
 
 // Helper to reset store between tests
@@ -1377,5 +1379,322 @@ describe('AI Drafts', () => {
     expect(() => {
       store.applyAiElementDrafts([{ name: '测试', dimension: 'E1' }]);
     }).toThrow();
+  });
+});
+
+// ============================================================
+// Governance Model — Roles, Field Permissions & Agent Policies
+// ============================================================
+describe('Governance Model CRUD', () => {
+  beforeEach(() => {
+    resetStore();
+    createTestProject();
+  });
+
+  // ---------- Governance Roles ----------
+
+  it('should add a governance role and auto-create governance model', () => {
+    const store = useOntologyStore.getState();
+    const role: GovernanceRole = {
+      id: 'role-1',
+      name: '采购员',
+      permissions: [
+        { objectTypeId: 'entity-1', ops: ['READ', 'WRITE'] },
+      ],
+    };
+    store.addGovernanceRole(role);
+
+    const project = useOntologyStore.getState().project!;
+    expect(project.governanceModel).toBeDefined();
+    expect(project.governanceModel!.roles).toHaveLength(1);
+    expect(project.governanceModel!.roles[0].name).toBe('采购员');
+    expect(project.governanceModel!.roles[0].permissions[0].ops).toContain('READ');
+  });
+
+  it('should add multiple governance roles', () => {
+    const store = useOntologyStore.getState();
+    store.addGovernanceRole({ id: 'role-1', name: '采购员', permissions: [] });
+    store.addGovernanceRole({ id: 'role-2', name: '审批员', permissions: [] });
+
+    const model = useOntologyStore.getState().project!.governanceModel!;
+    expect(model.roles).toHaveLength(2);
+    expect(model.roles[1].name).toBe('审批员');
+  });
+
+  it('should update a governance role by id', () => {
+    const store = useOntologyStore.getState();
+    store.addGovernanceRole({ id: 'role-1', name: '采购员', permissions: [] });
+
+    const updated: GovernanceRole = {
+      id: 'role-1',
+      name: '高级采购员',
+      permissions: [
+        { objectTypeId: 'entity-1', ops: ['READ', 'WRITE', 'EXECUTE'] },
+      ],
+    };
+    store.updateGovernanceRole('role-1', updated);
+
+    const model = useOntologyStore.getState().project!.governanceModel!;
+    expect(model.roles).toHaveLength(1);
+    expect(model.roles[0].name).toBe('高级采购员');
+    expect(model.roles[0].permissions[0].ops).toContain('EXECUTE');
+  });
+
+  it('should delete a governance role and cascade to fieldPermissions and agentPolicies', () => {
+    const store = useOntologyStore.getState();
+    store.addGovernanceRole({ id: 'role-1', name: '采购员', permissions: [] });
+    store.addGovernanceRole({ id: 'role-2', name: '审批员', permissions: [] });
+
+    // Add a field permission referencing role-1 and an agent policy referencing role-1
+    store.addFieldPermission({
+      objectTypeId: 'entity-1',
+      propertyNameEn: 'amount',
+      allowedRoleIds: ['role-1', 'role-2'],
+    });
+    store.addAgentPolicy({
+      id: 'policy-1',
+      roleId: 'role-1',
+      allowedActionIds: ['action-1'],
+    });
+
+    store.deleteGovernanceRole('role-1');
+
+    const model = useOntologyStore.getState().project!.governanceModel!;
+    expect(model.roles).toHaveLength(1);
+    expect(model.roles[0].id).toBe('role-2');
+
+    // role-1 removed from fieldPermission.allowedRoleIds
+    expect(model.fieldPermissions[0].allowedRoleIds).toEqual(['role-2']);
+
+    // agent policy with roleId === role-1 should be removed
+    expect(model.agentPolicies).toHaveLength(0);
+  });
+
+  it('should handle updateGovernanceRole when model does not exist (no-op)', () => {
+    const store = useOntologyStore.getState();
+    expect(() => {
+      store.updateGovernanceRole('non-existent', { id: 'r', name: 'x', permissions: [] });
+    }).not.toThrow();
+  });
+
+  it('should handle deleteGovernanceRole when model does not exist (no-op)', () => {
+    const store = useOntologyStore.getState();
+    expect(() => {
+      store.deleteGovernanceRole('non-existent');
+    }).not.toThrow();
+  });
+
+  // ---------- Field Permissions ----------
+
+  it('should add a field permission and auto-create governance model', () => {
+    const store = useOntologyStore.getState();
+    store.addFieldPermission({
+      objectTypeId: 'entity-1',
+      propertyNameEn: 'amount',
+      allowedRoleIds: ['role-1'],
+    });
+
+    const model = useOntologyStore.getState().project!.governanceModel!;
+    expect(model.fieldPermissions).toHaveLength(1);
+    expect(model.fieldPermissions[0].propertyNameEn).toBe('amount');
+    expect(model.fieldPermissions[0].allowedRoleIds).toContain('role-1');
+  });
+
+  it('should add multiple field permissions', () => {
+    const store = useOntologyStore.getState();
+    store.addFieldPermission({ objectTypeId: 'entity-1', propertyNameEn: 'amount', allowedRoleIds: [] });
+    store.addFieldPermission({ objectTypeId: 'entity-1', propertyNameEn: 'quantity', allowedRoleIds: [] });
+
+    const model = useOntologyStore.getState().project!.governanceModel!;
+    expect(model.fieldPermissions).toHaveLength(2);
+  });
+
+  it('should update a field permission by index', () => {
+    const store = useOntologyStore.getState();
+    store.addFieldPermission({ objectTypeId: 'entity-1', propertyNameEn: 'amount', allowedRoleIds: ['role-1'] });
+
+    store.updateFieldPermission(0, {
+      objectTypeId: 'entity-1',
+      propertyNameEn: 'amount',
+      allowedRoleIds: ['role-1', 'role-2'],
+    });
+
+    const model = useOntologyStore.getState().project!.governanceModel!;
+    expect(model.fieldPermissions[0].allowedRoleIds).toHaveLength(2);
+    expect(model.fieldPermissions[0].allowedRoleIds).toContain('role-2');
+  });
+
+  it('should delete a field permission by index', () => {
+    const store = useOntologyStore.getState();
+    store.addFieldPermission({ objectTypeId: 'entity-1', propertyNameEn: 'amount', allowedRoleIds: [] });
+    store.addFieldPermission({ objectTypeId: 'entity-1', propertyNameEn: 'quantity', allowedRoleIds: [] });
+
+    store.deleteFieldPermission(0);
+
+    const model = useOntologyStore.getState().project!.governanceModel!;
+    expect(model.fieldPermissions).toHaveLength(1);
+    expect(model.fieldPermissions[0].propertyNameEn).toBe('quantity');
+  });
+
+  it('should handle deleteFieldPermission with out-of-bounds index (no-op)', () => {
+    const store = useOntologyStore.getState();
+    store.addFieldPermission({ objectTypeId: 'entity-1', propertyNameEn: 'amount', allowedRoleIds: [] });
+
+    expect(() => {
+      store.deleteFieldPermission(99);
+    }).not.toThrow();
+  });
+
+  // ---------- Agent Policies ----------
+
+  it('should add an agent policy and auto-create governance model', () => {
+    const store = useOntologyStore.getState();
+    store.addAgentPolicy({
+      id: 'policy-1',
+      roleId: 'role-1',
+      allowedMcpTools: ['tool-a', 'tool-b'],
+      allowedAggregateRootIds: ['agg-1'],
+    });
+
+    const model = useOntologyStore.getState().project!.governanceModel!;
+    expect(model.agentPolicies).toHaveLength(1);
+    expect(model.agentPolicies[0].roleId).toBe('role-1');
+    expect(model.agentPolicies[0].allowedMcpTools).toContain('tool-a');
+  });
+
+  it('should add multiple agent policies', () => {
+    const store = useOntologyStore.getState();
+    store.addAgentPolicy({ id: 'policy-1', roleId: 'role-1' });
+    store.addAgentPolicy({ id: 'policy-2', roleId: 'role-2' });
+
+    const model = useOntologyStore.getState().project!.governanceModel!;
+    expect(model.agentPolicies).toHaveLength(2);
+  });
+
+  it('should update an agent policy by id', () => {
+    const store = useOntologyStore.getState();
+    store.addAgentPolicy({ id: 'policy-1', roleId: 'role-1', allowedActionIds: ['action-1'] });
+
+    store.updateAgentPolicy('policy-1', {
+      id: 'policy-1',
+      roleId: 'role-1',
+      allowedActionIds: ['action-1', 'action-2'],
+      defaultDeny: true,
+    });
+
+    const model = useOntologyStore.getState().project!.governanceModel!;
+    expect(model.agentPolicies[0].allowedActionIds).toHaveLength(2);
+    expect(model.agentPolicies[0].defaultDeny).toBe(true);
+  });
+
+  it('should delete an agent policy by id', () => {
+    const store = useOntologyStore.getState();
+    store.addAgentPolicy({ id: 'policy-1', roleId: 'role-1' });
+    store.addAgentPolicy({ id: 'policy-2', roleId: 'role-2' });
+
+    store.deleteAgentPolicy('policy-1');
+
+    const model = useOntologyStore.getState().project!.governanceModel!;
+    expect(model.agentPolicies).toHaveLength(1);
+    expect(model.agentPolicies[0].id).toBe('policy-2');
+  });
+
+  it('should handle deleteAgentPolicy when model does not exist (no-op)', () => {
+    const store = useOntologyStore.getState();
+    expect(() => {
+      store.deleteAgentPolicy('non-existent');
+    }).not.toThrow();
+  });
+});
+
+// ============================================================
+// Data Sources Model CRUD
+// ============================================================
+describe('Data Sources Model CRUD', () => {
+  beforeEach(() => {
+    resetStore();
+    createTestProject();
+  });
+
+  it('should add a data source and auto-create dataSourcesModel', () => {
+    const store = useOntologyStore.getState();
+    const source: DataSourceDefinition = {
+      id: 'ds-1',
+      name: 'SAP ERP 系统',
+      type: 'api',
+      api: { baseUrl: 'https://sap.example.com/api', entitySet: 'Materials', authSecretRef: 'sec-sap' },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    store.addDataSource(source);
+
+    const model = useOntologyStore.getState().project!.dataSourcesModel!;
+    expect(model).toBeDefined();
+    expect(model.sources).toHaveLength(1);
+    expect(model.sources[0].name).toBe('SAP ERP 系统');
+    expect(model.sources[0].type).toBe('api');
+    expect(model.sources[0].api!.baseUrl).toBe('https://sap.example.com/api');
+  });
+
+  it('should add multiple data sources', () => {
+    const store = useOntologyStore.getState();
+    const now = new Date().toISOString();
+    store.addDataSource({ id: 'ds-1', name: 'SAP', type: 'api', createdAt: now, updatedAt: now });
+    store.addDataSource({ id: 'ds-2', name: 'MySQL', type: 'database', createdAt: now, updatedAt: now });
+
+    const model = useOntologyStore.getState().project!.dataSourcesModel!;
+    expect(model.sources).toHaveLength(2);
+    expect(model.sources[1].name).toBe('MySQL');
+  });
+
+  it('should update a data source by sourceId', () => {
+    const store = useOntologyStore.getState();
+    const now = new Date().toISOString();
+    store.addDataSource({ id: 'ds-1', name: 'SAP ERP', type: 'api', createdAt: now, updatedAt: now });
+
+    const updated: DataSourceDefinition = {
+      id: 'ds-1',
+      name: 'SAP ERP (更新)',
+      type: 'api',
+      boundObjectTypeId: 'entity-1',
+      api: { baseUrl: 'https://sap-new.example.com', entitySet: 'Materials', authSecretRef: 'sec-sap' },
+      createdAt: now,
+      updatedAt: new Date().toISOString(),
+    };
+    store.updateDataSource('ds-1', updated);
+
+    const model = useOntologyStore.getState().project!.dataSourcesModel!;
+    expect(model.sources).toHaveLength(1);
+    expect(model.sources[0].name).toBe('SAP ERP (更新)');
+    expect(model.sources[0].boundObjectTypeId).toBe('entity-1');
+    expect(model.sources[0].api!.baseUrl).toBe('https://sap-new.example.com');
+  });
+
+  it('should delete a data source by sourceId', () => {
+    const store = useOntologyStore.getState();
+    const now = new Date().toISOString();
+    store.addDataSource({ id: 'ds-1', name: 'SAP', type: 'api', createdAt: now, updatedAt: now });
+    store.addDataSource({ id: 'ds-2', name: 'MySQL', type: 'database', createdAt: now, updatedAt: now });
+
+    store.deleteDataSource('ds-1');
+
+    const model = useOntologyStore.getState().project!.dataSourcesModel!;
+    expect(model.sources).toHaveLength(1);
+    expect(model.sources[0].id).toBe('ds-2');
+  });
+
+  it('should handle deleteDataSource when model does not exist (no-op)', () => {
+    const store = useOntologyStore.getState();
+    expect(() => {
+      store.deleteDataSource('non-existent');
+    }).not.toThrow();
+  });
+
+  it('should handle updateDataSource when model does not exist (no-op)', () => {
+    const store = useOntologyStore.getState();
+    const now = new Date().toISOString();
+    expect(() => {
+      store.updateDataSource('ds-1', { id: 'ds-1', name: 'x', type: 'file', createdAt: now, updatedAt: now });
+    }).not.toThrow();
   });
 });
