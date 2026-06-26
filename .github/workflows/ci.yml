@@ -52,3 +52,6 @@ jobs:
 
       - name: test:e2e:smoke
         run: pnpm run test:e2e:smoke
+
+      - name: test:phase4 (manifest golden + compiler)
+        run: pnpm run test:phase4
