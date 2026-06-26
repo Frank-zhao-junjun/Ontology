@@ -69,19 +69,19 @@ EPC 通过 **A→B→C→EPC 业务树** 将八维要素（E1–E8）串联为�
 
 共 **17 条 W-EPC 规则**（基础 5 + v3.1 扩展 12），覆盖引用完整性、dimension 一致性、Action 可达性、Event 联动等。
 
-#### EPC 覆盖率分析（US-S16）
+#### EPC 覆盖率分析（US-S16）✅ 已完成
 
 遍历 E1–E8 各维度要素，统计被 EPC 引用的比例，生成覆盖率仪表盘：
 - VM-D/R/B/E/P/G/M/S 共 **22 条覆盖率规则**
 - 发现覆盖率缺口并指导要素补充
 
-#### 交叉一致性验证（US-S17）
+#### 交叉一致性验证（US-S17）✅ 已完成
 
 **VX 规则**：跨要素的一致性校验，确保 A/B/C 语义定义与要素实际使用不矛盾。
 - VX-01~12：语义一致性
 - VX-13~20：结构一致性
 
-#### EPC 推导（US-S18）
+#### EPC 推导（US-S18）✅ 已完成
 
 从已知要素和 EPC 步骤引用自动推导：
 - **向下推导**：从 C 场景的 EPC 步骤中提取要素覆盖
@@ -114,7 +114,7 @@ EPC 通过 **A→B→C→EPC 业务树** 将八维要素（E1–E8）串联为�
 | Unit 测试 | 405 | `tests/unit/` (82 文件) |
 | Integration 测试 | 100 | `tests/integration/` (~30 文件) |
 | E2E smoke | 10+ | `tests/e2e/` (10 文件) |
-| **合计** | **515+** | |
+| **合计** | **851** | |
 
 `pnpm run ci:check` 全绿：lint 0 error · ts-check pass · unit 405 · integration 100 · e2e smoke pass
 

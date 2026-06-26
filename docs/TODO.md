@@ -1,6 +1,6 @@
 ﻿# Ontology 项目待办清单
 
-> 最后更新: 2026-06-19 (审计修正 · tsc 0 error · 48 test 全绿 · TD-01~03 resolved)
+> 最后更新: 2026-06-26 (审计修正 · Markdown 导出 · HR 同步 · Agent skills 管理器)
 > 简化重构详情: [docs/ontology-simplification/](./ontology-simplification/)
 
 ---
@@ -174,7 +174,7 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
 - [x] **TD-04**: README.md 更新（2026-06-18 已完成）
 - [x] **TD-05**: TODO.md 本文档同步（2026-06-18）
 
-> ✅ **2026-06-19 技术债务全部清零** · `ci:check` 全绿 · lint 0 error · ts-check 0 error · unit 432 · integration 121 · e2e 15
+> ✅ **2026-06-26 技术债务全部清零** · `ci:check` 全绿 · lint 0 error · ts-check 0 error · unit 560+ · integration 146 · e2e 30 · inline 115
 
 ---
 
