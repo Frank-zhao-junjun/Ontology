@@ -107,6 +107,18 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportOntologyModel = () => {
+    const { exportOntologyModel } = useOntologyStore.getState();
+    const json = exportOntologyModel();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.name.replace(/\s+/g, '_')}_ontology-model.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleOpenEditProjectDialog = () => {
     setEditProjectName(project.name);
     setEditProjectDescription(project.description || '');
@@ -247,6 +259,9 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={handleExport}>
                     导出 JSON 备份
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={handleExportOntologyModel}>
+                    导出本体模型
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={() => setShowExcelImportExport(true)}

@@ -406,6 +406,7 @@ interface OntologyState {
   // 导入导出
   exportProject: () => string;
   importProject: (json: string) => void;
+  exportOntologyModel: () => string;
   
   // 代码生成 (M2准备)
   generateCodePackage: (versionId: string, config: PublishConfig) => Promise<string>;
@@ -3196,6 +3197,98 @@ export const useOntologyStore = create<OntologyState>()(
         } catch (error) {
           console.error('导入项目失败:', error);
         }
+      },
+      
+      exportOntologyModel: () => {
+        const { project } = get();
+        if (!project) return '{}';
+
+        const entities = (project.dataModel?.entities ?? []).map((e) => ({
+          id: e.id,
+          name: e.name,
+          nameEn: e.nameEn,
+          description: e.description,
+          attributes: (e.attributes ?? []).map((a) => ({
+            name: a.name,
+            nameEn: a.nameEn,
+            type: a.dataType || 'string',
+            required: a.required || false,
+            description: a.description,
+          })),
+          relations: (e.relations ?? []).map((r) => ({
+            target: r.targetEntity,
+            type: r.type,
+            name: r.name,
+          })),
+        }));
+
+        const stateMachines = (project.behaviorModel?.stateMachines ?? []).map((sm) => ({
+          id: sm.id,
+          name: sm.name,
+          entity: sm.entity,
+          statusField: sm.statusField,
+          states: (sm.states ?? []).map((s) => ({
+            id: s.id,
+            name: s.name,
+            isInitial: s.isInitial || false,
+            isFinal: s.isFinal || false,
+          })),
+          transitions: (sm.transitions ?? []).map((t) => ({
+            id: t.id,
+            name: t.name,
+            from: t.from,
+            to: t.to,
+            trigger: t.trigger,
+          })),
+        }));
+
+        const businessChain = {
+          valueDomains: (project.valueDomains ?? []).map((v) => ({ id: v.id, name: v.name, nameEn: v.nameEn })),
+          capabilities: (project.capabilities ?? []).map((c) => ({ id: c.id, name: c.name, nameEn: c.nameEn, parentId: c.parentId || '' })),
+          scenarios: (project.scenarios ?? []).map((s) => ({ id: s.id, name: s.name, parentId: s.parentId || '' })),
+          epcProcesses: (project.epcProcesses ?? []).map((e) => ({ id: e.id, name: e.name, parentId: e.parentId || '' })),
+        };
+
+        const rules = (project.ruleModel?.rules ?? []).map((r) => ({
+          id: r.id,
+          name: r.name,
+          description: r.description,
+          entity: r.entity,
+          field: r.field || '',
+          condition: r.condition,
+          severity: r.severity || 'warning',
+        }));
+
+        const governance = {
+          roles: (project.governanceModel?.roles ?? []).map((r) => ({
+            id: r.id,
+            name: r.name,
+            permissions: r.permissions ?? [],
+          })),
+        };
+
+        const model = {
+          version: '1.0',
+          exportedAt: new Date().toISOString(),
+          project: {
+            id: project.id,
+            name: project.name,
+            domain: project.domain?.name || '',
+          },
+          entities,
+          stateMachines,
+          businessChain,
+          metrics: project.metricsModel?.metrics ?? [],
+          rules,
+          governance,
+          dataSources: (project.dataSourcesModel?.sources ?? []).map((ds) => ({
+            id: ds.id,
+            name: ds.name,
+            type: ds.type,
+          })),
+        };
+
+        return JSON.stringify(model, null, 2);
       },
       
       // 版本管理操作 (M1)
