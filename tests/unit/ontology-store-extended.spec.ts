@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useOntologyStore } from '../../src/store/ontology-store';
-import type { PositionResponsibility, Intent, StateMachine } from '../../src/types/ontology';
+import type {
+  PositionResponsibility, Intent, StateMachine,
+  BusinessMetric, TransactionBoundary, BehaviorIndicator, BehaviorConstraint,
+  BehaviorModel,
+} from '../../src/types/ontology';
 
 // Helper to reset store between tests
 function resetStore() {
@@ -498,5 +502,582 @@ describe('Reference Documents', () => {
 
     const docs = useOntologyStore.getState().project?.referenceDocuments;
     expect(docs).toHaveLength(0);
+  });
+});
+
+// ============================================================
+// Business Metrics CRUD (B05)
+// ============================================================
+describe('Business Metrics', () => {
+  beforeEach(() => {
+    resetStore();
+    createTestProject();
+  });
+
+  function makeMetric(id: string, name: string, nameEn: string, formula: string): BusinessMetric {
+    return {
+      id, name, nameEn,
+      formula,
+      unit: '个',
+      targetValue: 100,
+      boundActionId: 'action-1',
+      measurementType: 'automatic',
+      dataSourceRef: 'ds-1',
+    };
+  }
+
+  it('should add a metric and create metricsModel if missing', () => {
+    const store = useOntologyStore.getState();
+    store.addMetric(makeMetric('m-1', '订单数量', 'orderCount', 'COUNT(orders)'));
+
+    const model = useOntologyStore.getState().project?.metricsModel;
+    expect(model).toBeDefined();
+    expect(model?.metrics).toHaveLength(1);
+    expect(model?.metrics[0].name).toBe('订单数量');
+    expect(model?.metrics[0].formula).toBe('COUNT(orders)');
+  });
+
+  it('should add multiple metrics and increment count', () => {
+    const store = useOntologyStore.getState();
+    store.addMetric(makeMetric('m-1', '订单数量', 'orderCount', 'COUNT(orders)'));
+    store.addMetric(makeMetric('m-2', '总金额', 'totalAmount', 'SUM(amount)'));
+
+    const model = useOntologyStore.getState().project?.metricsModel;
+    expect(model?.metrics).toHaveLength(2);
+  });
+
+  it('should update a metric field', () => {
+    const store = useOntologyStore.getState();
+    store.addMetric(makeMetric('m-1', '订单数量', 'orderCount', 'COUNT(orders)'));
+
+    store.updateMetric('m-1', { name: '订单总数量', targetValue: 200 });
+
+    const model = useOntologyStore.getState().project?.metricsModel;
+    expect(model?.metrics).toHaveLength(1);
+    expect(model?.metrics[0].name).toBe('订单总数量');
+    expect(model?.metrics[0].targetValue).toBe(200);
+    expect(model?.metrics[0].formula).toBe('COUNT(orders)'); // unchanged
+  });
+
+  it('should delete a metric by id', () => {
+    const store = useOntologyStore.getState();
+    store.addMetric(makeMetric('m-1', '订单数量', 'orderCount', 'COUNT(orders)'));
+    store.addMetric(makeMetric('m-2', '总金额', 'totalAmount', 'SUM(amount)'));
+
+    store.deleteMetric('m-1');
+
+    const model = useOntologyStore.getState().project?.metricsModel;
+    expect(model?.metrics).toHaveLength(1);
+    expect(model?.metrics[0].id).toBe('m-2');
+  });
+
+  it('should handle delete on non-existent metric gracefully', () => {
+    const store = useOntologyStore.getState();
+    store.addMetric(makeMetric('m-1', '订单数量', 'orderCount', 'COUNT(orders)'));
+
+    expect(() => store.deleteMetric('non-existent')).not.toThrow();
+    const model = useOntologyStore.getState().project?.metricsModel;
+    expect(model?.metrics).toHaveLength(1);
+  });
+});
+
+// ============================================================
+// Transaction Boundaries CRUD (B06)
+// ============================================================
+describe('Transaction Boundaries', () => {
+  beforeEach(() => {
+    resetStore();
+    createTestProject();
+  });
+
+  function makeBoundary(id: string, name: string, actionIds: string[]): TransactionBoundary {
+    return {
+      id,
+      name,
+      nameEn: name,
+      description: `${name} description`,
+      actionIds,
+      aggregateRootIds: ['agg-1'],
+      isolation: 'read_committed',
+      compensationActionId: undefined,
+    };
+  }
+
+  it('should add a transaction boundary and create behaviorModel if missing', () => {
+    const store = useOntologyStore.getState();
+    store.addTransactionBoundary(makeBoundary('tb-1', '创建订单', ['action-1', 'action-2']));
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model).toBeDefined();
+    expect(model?.transactionBoundaries).toHaveLength(1);
+    expect(model?.transactionBoundaries![0].name).toBe('创建订单');
+    expect(model?.transactionBoundaries![0].actionIds).toEqual(['action-1', 'action-2']);
+  });
+
+  it('should add multiple boundaries', () => {
+    const store = useOntologyStore.getState();
+    store.addTransactionBoundary(makeBoundary('tb-1', '创建订单', ['a-1']));
+    store.addTransactionBoundary(makeBoundary('tb-2', '审核订单', ['a-2']));
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.transactionBoundaries).toHaveLength(2);
+  });
+
+  it('should update a transaction boundary', () => {
+    const store = useOntologyStore.getState();
+    store.addTransactionBoundary(makeBoundary('tb-1', '创建订单', ['a-1']));
+
+    store.updateTransactionBoundary('tb-1', { name: '更新订单', actionIds: ['a-1', 'a-3'] });
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.transactionBoundaries).toHaveLength(1);
+    expect(model?.transactionBoundaries![0].name).toBe('更新订单');
+    expect(model?.transactionBoundaries![0].actionIds).toContain('a-3');
+  });
+
+  it('should delete a transaction boundary', () => {
+    const store = useOntologyStore.getState();
+    store.addTransactionBoundary(makeBoundary('tb-1', '创建订单', ['a-1']));
+    store.addTransactionBoundary(makeBoundary('tb-2', '审核订单', ['a-2']));
+
+    store.deleteTransactionBoundary('tb-1');
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.transactionBoundaries).toHaveLength(1);
+    expect(model?.transactionBoundaries![0].id).toBe('tb-2');
+  });
+
+  it('should handle delete on non-existent boundary gracefully', () => {
+    const store = useOntologyStore.getState();
+    store.addTransactionBoundary(makeBoundary('tb-1', '创建订单', ['a-1']));
+
+    expect(() => store.deleteTransactionBoundary('non-existent')).not.toThrow();
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.transactionBoundaries).toHaveLength(1);
+  });
+});
+
+// ============================================================
+// Behavior Model CRUD
+// ============================================================
+describe('Behavior Model CRUD', () => {
+  beforeEach(() => {
+    resetStore();
+    createTestProject();
+  });
+
+  // --- setBehaviorModel ---
+  it('should set the entire behavior model', () => {
+    const store = useOntologyStore.getState();
+    const model: BehaviorModel = {
+      id: 'bm-1',
+      name: '测试行为模型',
+      version: '1.0.0',
+      domain: 'dm-1',
+      stateMachines: [],
+      actions: [],
+      functions: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    store.setBehaviorModel(model);
+
+    const bm = useOntologyStore.getState().project?.behaviorModel;
+    expect(bm).toBeDefined();
+    expect(bm?.id).toBe('bm-1');
+    expect(bm?.name).toBe('测试行为模型');
+  });
+
+  // --- State Machines ---
+  it('should add a state machine', () => {
+    const store = useOntologyStore.getState();
+    store.addStateMachine({
+      id: 'sm-1',
+      name: '订单状态机',
+      entity: 'ent-1',
+      statusField: 'status',
+      states: [{ id: 's-1', name: '草稿', isInitial: true }],
+      transitions: [],
+    });
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model).toBeDefined();
+    expect(model?.stateMachines).toHaveLength(1);
+    expect(model?.stateMachines[0].name).toBe('订单状态机');
+  });
+
+  it('should update a state machine', () => {
+    const store = useOntologyStore.getState();
+    store.addStateMachine({
+      id: 'sm-1',
+      name: '订单状态机',
+      entity: 'ent-1',
+      statusField: 'status',
+      states: [{ id: 's-1', name: '草稿', isInitial: true }],
+      transitions: [],
+    });
+
+    store.updateStateMachine('sm-1', {
+      id: 'sm-1',
+      name: '更新后的状态机',
+      entity: 'ent-1',
+      statusField: 'status',
+      states: [
+        { id: 's-1', name: '草稿', isInitial: true },
+        { id: 's-2', name: '已发布', isFinal: true },
+      ],
+      transitions: [{ id: 't-1', from: 's-1', to: 's-2', name: '发布', trigger: 'manual' }],
+    });
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.stateMachines).toHaveLength(1);
+    expect(model?.stateMachines[0].name).toBe('更新后的状态机');
+    expect(model?.stateMachines[0].states).toHaveLength(2);
+  });
+
+  it('should delete a state machine', () => {
+    const store = useOntologyStore.getState();
+    store.addStateMachine({
+      id: 'sm-1',
+      name: '状态机1',
+      entity: 'ent-1',
+      statusField: 'status',
+      states: [],
+      transitions: [],
+    });
+    store.addStateMachine({
+      id: 'sm-2',
+      name: '状态机2',
+      entity: 'ent-2',
+      statusField: 'status',
+      states: [],
+      transitions: [],
+    });
+
+    store.deleteStateMachine('sm-1');
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.stateMachines).toHaveLength(1);
+    expect(model?.stateMachines[0].id).toBe('sm-2');
+  });
+
+  // --- Actions ---
+  it('should add an action', () => {
+    const store = useOntologyStore.getState();
+    store.addAction({
+      id: 'a-1',
+      name: '创建订单',
+      nameEn: 'CreateOrder',
+      description: '创建采购订单',
+      entity: 'ent-1',
+      stateMachine: 'sm-1',
+      trigger: 'manual',
+      inputAttributes: [],
+      outputAttributes: [],
+    });
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.actions).toHaveLength(1);
+    expect(model?.actions![0].name).toBe('创建订单');
+    expect(model?.actions![0].stateMachine).toBe('sm-1');
+  });
+
+  it('should update an action', () => {
+    const store = useOntologyStore.getState();
+    store.addAction({
+      id: 'a-1',
+      name: '创建订单',
+      nameEn: 'CreateOrder',
+      entity: 'ent-1',
+      trigger: 'manual',
+      inputAttributes: [],
+      outputAttributes: [],
+    });
+
+    store.updateAction('a-1', {
+      id: 'a-1',
+      name: '更新订单',
+      nameEn: 'UpdateOrder',
+      entity: 'ent-1',
+      trigger: 'manual',
+      inputAttributes: ['field-1'],
+      outputAttributes: [],
+    });
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.actions).toHaveLength(1);
+    expect(model?.actions![0].name).toBe('更新订单');
+    expect(model?.actions![0].inputAttributes).toContain('field-1');
+  });
+
+  it('should delete an action', () => {
+    const store = useOntologyStore.getState();
+    store.addAction({
+      id: 'a-1',
+      name: '创建订单',
+      nameEn: 'CreateOrder',
+      entity: 'ent-1',
+      trigger: 'manual',
+      inputAttributes: [],
+      outputAttributes: [],
+    });
+    store.addAction({
+      id: 'a-2',
+      name: '审核订单',
+      nameEn: 'ApproveOrder',
+      entity: 'ent-1',
+      trigger: 'manual',
+      inputAttributes: [],
+      outputAttributes: [],
+    });
+
+    store.deleteAction('a-1');
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.actions).toHaveLength(1);
+    expect(model?.actions![0].id).toBe('a-2');
+  });
+
+  // --- Functions ---
+  it('should add a function definition', () => {
+    const store = useOntologyStore.getState();
+    store.addFunction({
+      id: 'f-1',
+      name: '计算金额',
+      nameEn: 'CalculateAmount',
+      description: '计算订单总金额',
+      entity: 'ent-1',
+      inputAttributes: ['quantity', 'price'],
+      outputAttributes: ['totalAmount'],
+    });
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.functions).toHaveLength(1);
+    expect(model?.functions![0].name).toBe('计算金额');
+  });
+
+  it('should update a function', () => {
+    const store = useOntologyStore.getState();
+    store.addFunction({
+      id: 'f-1',
+      name: '计算金额',
+      nameEn: 'CalculateAmount',
+      entity: 'ent-1',
+      inputAttributes: [],
+      outputAttributes: [],
+    });
+
+    store.updateFunction('f-1', {
+      id: 'f-1',
+      name: '重新计算金额',
+      nameEn: 'RecalculateAmount',
+      entity: 'ent-1',
+      inputAttributes: ['qty'],
+      outputAttributes: ['total'],
+    });
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.functions![0].name).toBe('重新计算金额');
+  });
+
+  it('should delete a function', () => {
+    const store = useOntologyStore.getState();
+    store.addFunction({
+      id: 'f-1',
+      name: '函数1',
+      nameEn: 'Func1',
+      entity: 'ent-1',
+      inputAttributes: [],
+      outputAttributes: [],
+    });
+    store.addFunction({
+      id: 'f-2',
+      name: '函数2',
+      nameEn: 'Func2',
+      entity: 'ent-1',
+      inputAttributes: [],
+      outputAttributes: [],
+    });
+
+    store.deleteFunction('f-1');
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.functions).toHaveLength(1);
+    expect(model?.functions![0].id).toBe('f-2');
+  });
+
+  // --- Behavior Indicators ---
+  it('should add a behavior indicator', () => {
+    const store = useOntologyStore.getState();
+    // Ensure behaviorModel exists first
+    store.addStateMachine({
+      id: 'sm-init',
+      name: 'Init',
+      entity: 'ent-1',
+      statusField: 'status',
+      states: [],
+      transitions: [],
+    });
+
+    store.addBehaviorIndicator({
+      id: 'bi-1',
+      name: '订单处理时长',
+      type: 'duration',
+      targetEntity: 'ent-1',
+      targetAttribute: 'processingTime',
+      formula: 'endTime - startTime',
+      warningThreshold: 3600,
+      criticalThreshold: 7200,
+    });
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.indicators).toHaveLength(1);
+    expect(model?.indicators![0].name).toBe('订单处理时长');
+    expect(model?.indicators![0].type).toBe('duration');
+  });
+
+  it('should update a behavior indicator', () => {
+    const store = useOntologyStore.getState();
+    store.addStateMachine({
+      id: 'sm-init',
+      name: 'Init',
+      entity: 'ent-1',
+      statusField: 'status',
+      states: [],
+      transitions: [],
+    });
+
+    store.addBehaviorIndicator({
+      id: 'bi-1',
+      name: '订单处理时长',
+      type: 'duration',
+      targetEntity: 'ent-1',
+    });
+
+    store.updateBehaviorIndicator('bi-1', {
+      id: 'bi-1',
+      name: '订单处理时长(秒)',
+      type: 'duration',
+      targetEntity: 'ent-1',
+      warningThreshold: 1800,
+    });
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.indicators![0].name).toBe('订单处理时长(秒)');
+    expect(model?.indicators![0].warningThreshold).toBe(1800);
+  });
+
+  it('should delete a behavior indicator', () => {
+    const store = useOntologyStore.getState();
+    store.addStateMachine({
+      id: 'sm-init',
+      name: 'Init',
+      entity: 'ent-1',
+      statusField: 'status',
+      states: [],
+      transitions: [],
+    });
+
+    store.addBehaviorIndicator({
+      id: 'bi-1', name: '时长', type: 'duration', targetEntity: 'ent-1',
+    });
+    store.addBehaviorIndicator({
+      id: 'bi-2', name: '数量', type: 'count', targetEntity: 'ent-1',
+    });
+
+    store.deleteBehaviorIndicator('bi-1');
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.indicators).toHaveLength(1);
+    expect(model?.indicators![0].id).toBe('bi-2');
+  });
+
+  // --- Behavior Constraints ---
+  it('should add a behavior constraint', () => {
+    const store = useOntologyStore.getState();
+    store.addStateMachine({
+      id: 'sm-init',
+      name: 'Init',
+      entity: 'ent-1',
+      statusField: 'status',
+      states: [],
+      transitions: [],
+    });
+
+    store.addBehaviorConstraint({
+      id: 'bc-1',
+      name: '金额校验',
+      description: '订单金额不能为负',
+      scope: 'pre_action',
+      constraintType: 'preCondition',
+      condition: 'amount >= 0',
+      severity: 'blocking',
+      errorMessage: '订单金额不能为负',
+    });
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.constraints).toHaveLength(1);
+    expect(model?.constraints![0].name).toBe('金额校验');
+    expect(model?.constraints![0].severity).toBe('blocking');
+  });
+
+  it('should update a behavior constraint', () => {
+    const store = useOntologyStore.getState();
+    store.addStateMachine({
+      id: 'sm-init',
+      name: 'Init',
+      entity: 'ent-1',
+      statusField: 'status',
+      states: [],
+      transitions: [],
+    });
+
+    store.addBehaviorConstraint({
+      id: 'bc-1',
+      name: '金额校验',
+      scope: 'pre_action',
+      condition: 'amount >= 0',
+      severity: 'blocking',
+    });
+
+    store.updateBehaviorConstraint('bc-1', {
+      id: 'bc-1',
+      name: '金额校验(更新)',
+      scope: 'pre_action',
+      condition: 'amount > 0',
+      severity: 'warning',
+      errorMessage: '金额需为正数',
+    });
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.constraints![0].name).toBe('金额校验(更新)');
+    expect(model?.constraints![0].condition).toBe('amount > 0');
+    expect(model?.constraints![0].severity).toBe('warning');
+  });
+
+  it('should delete a behavior constraint', () => {
+    const store = useOntologyStore.getState();
+    store.addStateMachine({
+      id: 'sm-init',
+      name: 'Init',
+      entity: 'ent-1',
+      statusField: 'status',
+      states: [],
+      transitions: [],
+    });
+
+    store.addBehaviorConstraint({
+      id: 'bc-1', name: '约束1', scope: 'pre_action', condition: 'a', severity: 'blocking',
+    });
+    store.addBehaviorConstraint({
+      id: 'bc-2', name: '约束2', scope: 'post_action', condition: 'b', severity: 'warning',
+    });
+
+    store.deleteBehaviorConstraint('bc-1');
+
+    const model = useOntologyStore.getState().project?.behaviorModel;
+    expect(model?.constraints).toHaveLength(1);
+    expect(model?.constraints![0].id).toBe('bc-2');
   });
 });
