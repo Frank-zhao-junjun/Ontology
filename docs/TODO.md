@@ -1,6 +1,6 @@
 ﻿# Ontology 项目待办清单
 
-> 最后更新: 2026-06-27 (goal-loop 收尾 · ci:check 全绿 · 覆盖率 40.61% · unit 1134)
+> 最后更新: 2026-06-27 (Hermes GS-02/03/04 · commit `05afab9` · ci:check 全绿 · scoped coverage **42%** · unit **1249**)
 > 简化重构详情: [docs/ontology-simplification/](./ontology-simplification/)
 > Copilot 权威 spec: [docs/superpowers/specs/2026-06-26-copilot-unified-modeling-design.md](./superpowers/specs/2026-06-26-copilot-unified-modeling-design.md)
 > 项目2 待办: [`../../ontology-platform/TODO.md`](../../ontology-platform/TODO.md)
@@ -29,6 +29,35 @@ pnpm run ci:check
 - [ ] **CP-02** 旧 AI 按钮完全移除（Copilot 稳定后）
 - [ ] **CP-03** CopilotKit v2 迁移（`react-core/v2` + `createCopilotRuntimeHandler`）
 - [ ] **CP-04** 豆包原生 function calling（Action 自动 invoke 增强）
+
+---
+
+## 〇·五、Hermes Goal-Loop 收尾（项目1）
+
+> 目标 `.hermes/GOAL.md` · 子目标 `.hermes/GOALS.md` · 进度 `.hermes/REPORT.md`  
+> Skill 权威路径：`D:\AI\00 - SKILL\goal-loop\` · 仓库副本 `.claude/skills/goal-loop/`  
+> 提交 **`05afab9`**（2026-06-27）
+
+| 子目标 | 内容 | 状态 |
+|--------|------|:----:|
+| GS-01 | Store UI 状态（`ontology-store-ui.spec.ts` 24 tests） | 🟡 ~90% |
+| GS-02 | lib 纯函数：`chain-doc-prompt` · `collect-manifest-ids` — **15 tests** | ✅ |
+| GS-03 | `data-model-editor` 接入 `helpers.ts` — **89 tests**（TC-65~89 新增 25） | ✅ |
+| GS-04 | API 路由：`projects/[id]` · `resolve-conflict` · `export` POST/xlsx — **18 tests** | 🟡 ~70% |
+| GS-05 | `ci:check` 全绿 | ✅ |
+| GS-06 | Scoped unit coverage **42.07%** → 目标 **≥80%**（差 ~38pp） | 🟡 |
+
+**覆盖率 baseline 命令**：
+```bash
+pnpm exec vitest run --coverage tests/unit
+# 1249/1249 pass · Statements 42.07% · Lines 42.88%
+```
+
+**GS-06 下一批（按 ROI）**：
+- [ ] **GL-01** 继续 GS-03：`behavior-model-editor` / `event-model-editor` 纯函数提取
+- [ ] **GL-02** GS-04 补：`analyze-document-model` · `generate-*-draft` 路由单测
+- [ ] **GL-03** 评估 `components/ui` 是否移出 coverage include
+- [ ] **GL-04** 修复 `parse-pptx-markitdown.ts` coverage parse 警告
 
 ---
 
@@ -191,18 +220,16 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
   - ts-check：integration/unit fixture 与 `ontology-store-crud.spec.ts` 对齐当前 store API
   - integration：Excel 导入对话框 Radix Tabs + MSW masterdata
   - e2e smoke：业务链按钮文案 `A-价值域` / `B-能力`、删除按钮 disabled 断言
-- [ ] **Q-T3b**: 覆盖率 40%+（已达标 40.61%，核心路径已覆盖，组件渲染留待后续）
-  - 新增测试 Q-T3b 总量：**+164 tests**（累计 unit 1134 · integration 277 · e2e smoke 27 · phase4 32）
-  - 新增文件（29 个）：store UI(23) + lib纯函数(33) + 组件提取(78) + API路由(30)
+- [x] **Q-T3b**: 覆盖率 40%+（2026-06-27 scoped unit **42.07%** Statements）
+  - 累计：**unit 1249** · integration 277 · e2e smoke 27 · phase4 32 · **合计 ~1585**
+  - Hermes `05afab9` 新增：**+58 tests**（GS-02 15 + GS-03 25 + GS-04 18）
   - store 操作层：**6/6 模块全覆盖** ✅
-  - validation.ts：**77 tests，~95% 覆盖** ✅
-  - 核心 lib 覆盖：field-parser / validate-save-epc / scenario-workspace ✅
-  - API 路由覆盖：analyze-document-model / copilotkit / excel-template / excel-import ✅
-  - 组件层：data-model helpers 提取 + 64 纯函数测试 + scenario-workspace/data-model-editor render 基础覆盖
-    - `tests/e2e/copilot/` — 2 文件（smoke、文档上传）
-  - store 操作层覆盖情况：数据模型 ✅ / 项目分类 ✅ / 业务场景 ✅ / 规则模型 ✅ / 事件模型 ✅ / 元数据 ✅ / 主数据 ✅
-  - 最大空白：`ontology-store.ts`（~4500 行，~2% cov）→ store 操作层 5/6 模块已覆盖，剩余 UI 状态操作
-  - 待做：剩余 components 集成覆盖 + UI 状态操作
+  - validation.ts：**~95% 覆盖** ✅
+  - `src/lib/data-model/helpers.ts`：**99%** ✅（editor 已去重接入）
+  - API 路由新增单测：`projects/[id]` · `hr-sync/resolve-conflict` · `export` POST · `export/xlsx-from-manifest`
+  - API 仍低覆盖：`analyze-document-model` · `generate-module-draft` · `generate-element-draft`
+  - **最大空白**：`src/components/**` ~0%（shadcn 壳 + 业务组件几乎无单测）
+  - 待做：GS-06 冲 80%（见 §〇·五 GL-01~04）
   - 用户文档新增（2026-06-26）：
     - `docs/concepts-guide.md` — 概念指南（非技术人员）
     - `docs/quickstart.md` — 5 分钟快速入门
@@ -215,7 +242,7 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
 - [x] **TD-01**: Next.js workspace root warning — uncommented `outputFileTracingRoot` in next.config.ts (2026-06-19)
 - [x] **TD-02**: url.parse() deprecation warning — Next.js internal, not actionable from our codebase (2026-06-19)
 - [x] **TD-03**: 首页组件代码质量优化 — verified: no `any` types, clean useEffect, reasonable sizes (2026-06-19)
-- [x] **TD-04**: README.md 更新（2026-06-27 Copilot MVP 同步）
+- [x] **TD-04**: README.md 更新（2026-06-27 Hermes GS + 1249 unit / 42% coverage）
 - [x] **TD-05**: TODO.md 本文档同步（2026-06-27）
 
 > ✅ **2026-06-27** · Copilot MVP 合入 · `ci:check` 全绿 · coze Runtime 替代外网 CopilotKit API
@@ -231,7 +258,8 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
 | ✅ | S18-U01~U04 推导 + Badge | S17 ✅ | — | ✅ **29/29** |
 | ✅ | US-S15 / US-S16 | — | — | ✅ |
 | 🟡 P1 | CP-01 Copilot 浏览器手测（TC-P0-SPIKE / TC-10） | MVP ✅ | 低 | ⬜ |
-| 🟢 P2 | Q-T3 测试覆盖率 40%+（已达标 40.61%） | 全部 US | 低 | ✅ 已达标 |
+| 🟡 P1 | GS-06 覆盖率 ≥80%（当前 scoped **42%**） | GS-02~04 | 高 | 🟡 |
+| 🟢 P2 | Q-T3b 覆盖率 40%+（已达标 **42.07%**） | 全部 US | 低 | ✅ 已达标 |
 | 🟢 P3 | CP-02~04 Copilot 后续（旧按钮移除 / v2 / tool calling） | CP-01 | 低 | ⬜ |
 | ✅ P4 | TD-01~03 技术债务 | 无 | 低 | ✅ 已解决 |
 
@@ -251,3 +279,4 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
 - [x] **P7**: EPC v3.1 覆盖率分析（US-S16 U01–U04，16 测试全绿）
 - [x] **P8**: Q-T3 API/Store 测试扩充 + `ci:check` 全绿（2026-06-26）
 - [x] **P9**: Copilot 统一 AI 建模助手 MVP（Phase 0–3 · coze Runtime · `dd9424d`）
+- [x] **P10**: Hermes GS-02/03/04 — data-model helpers + API 路由单测 + 42% baseline（`05afab9`）

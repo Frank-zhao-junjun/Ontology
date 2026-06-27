@@ -123,19 +123,35 @@ EPC 通过 **A→B→C→EPC 业务树** 将八维要素（E1–E8）串联为�
 
 | 层 | 用例数 | 目录 |
 |:---|:---:|------|
-| Unit 测试 | **1134** | `tests/unit/`（139 文件） |
+| Unit 测试 | **1249** | `tests/unit/`（149 文件） |
 | Integration 测试 | **277** | `tests/integration/`（67 文件） |
 | E2E smoke | **27**（15 文件） | `tests/e2e/` |
 | Phase 4 回归 | **32**（7 文件） | `test:phase4` |
-| **合计** | **~1470** | |
+| **合计** | **~1585** | |
 
-`pnpm run ci:check` 全绿（2026-06-27）：lint **0 error** · ts-check pass · unit **1134/1134** · integration **277/277** · e2e smoke **27/27** · phase4 **32/32**
+`pnpm run ci:check` 全绿（2026-06-27）：lint **0 error** · ts-check pass · unit **1249/1249** · integration **277/277** · e2e smoke **27/27** · phase4 **32/32**
 
-覆盖率 **40.61%**（Statements），核心逻辑已覆盖，组件渲染留待后续。
+**Scoped unit 覆盖率**（`pnpm exec vitest run --coverage tests/unit`）：
+
+| 指标 | 当前 | Hermes 目标 |
+|------|:----:|:-----------:|
+| Statements | **42.07%** | ≥80% |
+| Lines | **42.88%** | ≥80% |
+
+核心 `src/lib/**` 与 `src/store/**` 已较高覆盖；`src/components/**` 仍为最大缺口。进度见 `.hermes/REPORT.md`。
 
 Copilot 专项：`pnpm exec vitest run tests/unit/copilot tests/integration/copilot tests/e2e/copilot`
 
-Copilot 专项：`pnpm exec vitest run tests/unit/copilot tests/integration/copilot tests/e2e/copilot`
+### Hermes Goal-Loop 收尾（项目1）
+
+提交 `05afab9` · 进度 `.hermes/REPORT.md` · Skill：`D:\AI\00 - SKILL\goal-loop\`（仓库内副本 `.claude/skills/goal-loop/`）
+
+| 子目标 | 内容 | 状态 |
+|--------|------|:----:|
+| GS-02 | `chain-doc-prompt` · `manifest-validator/collect-ids` — **15 tests** | ✅ |
+| GS-03 | `data-model-editor` → `@/lib/data-model/helpers` — **89 tests**（+25） | ✅ |
+| GS-04 | `projects/[id]` · `hr-sync/resolve-conflict` · `export` 路由 — **18 tests** | 🟡 |
+| GS-06 | Scoped coverage baseline **42%**（距 80% ~38pp） | 🟡 |
 
 ## 与项目2（Ontology Platform）对接
 
@@ -255,6 +271,7 @@ src/
 │   ├── migration/                # US-S12: BusinessScenario → A/B/C
 │   ├── manifest-compiler/        # US-S13: compileSimplifiedChain
 │   ├── e1-entity/                # US-S06: E1 实体创建
+│   ├── data-model/               # E1 数据模型纯函数（data-model-editor 提取）
 │   ├── metadata-local.ts         # 本地元数据 (57 条)
 │   ├── ontology-validator.ts     # 校验引擎
 │   └── ontology-normalizer.ts    # 模型规范化
@@ -359,6 +376,7 @@ POST   /api/hr-sync/resolve-conflict
 
 ### 开发
 - `docs/TODO.md` — 待办清单
+- `.hermes/GOAL.md` · `.hermes/REPORT.md` — Hermes Goal-Loop 目标与进度
 - `docs/progress.md` — 工作日志
 - `CONTRIBUTING.md` — 贡献规范
 - `docs/agentic-engineering-checklist.md` — AI 工程检查清单
