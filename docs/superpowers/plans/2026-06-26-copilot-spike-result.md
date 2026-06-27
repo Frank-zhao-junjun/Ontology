@@ -15,8 +15,8 @@ Phase 0 spike for CopilotKit integration in the Ontology modeling workspace.
 
 ## Runtime
 
-- `GET /api/copilotkit` — health check returns `{ status: 'ok', service: 'copilotkit' }` (TC-P0-03)
-- `POST /api/copilotkit` — proxies to `COPILOTKIT_RUNTIME` (default `https://api.copilotkit.ai`); **may need coze-coding-dev-sdk adapter** for production LLM routing
+- `GET/POST /api/copilotkit` — CopilotKit Runtime（`@copilotkit/runtime`）+ `createCozeServiceAdapter`（豆包 `doubao-seed-2-0-pro-260215` via `coze-coding-dev-sdk`）
+- 不再依赖外网 `api.copilotkit.ai` 代理；鉴权头经 `HeaderUtils.extractForwardHeaders` 透传
 
 ## UI Integration
 
@@ -35,6 +35,5 @@ Phase 0 spike for CopilotKit integration in the Ontology modeling workspace.
 
 ## Blockers / Follow-ups
 
-1. Wire POST runtime to coze-coding-dev-sdk if CopilotKit cloud proxy is insufficient
-2. Manual TC-P0-SPIKE: send test message in browser, confirm assistant reply or explicit API error
-3. Phase 1: incremental modeling actions + system prompt
+1. Manual TC-P0-SPIKE: send test message in browser, confirm assistant reply or explicit API error
+2. Tool auto-invoke 依赖豆包 function calling；当前通过 system prompt 注入 Action 目录

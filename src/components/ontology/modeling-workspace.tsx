@@ -16,6 +16,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Network, Library, AlertTriangle, Gauge, ShieldCheck, Database, BookOpen, Download, Box, GitBranch, ScrollText, Bell, Package, RefreshCw, Bot } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useRouter } from 'next/navigation';
 import { ManualGenerator } from './manual-generator';
 import { MetadataManager } from './metadata-manager';
@@ -275,10 +281,19 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Button size="sm" onClick={() => setShowManual(true)}>
-                <BookOpen className="w-4 h-4 mr-1.5" />
-                生成建模手册
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="sm" onClick={() => setShowManual(true)}>
+                      <BookOpen className="w-4 h-4 mr-1.5" />
+                      生成建模手册
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>建议使用右侧 Copilot（新），支持对话和文档上传</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
               {/* More actions dropdown */}
               <DropdownMenu>
