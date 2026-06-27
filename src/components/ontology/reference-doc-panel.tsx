@@ -7,13 +7,17 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Upload, Trash2, FileText, Loader2, Eye, Search, AlertCircle } from 'lucide-react';
 
 export function ReferenceDocPanel() {
   const project = useOntologyStore((s) => s.project);
   const addDoc = useOntologyStore((s) => s.addReferenceDocument);
   const removeDoc = useOntologyStore((s) => s.removeReferenceDocument);
-  const updateDoc = useOntologyStore((s) => s.updateReferenceDocument);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,35 +46,6 @@ export function ReferenceDocPanel() {
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handleExtractEntities = async (docId: string) => {
-    const doc = docs.find((d) => d.id === docId);
-    if (!doc) return;
-    updateDoc(docId, { extractionStatus: 'processing' });
-    try {
-      const res = await fetch('/api/reference-documents/extract-entities', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          docId,
-          documentText: doc.extractedText,
-          title: doc.title,
-          domain: project?.domain,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        updateDoc(docId, {
-          extractedEntities: json.data.entities,
-          extractionStatus: 'done',
-        });
-      } else {
-        updateDoc(docId, { extractionStatus: 'failed' });
-      }
-    } catch {
-      updateDoc(docId, { extractionStatus: 'failed' });
     }
   };
 
@@ -158,16 +133,23 @@ export function ReferenceDocPanel() {
                       <Eye className="h-3 w-3 mr-1" />
                       {previewDocId === doc.id ? '收起' : '预览'}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-xs"
-                      onClick={() => handleExtractEntities(doc.id)}
-                      disabled={doc.extractionStatus === 'processing' || doc.parseStatus !== 'success'}
-                    >
-                      <Search className="h-3 w-3 mr-1" />
-                      {doc.extractionStatus === 'processing' ? '提取中...' : '提取实体'}
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs"
+                          disabled={doc.parseStatus !== 'success'}
+                          data-testid="reference-doc-extract-entities-btn"
+                        >
+                          <Search className="h-3 w-3 mr-1" />
+                          提取实体
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent data-testid="legacy-ai-copilot-tooltip">
+                        建议使用右侧 Copilot
+                      </TooltipContent>
+                    </Tooltip>
                     <Button
                       variant="ghost"
                       size="sm"

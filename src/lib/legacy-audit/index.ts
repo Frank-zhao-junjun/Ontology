@@ -4,6 +4,8 @@ import { join } from 'node:path';
 export const FORBIDDEN_LEGACY_API_SEGMENTS = [
   'agent-semantic-layer',
   'entity-lifecycle',
+  'generate-model',
+  'extract-entities',
 ] as const;
 
 export function findLegacyApiRoutes(apiRoot: string): string[] {

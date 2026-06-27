@@ -46,18 +46,8 @@ describe('Masterdata Init API', () => {
 });
 
 // ==================== 4. Generate Model ====================
-
-describe('Generate Model API', () => {
-  it('POST /api/generate-model requires entity', async () => {
-    const { status, body } = await fetchJson(`${BASE}/api/generate-model`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    // Should return 400 or error since entity is missing
-    expect([400, 500]).toContain(status);
-  });
-});
+// NOTE: POST /api/generate-model removed in Copilot Phase 3 legacy cleanup.
+// Listed in src/lib/legacy-audit/index.ts FORBIDDEN_LEGACY_API_SEGMENTS.
 
 // ==================== 5. Excel Template ====================
 
@@ -137,14 +127,8 @@ describe('Reference Documents API', () => {
     expect(res.status).toBe(400);
   });
 
-  it('POST /api/reference-documents/extract-entities requires docId', async () => {
-    const { status } = await fetchJson(`${BASE}/api/reference-documents/extract-entities`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    expect([400, 500]).toContain(status);
-  });
+  // NOTE: POST /api/reference-documents/extract-entities removed in Copilot Phase 3.
+  // Entity extraction merged into Copilot analyzeDocumentAndModel / generateElementsFromText.
 });
 
 // ==================== 15. Export ====================

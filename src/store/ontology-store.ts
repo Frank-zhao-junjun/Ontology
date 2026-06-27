@@ -385,10 +385,14 @@ interface OntologyState {
   // US-S11b-Task2: 应用 AI 生成的 EPC 步骤（带版 fork 逻辑）
   applyAiEpcDraft: (epcId: string, steps: EpcStep[]) => void;
 
-  // US-S19-Task2: 批量应用 AI 生成的要素草稿（纯 insert，不修改已有）
+  // US-S19-Task2 + C1': 批量应用 AI 要素（insert / draft 更新 / confirmed 跳过）
   applyAiElementDrafts: (
     elements: { name: string; dimension: string; nameEn?: string; description?: string }[],
-  ) => { inserted: number; skipped: { name: string; dimension: string }[] };
+  ) => {
+    inserted: number;
+    updated: number;
+    skipped: { name: string; dimension: string; reason?: string }[];
+  };
 
   // 简化架构 — legacy 迁移 (US-S12)
   migrateLegacyBusinessScenariosToChain: () => {
@@ -4416,31 +4420,58 @@ export const useOntologyStore = create<OntologyState>()(
         get().rebuildUsageIndex();
       },
 
-      // US-S19-Task2: 批量应用 AI 生成的要素草稿（纯 insert，不修改已有）
+      // US-S19-Task2 + C1': draft 同名更新；confirmed 同名跳过
       applyAiElementDrafts: (elements) => {
         const state = get();
         if (!state.project) throw new Error('没有活动项目');
 
-        const existing = state.project.metaElements ?? [];
-
-        // 1. 构建去重索引：Map<`${dimension}:${name}`, true>
-        const dedupIndex = new Map<string, true>();
-        for (const el of existing) {
-          dedupIndex.set(`${el.dimension}:${el.name}`, true);
+        const records = state.project.moduleVersionRecords ?? [];
+        const existing = [...(state.project.metaElements ?? [])];
+        const indexByKey = new Map<string, number>();
+        for (let i = 0; i < existing.length; i += 1) {
+          indexByKey.set(`${existing[i].dimension}:${existing[i].name}`, i);
         }
 
         const newElements: MetaElement[] = [];
-        const skipped: { name: string; dimension: string }[] = [];
+        const skipped: { name: string; dimension: string; reason?: string }[] = [];
+        let updatedCount = 0;
 
-        // 2. 遍历入参 elements，跳过已存在的
         for (const el of elements) {
           const key = `${el.dimension}:${el.name}`;
-          if (dedupIndex.has(key)) {
-            skipped.push({ name: el.name, dimension: el.dimension });
+          const existingIndex = indexByKey.get(key);
+
+          if (existingIndex !== undefined) {
+            const existingEl = existing[existingIndex];
+            const isConfirmed = Boolean(
+              getLatestConfirmed(records, existingEl.dimension, existingEl.id),
+            );
+
+            if (isConfirmed) {
+              skipped.push({
+                name: el.name,
+                dimension: el.dimension,
+                reason: 'confirmed',
+              });
+              continue;
+            }
+
+            const now = new Date().toISOString();
+            const prevDesc = (existingEl as MetaElement & { description?: string }).description;
+            const mergedDescription =
+              el.description && prevDesc && prevDesc !== el.description
+                ? `${prevDesc}\n${el.description}`
+                : el.description ?? prevDesc;
+
+            existing[existingIndex] = {
+              ...existingEl,
+              ...(el.nameEn ? { nameEn: el.nameEn } : {}),
+              ...(mergedDescription ? { description: mergedDescription } : {}),
+              updatedAt: now,
+            } as MetaElement & { updatedAt: string; description?: string };
+            updatedCount += 1;
             continue;
           }
 
-          // 3. 为新要素生成完整字段
           const now = new Date().toISOString();
           const element: MetaElement & { status: string; createdAt: string; updatedAt: string } = {
             id: crypto.randomUUID(),
@@ -4455,10 +4486,9 @@ export const useOntologyStore = create<OntologyState>()(
           };
 
           newElements.push(element);
-          dedupIndex.set(key, true);
+          indexByKey.set(key, existing.length + newElements.length - 1);
         }
 
-        // 4. 更新 store
         set({
           project: {
             ...state.project,
@@ -4467,11 +4497,9 @@ export const useOntologyStore = create<OntologyState>()(
           },
         });
 
-        // 4. 调用 rebuildUsageIndex()
         get().rebuildUsageIndex();
 
-        // 5. 返回值
-        return { inserted: newElements.length, skipped };
+        return { inserted: newElements.length, updated: updatedCount, skipped };
       },
 
       migrateLegacyBusinessScenariosToChain: () => {

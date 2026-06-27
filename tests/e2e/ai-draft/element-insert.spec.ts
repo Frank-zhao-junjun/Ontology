@@ -171,7 +171,7 @@ describe('US-S19-Task4: applyAiElementDrafts insert + 去重 E2E', () => {
     expect(supplier!.name).toBe('供应商');
   });
 
-  it('TC3 @smoke 重复插入被跳过（二次上传同一文档）', () => {
+  it('TC3 @smoke 重复插入 draft 合并更新（二次上传同一文档）', () => {
     const store = useOntologyStore.getState();
 
     // 第一次上传
@@ -185,7 +185,7 @@ describe('US-S19-Task4: applyAiElementDrafts insert + 去重 E2E', () => {
     expect(firstResult.skipped).toHaveLength(0);
     expect(useOntologyStore.getState().project!.metaElements!).toHaveLength(3);
 
-    // 第二次上传完全相同的内容
+    // 第二次上传完全相同的内容 — C1'：draft 同名更新，不 skip
     const secondBatch = [
       { name: '订单', dimension: DIM_E1 },
       { name: '客户', dimension: DIM_E1 },
@@ -193,25 +193,24 @@ describe('US-S19-Task4: applyAiElementDrafts insert + 去重 E2E', () => {
     ];
     const secondResult = store.applyAiElementDrafts(secondBatch);
 
-    // 全部被跳过
     expect(secondResult.inserted).toBe(0);
-    expect(secondResult.skipped).toHaveLength(3);
-    expect(secondResult.skipped.map((s) => s.name)).toEqual(['订单', '客户', '审批中']);
+    expect(secondResult.updated).toBe(3);
+    expect(secondResult.skipped).toHaveLength(0);
 
     // 要素总数不变
     expect(useOntologyStore.getState().project!.metaElements!).toHaveLength(3);
 
-    // 部分重复：只有 1 个新要素
+    // 部分重复：1 个新要素 + 2 个 draft 更新
     const thirdBatch = [
-      { name: '订单', dimension: DIM_E1 },          // 重复
+      { name: '订单', dimension: DIM_E1 },          // draft 更新
       { name: '生产订单', dimension: DIM_E1 },       // 新
-      { name: '审批中', dimension: DIM_E2 },         // 重复
+      { name: '审批中', dimension: DIM_E2 },         // draft 更新
     ];
     const thirdResult = store.applyAiElementDrafts(thirdBatch);
 
     expect(thirdResult.inserted).toBe(1);
-    expect(thirdResult.skipped).toHaveLength(2);
-    expect(thirdResult.skipped.map((s) => s.name)).toEqual(['订单', '审批中']);
+    expect(thirdResult.updated).toBe(2);
+    expect(thirdResult.skipped).toHaveLength(0);
 
     // 要素总数 +1
     expect(useOntologyStore.getState().project!.metaElements!).toHaveLength(4);

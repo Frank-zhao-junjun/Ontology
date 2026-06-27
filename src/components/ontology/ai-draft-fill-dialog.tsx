@@ -4,6 +4,11 @@ import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -240,15 +245,22 @@ export function AiDraftFillTrigger({
 
   return (
     <>
-      <Button
-        size="sm"
-        variant="secondary"
-        data-testid="module-action-ai-draft"
-        disabled={disabled}
-        onClick={() => setOpen(true)}
-      >
-        AI 填充草稿
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="sm"
+            variant="secondary"
+            data-testid="module-action-ai-draft"
+            disabled={disabled}
+            onClick={() => setOpen(true)}
+          >
+            AI 填充草稿
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent data-testid="legacy-ai-copilot-tooltip">
+          建议使用右侧 Copilot
+        </TooltipContent>
+      </Tooltip>
       <AiDraftFillDialog
         open={open}
         onOpenChange={setOpen}

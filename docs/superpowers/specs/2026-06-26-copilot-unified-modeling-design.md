@@ -1,302 +1,378 @@
-# Copilot 统一 AI 建模助手 — 设计规格
+# Copilot 统一 AI 建模助手 — 设计稿（MVP）
 
-**日期**: 2026-06-26  
-**状态**: 已审阅通过（含修订）  
-**项目**: Ontology 项目1 — 建模工作台  
+> 版本：v1.1
+> 日期：2026-06-26
+> 基于：前 8 轮需求讨论
+> 实施计划：[`docs/superpowers/plans/2026-06-26-copilot-unified-modeling.md`](../plans/2026-06-26-copilot-unified-modeling.md)
 
 ---
 
-## 1. 背景与目标
+## 1. 目标与边界
 
-### 1.1 背景
+### 1.1 目标
 
-当前 AI 建模能力分散在 4 个 API 与多处 UI 入口（「AI 填充草稿」「AI 解析文档」、Legacy `generate-model` 等），用户体验割裂。需求变更为：**页面右侧统一 Copilot 面板**，用户通过对话 + 文件上传驱动建模。
+在**建模工作台**右侧提供**可调整宽度的 Copilot 面板**，用户通过**对话 + 文件上传**驱动 AI 建模，自动写入 A / B / C / EPC / E1~E8 的 **draft**，用户在左侧沿用现有 `draft → confirmed` 流程确认。
 
-### 1.2 目标
+### 1.2 MVP 内
 
-- 建模工作台右侧：**可调整宽度的 Copilot 面板**（CopilotKit）
-- 对话 + 上传文件 → AI 语义理解 → 自动写入 **A / B / C / EPC / E1~E8** 的 **draft**
-- 用户在左侧沿用现有 **draft → confirmed** 流程确认
-- **Copilot 为主**，现有 AI API 作为内部 Tool（不重写 LLM 逻辑）
-- **Legacy 建模体系删除**，Copilot 仅服务简化架构
+| 能力 | 说明 |
+|------|------|
+| CopilotKit Sidebar | 轻量 Actions（非 Agent 多步编排）；聊天仍走 `/api/copilotkit` Runtime endpoint |
+| 逐轮增量建模 | 一轮一意图，直写 Store |
+| 文档智能推断 | 整份文档 → 推断 A/B/C/EPC/E1~E8 |
+| 模块 fork | confirmed 模块修改 → 自动 forkModuleToDraft |
+| EPC 步骤生成 | 文档/口述 → EPC 步骤 draft（**必达**） |
+| Markdown 结构化回复 | 说明做了什么、skipped、能力边界 |
+| 旧入口并存 | tooltip「建议使用右侧 Copilot（新）」 |
 
-### 1.3 需求决策摘要（8 轮讨论）
+### 1.3 MVP 外
 
-| # | 议题 | 决策 |
-|---|------|------|
-| 1 | 与现有 API | Copilot 为主，旧 API 作 Tool；旧 UI **暂时并存** + tooltip |
-| 2 | 建模范围 | 仅 A/B/C/EPC/E1~E8；Legacy 删除 |
-| 3 | 写入与确认 | 直写 draft，左侧 confirm；逐轮增量；Markdown 结构化回复 |
-| 4 | 面板范围 | 仅建模工作台；无项目不显示 |
-| 5 | CopilotKit 深度 | MVP = 轻量 Actions；后续可升 Runtime / Generative UI |
-| 6 | 文件与推断 | 整文档智能推断；全格式 + ppt/pptx；持久化 referenceDocuments；extract-entities 合并进 element-draft |
-| 7 | 冲突策略 | 模块 A1 自动 fork；文档 B1'；要素 C1'（confirmed skip） |
-| 8 | MVP 验收 | 6 条主路径 + 能力边界提示 + **EPC draft 必达** |
+| 能力 | 说明 |
+|------|------|
+| Copilot 内 confirm / diff 预览 UI | MVP 不做 |
+| CopilotKit Runtime / Generative UI 卡片 | 后续升级路径 |
+| 要素 confirmed 的 automatic fork | 当前要素库无 per-element fork 机制 |
+| Legacy 实体建模 | generate-model 及对应 UI，**Phase 3 删除**（Copilot 稳定后，非 MVP 阻塞） |
+| EPC 校验、覆盖率、图模型 | 高级能力，MVP 不覆盖 |
 
 ---
 
 ## 2. 总体架构
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  modeling-workspace                                                     │
-│  ┌──────────┬─────────────────────────────┬──────────────────────────┐  │
-│  │ 业务链树  │  详情 / 要素库 / 告警 …      │  CopilotKit Sidebar      │  │
-│  │ (左)     │  (中)                        │  (右，固定可见，可拖拽)   │  │
-│  └──────────┴─────────────────────────────┴──────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────┘
-         ▲                              ▲                    │
-         │ Zustand subscribe            │                    │
-         └──────────────────────────────┴────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  modeling-workspace                                                         │
+│  ┌──────────┬──────────────────────────────┬──────────────────────────────┐│
+│  │ 业务链树  │ 详情 / 要素库 / 告警 …       │ CopilotKit Sidebar           ││
+│  │ (左)     │ (中)                         │ (右，可拖拽宽度)              ││
+│  └──────────┴──────────────────────────────┴──────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────────────┘
+         ▲                              ▲                     │
+         │ Zustand subscribe            │                     │
+         └──────────────────────────────┴─────────────────────┘
                                         │
-              Copilot Actions (client-side handlers)
+                    Copilot Actions (client-side handlers)
                                         │
               ┌─────────────────────────┼─────────────────────────┐
               ▼                         ▼                         ▼
         Store CRUD               POST /api/* (LLM)          referenceDocuments
      addValueDomain…          generate-module-draft          upload + persist
      applyAiEpcDraft…         generate-element-draft
-     forkModuleToDraft…       analyze-document-model (新增)
+     forkModuleToDraft…       analyze-document-model (new)
 ```
 
 ### 2.1 分层职责
 
 | 层 | 职责 |
 |----|------|
-| **CopilotKit UI** | 聊天、文件上传、Markdown 渲染、加载态 |
-| **CopilotKit Runtime** | LLM 编排，endpoint: `POST /api/copilotkit` |
-| **Copilot Actions (client)** | 意图路由、名字匹配、fork 判断、调 API、**直写 Zustand Store**（无序列化） |
-| **现有 Next.js API** | LLM 调用与 JSON 解析（`coze-coding-dev-sdk`） |
-| **Zustand Store** | 唯一数据源；draft 写入、fork、要素 insert/update |
-| **左侧工作台** | 展示 + 用户 confirm + **删除**（Copilot 不参与删除） |
+| CopilotKit UI | 聊天、文件上传、Markdown 渲染、加载态 |
+| Copilot Actions | 意图路由、名字匹配、fork 判断、调 API、调 Store、组装回复 |
+| 现有 Next.js API | LLM 调用与 JSON 解析（复用 coze-coding-dev-sdk） |
+| Zustand Store | 唯一数据源；draft 写入、fork、要素 insert/update |
+| 左侧工作台 | 展示 + 用户 confirm（不变） |
 
-### 2.2 CopilotKit 集成（MVP = 轻量 Actions）
+### 2.2 CopilotKit 集成方式
 
-- **Runtime**: `POST /api/copilotkit` — LLM 对话与 tool 选择
-- **Actions**: `useCopilotAction` 注册于 client 组件，handler **直接调用** `useOntologyStore.getState()` 方法
-- **不采用** server-side Store 序列化往返（除非 Phase 0 spike 证明 client Actions 不可行）
+```tsx
+// 概念结构 — MVP = A 档（轻量 Actions）
+<CopilotKit runtimeUrl="/api/copilotkit">
+  <CopilotSidebar defaultOpen width={360} resizable>
+    <ModelingCopilotActions projectId={...} />
+  </CopilotSidebar>
+  {/* 现有 main 三栏 */}
+</CopilotKit>
+```
+
+- `useCopilotAction` 在前端注册 Actions
+- LLM 编排走 CopilotKit 默认 `/api/copilotkit` route
+- Actions 内调现有 API（LLM 部分）+ 直写 Store（Zustand，client-side）
+- 优先 client-side Store 直写，减少序列化开销
 
 ### 2.3 新增依赖
 
-```json
+```
 "@copilotkit/react-core"
 "@copilotkit/react-ui"
+// 版本 pin 到与 Next.js 16 / React 19 兼容的最新 stable
 ```
+
+新增 route：`src/app/api/copilotkit/route.ts`（CopilotKit 标准 endpoint）。
 
 ---
 
-## 3. UI / 布局
+## 3. UI / 布局设计
 
-### 3.1 布局
-
-- **固定右栏**：Copilot 在所有工作台 Tab 下长期可见（业务链、要素库、告警等）
-- 不与要素库共享 Tab；用户切 Tab 查看 E1~E8，Copilot 不隐藏
-- 默认宽度 **360px**，min **280px**，max **50vw**
-- 宽度持久化：`localStorage` → `copilot-panel-width`
-- 可折叠（小屏默认收起）
-
-### 3.2 结构
+### 3.1 布局改造
 
 ```tsx
 <main className="flex">
-  <section className="flex-1 min-w-0">{/* 现有 Tab + 内容 */}</section>
+  <section className="flex-1 min-w-0">
+    {/* 现有 Tab + 内容 */}
+  </section>
   <ResizablePanel>
     <CopilotSidebar />
   </ResizablePanel>
 </main>
 ```
 
-### 3.3 旧入口（MVP 并存）
+| 属性 | 值 |
+|------|-----|
+| 默认宽度 | 360px |
+| 最小宽度 | 280px |
+| 最大宽度 | 50vw |
+| 宽度持久化 | `localStorage key: copilot-panel-width` |
+| 可折叠 | 保留展开/收起按钮（小屏默认收起） |
 
-- 「AI 填充草稿」「AI 解析文档」等 **保留**
-- Tooltip: **「建议使用右侧 Copilot（新）」**
-- Copilot 稳定运行一段时间后统一移除
+### 3.2 与现有 Tab 的关系
 
-### 3.4 结构化回复
+- Copilot **始终可见**（在业务链、要素库、告警等 Tab 下均存在）
+- 不替换要素库 Tab；用户可在 Copilot 建模后切 Tab 查看 E1~E8
+- 旧按钮保留 + tooltip，不抢 Copilot 视觉主位
 
-助手消息使用 Markdown 列表/树形缩进，说明：
-- 已创建的 draft 项（含 kind、名称、id）
-- fork / skip confirmed 要素的原因
-- 下一步建议（左侧确认或继续补充）
+### 3.3 Copilot 面板内容
 
-Footer 固定提示：**「所有写入均为草稿，请在左侧确认」**
+| 区域 | 内容 |
+|------|------|
+| Header | 「建模 Copilot」+ 当前项目名 + 折叠按钮 |
+| Chat | 消息流；助手消息支持 Markdown（列表、树形缩进） |
+| Input | 文本 + 附件上传（与 referenceDocuments 共用解析管道） |
+| Footer hint | 「所有写入均为草稿，请在左侧确认」 |
+
+### 3.4 结构化回复模板
+
+```
+已创建以下内容（均为草稿）：
+
+**价值域**
+- A · 生产制造 `id: vd-xxx`
+
+**能力**
+- B · 计划管理（隶属于 A-生产制造）
+
+**EPC 流程**
+- EPC · 订单处理（7 步，隶属于 C-MTS排产）
+  1. 接收订单 → 引用 E1-Order
+  2. 审核 …
+
+**要素**
+- 新建 3 条 · 更新 draft 1 条 · 跳过 confirmed 1 条
+
+> 模块「计划管理」已有 confirmed 版本，已 fork 到 draft，原 confirmed 未改动。
+
+请到左侧工作台确认，或继续补充细节。
+```
 
 ---
 
-## 4. Copilot Actions
+## 4. Copilot Actions 清单
 
-### 4.1 只读 Actions（上下文）
+### 4.1 上下文 Actions（只读，供 LLM 感知）
 
 | Action | 说明 |
 |--------|------|
-| `getProjectSummary` | A/B/C/EPC 树 + 各模块 status |
-| `getModuleDetail` | kind + id → draft/confirmed 快照 |
-| `getElementLibrarySummary` | E1~E8 计数与要素名 |
-| `getReferenceDocuments` | 已上传文档列表 |
-| `getSelectedNode` | 当前选中业务链节点（辅助，**非**填充范围依据） |
+| `getProjectSummary` | 返回 A/B/C/EPC 树摘要 + 各模块 status |
+| `getModuleDetail` | 按 kind+id 返回 draft/confirmed 快照 |
+| `getElementLibrarySummary` | E1~E8 计数、最近要素名 |
+| `getReferenceDocuments` | 已上传文档列表 + 摘要 |
+| `getSelectedNode` | 当前 selectedBusinessChainNode |
 
-### 4.2 写入 Actions
+### 4.2 写入 Actions（调 Store ± API）
 
 | Action | Store / API | 场景 |
 |--------|-------------|------|
 | `createValueDomain` | `addValueDomain` | 新建 A |
-| `createCapability` | `addCapability` | 新建 B |
-| `createScenario` | `addScenario` | 新建 C |
-| `createEpcProcess` | `addEpcProcess` | 新建 EPC 壳 |
-| `updateModuleDraft` | fork + `update*` / `applyAiModuleDraft` | 修改 A/B/C |
-| `generateEpcStepsFromText` | `generate-module-draft` (EPC) → `applyAiEpcDraft` | **MVP 必达** |
-| `generateElementsFromText` | `generate-element-draft` → `applyAiElementDrafts` | E1~E8 |
-| `analyzeDocumentAndModel` | upload + `analyze-document-model` → 批量 Store | 整文档推断 |
-| `uploadReferenceDocument` | upload route → `addReferenceDocument` | 持久化 |
+| `createCapability` | `addCapability(parentAId, …)` | 新建 B |
+| `createScenario` | `addScenario(parentBId, …)` | 新建 C |
+| `createEpcProcess` | `addEpcProcess(parentCId, …)` | 新建空 EPC 壳 |
+| `updateModuleDraft` | fork 判断 + update* / applyAiModuleDraft | 修改 A/B/C 语义描述 |
+| `generateEpcStepsFromText` | POST generate-module-draft (EPC) → applyAiEpcDraft | **8c 必达** |
+| `generateElementsFromText` | POST generate-element-draft → applyAiElementDrafts | E1~E8 |
+| `analyzeDocumentAndModel` | 编排：upload → 多 API → 批量 Store | **整文档推断** |
+| `uploadReferenceDocument` | POST reference-documents/upload → addReferenceDocument | 持久化 |
 
-### 4.3 明确禁止的 Actions
+### 4.3 内部编排：analyzeDocumentAndModel
 
-**Copilot 不包含任何 `delete*` Action。** 模块/要素的删除由用户在左侧工作台完成。
+文档上传后的主编排 Action，由系统 prompt 强制走此路径：
 
-### 4.4 模块冲突解析（A1 / B1'）
+```
+1. uploadReferenceDocument(file) → extractedText 持久化
+2. POST /api/analyze-document-model（编排层，非「大而全」单次 LLM）
+   ├─ 子 prompt A：业务链结构（A/B/C 骨架）     ─┐
+   ├─ 子 prompt B：EPC 步骤序列                   ├─ 并行或串行 2–3 路
+   └─ 子 prompt C：E1~E8 要素                    ─┘
+   → 外层 API 聚合各子结果，分别 parse；某路失败可单独重试，不拖垮全局
+3. applyAiElementDrafts (C1' 规则)
+4. applyAiEpcDraft (EPC 步骤)
+5. 批量 Store 写入（A/B/C/EPC draft）
+6. 汇总 Markdown 回复
+```
+
+**设计约束（避免踩坑）**：
+
+- **不对 LLM 输出施加「大一统 JSON schema」**（一次输出 A/B/C/EPC/E1~E8 全结构，任一字段格式错误即整段重试）
+- 外层 `analyze-document-model` **只做编排与聚合**，内部 2–3 个子 prompt 各自小 schema、各自 parse
+- 子 prompt 复用现有 `buildEpcDocPrompt`、`buildElementDocPrompt` 等
+
+### 4.4 Fork / 冲突（Action 内统一实现）
 
 ```
 resolveModuleTarget(name, kind, userVerbs):
   match = fuzzyMatchExisting(name, kind)
-  if match.confirmed && isModifyIntent(verbs):  // 改/完善/更新/指名
-    forkModuleToDraft → update draft
-    reply: "已创建草稿版本，原已确认版本保持不变"
-  if match.confirmed && isNewIntent:            // 加一个/新建
-    create new draft
-  if documentInfer && highConfidenceMatch:
-    fork → merge (B1')
-  if documentInfer && lowConfidence:
-    create new
-  if mediumConfidence:
-    merge + Markdown 告知歧义
+  if match.status === 'confirmed' && isModifyIntent(userVerbs):
+    forkModuleToDraft(kind, match.id, snapshot)
+    return { mode: 'fork', moduleId: match.id }
+  if match.status === 'confirmed' && isNewIntent:
+    return { mode: 'create' }
+  if match.status === 'draft':
+    return { mode: 'update', moduleId: match.id }
+  return { mode: 'create' }
 ```
 
-### 4.5 要素冲突（C1'）
+要素侧 C1' 在 `applyAiElementDrafts` 内实现（已有 US-S19 基础，扩展 draft 更新分支）。
 
-| 已有状态 | 行为 |
+---
+
+## 5. API 变更计划
+
+### 5.1 保留并作为 Tool 底层
+
+| API | 变更 |
+|-----|------|
+| `POST /api/generate-module-draft` | 保留；EPC 分支确保 Copilot 可达；补 onApplyEpcDraft 接线 |
+| `POST /api/generate-element-draft` | 保留；合并原 extract-entities 能力 |
+| `POST /api/reference-documents/upload` | 保留；扩展 ppt/pptx 解析（MarkItDown 内联分支） |
+
+### 5.2 新增（MVP）
+
+| API | 用途 |
+|-----|------|
+| `POST /api/copilotkit` | CopilotKit runtime endpoint |
+| `POST /api/analyze-document-model` | 编排层：内部 2–3 个子 prompt（业务链 / EPC / 要素），聚合后返回 |
+
+### 5.3 删除（Phase 3 执行，非 MVP 阻塞）
+
+| 删除项 | 说明 |
+|--------|------|
+| `POST /api/generate-model` | Legacy 实体 AI |
+| `POST /api/reference-documents/extract-entities` | 合并进 element-draft |
+| `manual-generator.tsx` AI 部分 | 随 Legacy 删除 |
+| Legacy 编辑器 Tab / 组件 | data-model-editor 等（按 test:phase4 legacy audit 清单） |
+
+### 5.4 ppt/pptx 解析
+
+```
+upload(pptx) →  server: markitdown 转 md → extractedText 存入 ReferenceDocument
+             → 后续与普通 md 相同管道
+```
+
+不单独新增 `/api/parse-pptx`，在 upload route 内检测文件类型后走 MarkItDown 分支。
+
+---
+
+## 6. 对话与意图路由
+
+### 6.1 System Prompt 要点
+
+```
+- 你是 Ontology 建模 Copilot，只操作 A/B/C/EPC/E1~E8
+- 所有写入均为 draft，不要提示用户「已确认」
+- 逐轮增量：每轮只处理当前意图，不擅自批量删改
+- 修改 confirmed 模块：必须 fork，并在回复中说明
+- Copilot 不执行任何删除操作（delete*），删除由用户在左侧完成
+- 无法处理时：说明能力边界 + 建议用户怎么做（验收第 8 条）
+- 文档上传：优先调用 analyzeDocumentAndModel
+```
+
+### 6.2 意图 → Action 映射
+
+| 用户输入 | 路由 |
 |----------|------|
-| 无 / 仅 draft | insert；同 key draft → **更新** |
-| 仅 confirmed | **skip + 告知**（MVP 无 per-element fork） |
+| "建价值域生产制造 + 计划管理" | `createValueDomain` → `createCapability` |
+| "把计划管理改成供应链计划" | `updateModuleDraft`（fork） |
+| "订单流程：接收→审核→排产→下发" | `generateEpcStepsFromText` |
+| 上传 SOP.docx | `analyzeDocumentAndModel` |
+| "帮我导出 Manifest" | 拒绝，告知去顶部导出菜单 |
+| "删除这个模块" | 拒绝，告知去左侧工作台操作 |
+
+### 6.3 死循环防护
+
+- Action 失败最多重试 1 次
+- 连续 2 轮无法映射到 Action → 固定话术：能力边界 + 可选操作列表
+- LLM 不得编造已写入；必须以 Action 返回结果为准生成回复
 
 ---
 
-## 5. API 变更
+## 7. 需修复的现有缺口（实施前必做）
 
-### 5.1 保留（Tool 底层）
-
-| API | 说明 |
-|-----|------|
-| `POST /api/generate-module-draft` | A/B/C/EPC draft；EPC 步骤生成 |
-| `POST /api/generate-element-draft` | E1~E8；合并原 extract-entities 能力 |
-| `POST /api/reference-documents/upload` | 上传 + 解析；**内部** ppt/pptx → MarkItDown |
-
-### 5.2 新增
-
-| API | 说明 |
-|-----|------|
-| `POST /api/copilotkit` | CopilotKit runtime |
-| `POST /api/analyze-document-model` | **MVP 必建** — 一次 LLM 输出 `{ valueDomains, capabilities, scenarios, epcProcesses, elements }`；内部复用现有 prompt 构建器 |
-
-### 5.3 不单独新增
-
-- ~~`POST /api/parse-pptx`~~ — ppt/pptx 在 **upload route 内**按文件类型分支，与 docx/pdf 平级
-
-### 5.4 删除（Phase 4 Legacy 清理）
-
-| 删除项 |
-|--------|
-| `POST /api/generate-model` |
-| `POST /api/reference-documents/extract-entities` |
-| Legacy 编辑器与 manual-generator AI 部分 |
-| 旧 AI 按钮（Copilot 稳定后） |
-
-### 5.5 文件格式
-
-docx, pdf, xlsx, txt, md, csv, json, **ppt, pptx**（MarkItDown → markdown → extractedText）
+| 缺口 | 影响 | 修复 |
+|------|------|------|
+| `business-chain-detail` 未传 onApplyEpcDraft | EPC AI 步骤写不进 Store | 接 `applyAiEpcDraft` |
+| ReferenceDocPanel 未挂载 | 文档能力分散 | Copilot 统一 upload，面板可废弃或仅作只读列表 |
+| extract-entities 独立存在 | 与 6d 决策冲突 | 合并后删 route |
+| Legacy 与简化架构并存 | 用户困惑 | 分阶段删除，Copilot 不暴露 Legacy Tools |
 
 ---
 
-## 6. System Prompt 原则（§6.1）
+## 8. 分期实施计划
 
-1. 只操作 **A/B/C/EPC/E1~E8**；Legacy 不在范围
-2. **所有写入均为 draft**；不在 Copilot 内 confirm
-3. **逐轮增量**；不擅自批量删改
-4. **Copilot 不 delete** — 删除由用户在左侧工作台完成；Actions 无 delete*
-5. 修改 **confirmed** 模块 → 自动 fork + 回复说明
-6. 文档上传 → 优先 `analyzeDocumentAndModel`（整文档智能推断）
-7. **无法处理** → 说明能力边界 + 建议操作；不空白、不死循环（最多重试 1 次）
-8. 回复必须以 Action 返回为准，不得编造已写入内容
+### 8.1 Phase 0：先 spike 再 commit（Day 1 上午）
 
----
+CopilotKit × React 19 是**最大风险**。Phase 0 **第一天上午**（约半天）必须先验证，通过后再投入后续工作：
 
-## 7. 现有缺口修复（实施前）
+```bash
+pnpm add @copilotkit/react-core @copilotkit/react-ui
+```
 
-| 缺口 | 修复 |
-|------|------|
-| `business-chain-detail` 未传 `onApplyEpcDraft` | 接 `applyAiEpcDraft` |
-| `extract-entities` 独立 API | 合并后删除 |
-| CopilotKit × React 19 兼容性未知 | **Phase 0 spike 必做**，不通过则不进入 Phase 1 |
+最小验证：
 
----
+```tsx
+<CopilotKit runtimeUrl="/api/copilotkit">
+  <CopilotSidebar>hello</CopilotSidebar>
+</CopilotKit>
+```
 
-## 8. 分期实施
+验收：**能渲染、能聊天**。不行则立即评估降级 React / 换集成方式 / pin 版本，**不等到 Phase 0 末尾才发现**。
+
+Phase 0 剩余：右栏布局、`/api/copilotkit`、只读 Actions、可拖拽宽度。
 
 | Phase | 内容 | 工期 |
-|-------|------|------|
-| **0** | CopilotKit 安装、`/api/copilotkit`、右栏布局、**React 19 兼容 spike**、只读 Actions | 2–3d |
-| **1** | 对话增量建模（create/update + fork）、Markdown 回复、旧按钮 tooltip | 3–4d |
-| **2** | EPC 步骤生成（`generateEpcStepsFromText` + `applyAiEpcDraft` 接线）— **MVP 必达** | 2–3d |
-| **3** | upload 持久化、ppt/pptx、`analyze-document-model`、B1'/C1'、多格式测试与 prompt 调优 | **5–7d** |
-| **4** | Legacy 删除、旧 AI 按钮移除（可与 Phase 3 并行） | 3–5d |
+|:-----:|------|:----:|
+| **0** | **Day 1 上午 spike** + CopilotKit 安装、/api/copilotkit、右栏 + 可拖拽、只读 Actions | 2–3d |
+| **1** | **对话增量建模 + EPC 必达（合并）**：create*/update* + fork、`generateEpcStepsFromText`、`applyAiEpcDraft` 接线、Markdown 回复、旧按钮 tooltip、口述 EPC E2E | **4–5d** |
+| **2** | 文档智能推断：upload + ppt/pptx、analyze-document-model（子 prompt 编排）、C1'/B1'、多格式测试与 prompt 调优 | **5–7d** |
+| **3** | Legacy 清理：**Copilot 稳定运行一段时间后**再删 generate-model、Legacy 编辑器、旧 AI 按钮；更新 test/CI | 3–5d（**非 MVP 阻塞**） |
 
-**MVP 交付范围**: Phase 0 + 1 + 2 + 3  
-**总 MVP 工期**: **12–17 天**
+> Phase 1 与旧 Phase 2 合并理由：对话建 A/B/C 与 EPC 步骤生成同属「用户一句话 → Tool → 写 draft」；EPC 仅多一个 `generateEpcStepsFromText` Action，无新 API 依赖，减少交接点。
+
+**总 MVP 工期：11–15 天**（Phase 0 + 1 + 2）
+
+**MVP 交付 = Phase 0 + 1 + 2**。Phase 3（Legacy 删除）**不急**——过渡期旧 AI 按钮 + tooltip 足够；删代码不解决用户问题，Copilot 好用才是关键。
 
 ---
 
 ## 9. MVP 验收清单
 
-- [ ] 进入项目 → 右侧 Copilot，宽度可拖
-- [ ] 对话创建 A/B/C → 左侧树 📝 实时出现
-- [ ] 口述 / 文档 → **EPC 步骤 draft**（顺序 + 要素引用，可编辑）
-- [ ] 上传全格式（含 ppt/pptx）→ 持久化 referenceDocuments + 全结构推断
+- [ ] 进入项目 → 右侧 Copilot，宽度可拖拽
+- [ ] 对话创建 A/B/C → 左侧树 🌲 实时出现
+- [ ] 口述 / 文档 → EPC 步骤 draft（含顺序、要素引用）
+- [ ] 上传 docx/pdf/xlsx/txt/md/csv/json/ppt(x) → 持久化 + 全结构推断
 - [ ] 修改 confirmed 模块 → 自动 fork + 回复说明
 - [ ] 要素：新建 / 更新 draft / skip confirmed + 告知
 - [ ] 左侧 draft → confirmed 正常
 - [ ] 无法处理 → 能力边界，无空白/死循环
 - [ ] 旧 AI 按钮保留 + tooltip
-- [ ] Copilot **无 delete** Action；删除仅在工作台
+- [ ] Copilot 无 delete Action
+- [ ] **性能（对话建模）**：不含文档上传时，用户提交 → Markdown 回复展示 **≤ 8s**；超过则优化 prompt 简化或 LLM 响应策略
 
 ---
 
-## 10. 风险
+## 10. 风险与待定项
 
-| 风险 | 缓解 |
-|------|------|
-| CopilotKit × React 19 不兼容 | Phase 0 spike；评估升级/降级/pin 版本后再投入 |
-| 文档推断质量不稳定 | MVP 允许分轮补全；回复列出「待补充」；Phase 3 预留 prompt 调优时间 |
-| MarkItDown 部署/失败 | upload route 内封装；失败时 Copilot 明确报错 |
-| client-side Actions 限制 | Phase 0 验证；fallback 才考虑 server snapshot |
-
----
-
-## 11. 后续升级（非 MVP）
-
-- CopilotKit Runtime Agent 多步编排（A → B）
-- Generative UI 交互卡片（仅展示可先部分采用）
-- 要素级 per-element fork
-- 移除旧 AI 入口
-
----
-
-## 审阅记录
-
-| 节 | 结论 |
-|----|------|
-| §2 架构 | ✅ client-side Actions 直写 Store |
-| §3 布局 | ✅ 固定右栏 |
-| §4.3 analyze-document-model | ✅ MVP 就建 |
-| §8 分期 | ✅ Phase 3 调整为 5–7d |
-| §5.2 pptx | ✅ 仅 upload route 内分支，无独立 API |
-| §6 补充 | ✅ Copilot 不 delete |
-| §10 | ✅ Phase 0 React 19 spike 必做 |
+| 项 | 说明 | 建议 |
+|----|------|------|
+| CopilotKit × React 19 | **最大风险** | **Phase 0 Day 1 上午 spike**（约半天），能渲染能聊天后再 commit |
+| Client-side Actions + Store | CopilotKit 若强制 server-side，需调整 | 优先 client |
+| 单次文档推断质量 | 结构复杂时可能漏 | 子 prompt 拆分 + 单路失败可重试；回复列出「待补充」 |
+| MarkItDown 部署 | pptx 依赖外部工具 | upload route 内封装，失败友好提示 |
+| analyze-document-model 大而全 | 任一字段错即整段重试 | **编排层 + 2–3 子 prompt**，无大一统 JSON schema |
+| 对话响应 > 5s「思考中」 | 体验崩溃 | 验收 ≤ 8s；必要时简化 prompt / 降 temperature |

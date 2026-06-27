@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateId } from '@/lib/id';
+import { convertPptxToMarkdown } from '@/lib/copilot/parse-pptx-markitdown';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES: Record<string, string> = {
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
   'application/pdf': 'pdf',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  'application/vnd.ms-powerpoint': 'ppt',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
   'text/plain': 'txt',
   'text/markdown': 'md',
   'text/csv': 'csv',
@@ -71,6 +74,10 @@ export async function POST(request: NextRequest) {
         case 'csv':
           extractedText = new TextDecoder('utf-8').decode(buffer);
           break;
+        case 'ppt':
+        case 'pptx':
+          extractedText = await convertPptxToMarkdown(buffer);
+          break;
       }
     } catch (err) {
       parseStatus = 'failed';
@@ -84,7 +91,7 @@ export async function POST(request: NextRequest) {
     const doc = {
       id: generateId(),
       fileName: file.name,
-      fileType: fileType as 'docx' | 'pdf' | 'xlsx' | 'txt' | 'md' | 'csv',
+      fileType: fileType as 'docx' | 'pdf' | 'xlsx' | 'ppt' | 'pptx' | 'txt' | 'md' | 'csv',
       fileSize: file.size,
       uploadedAt: new Date().toISOString(),
       extractedText,

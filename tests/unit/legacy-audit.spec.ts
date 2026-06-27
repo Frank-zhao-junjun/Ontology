@@ -13,6 +13,14 @@ describe('legacy-audit', () => {
     it('should include entity-lifecycle', () => {
       expect(FORBIDDEN_LEGACY_API_SEGMENTS).toContain('entity-lifecycle');
     });
+
+    it('should include generate-model', () => {
+      expect(FORBIDDEN_LEGACY_API_SEGMENTS).toContain('generate-model');
+    });
+
+    it('should include extract-entities', () => {
+      expect(FORBIDDEN_LEGACY_API_SEGMENTS).toContain('extract-entities');
+    });
   });
 
   describe('findLegacyApiRoutes', () => {

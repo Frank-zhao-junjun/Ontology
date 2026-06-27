@@ -1,6 +1,6 @@
 ﻿# Ontology 项目待办清单
 
-> 最后更新: 2026-06-26 (ci:check 全绿 · Q-T3 API/Store 测试扩充 · 跨项目文档同步)
+> 最后更新: 2026-06-26 (Q-T3b: store 5/6 模块覆盖 · 126 新增 · unit 987)
 > 简化重构详情: [docs/ontology-simplification/](./ontology-simplification/)
 > 项目2 待办: [`../../ontology-platform/TODO.md`](../../ontology-platform/TODO.md)
 
@@ -179,9 +179,15 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
     - `api-reference-documents-route.spec.ts` — 参考文档上传+实体提取（14）
     - `ontology-store-crud.spec.ts` — Store CRUD Entity/Project/BehaviorModel（13）
     - `ontology-store-crud-2.spec.ts` — Store createProject/updateName/updateDesc（1）
-  - **当前测试总量**：**~1050**（unit **761** · integration **259** · e2e **30** / smoke **24**）
-  - 最大空白：`ontology-store.ts`（~4500 行，~2% cov）、部分 components（~0%）、剩余 store action 结构化测试
-  - 待做：store action 方法分层测试 + 高价值 components 集成覆盖
+  - **当前测试总量**：**~1200**（unit **987** · integration **259** · e2e **30** / smoke **24**）
+  - 新增（2026-06-26 Q-T3b 冲量，**126 tests**）：
+    - `ontology-store-data-model.spec.ts` — 数据模型操作/项目分类/业务场景（**46**）
+    - `ontology-store-rules-events.spec.ts` — 规则模型/事件模型操作（**49**）
+    - `ontology-store-metadata.spec.ts` — 元数据/主数据操作（**31**）
+    - `validation.spec.ts` — validation.ts 全部 8 个导出函数（**77**，上一轮）
+  - store 操作层覆盖情况：数据模型 ✅ / 项目分类 ✅ / 业务场景 ✅ / 规则模型 ✅ / 事件模型 ✅ / 元数据 ✅ / 主数据 ✅
+  - 最大空白：`ontology-store.ts`（~4500 行，~2% cov）→ store 操作层 5/6 模块已覆盖，剩余 UI 状态操作
+  - 待做：剩余 components 集成覆盖 + UI 状态操作
   - 用户文档新增（2026-06-26）：
     - `docs/concepts-guide.md` — 概念指南（非技术人员）
     - `docs/quickstart.md` — 5 分钟快速入门

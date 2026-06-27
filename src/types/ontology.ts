@@ -1841,7 +1841,7 @@ export interface ExcelParsedData {
 export interface ReferenceDocument {
   id: string;
   fileName: string;
-  fileType: 'docx' | 'pdf' | 'xlsx' | 'txt' | 'md' | 'csv';
+  fileType: 'docx' | 'pdf' | 'xlsx' | 'ppt' | 'pptx' | 'txt' | 'md' | 'csv';
   fileSize: number;
   uploadedAt: string;
   extractedText: string;

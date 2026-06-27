@@ -1344,22 +1344,25 @@ describe('AI Drafts', () => {
     expect(metaElements[0].dimension).toBe('E1');
   });
 
-  it('should skip existing elements (dimension + name match)', () => {
+  it('should update draft duplicate and insert new (C1\' draft merge)', () => {
     const store = useOntologyStore.getState();
     // First insert
     store.applyAiElementDrafts([{ name: '用户管理', dimension: 'E1' }]);
 
-    // Second insert with mix of new and duplicate
+    // Second insert with mix of duplicate draft and new
     const result = store.applyAiElementDrafts([
-      { name: '用户管理', dimension: 'E1' },  // duplicate
+      { name: '用户管理', dimension: 'E1', description: '更新描述' },  // draft duplicate → update
       { name: '新要素', dimension: 'E3' },     // new
     ]);
 
     expect(result.inserted).toBe(1);
-    expect(result.skipped).toEqual([{ name: '用户管理', dimension: 'E1' }]);
+    expect(result.updated).toBe(1);
+    expect(result.skipped).toEqual([]);
 
     const project = useOntologyStore.getState().project!;
     expect(project.metaElements ?? []).toHaveLength(2);
+    const userMgmt = (project.metaElements ?? []).find((m) => m.name === '用户管理');
+    expect((userMgmt as { description?: string })?.description).toBe('更新描述');
   });
 
   it('should handle empty input gracefully', () => {

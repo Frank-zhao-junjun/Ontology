@@ -84,26 +84,64 @@ describe('US-S19-Task2: applyAiElementDrafts', () => {
     expect(newEl2.visibility).toBe('project');
   });
 
-  // ---------- 场景 2：重复跳过 ----------
-  it('应跳过已存在的要素（dimension + name 全等）', () => {
+  // ---------- 场景 2：draft 同名更新；confirmed 同名跳过 ----------
+  it('draft 同名应更新描述；confirmed 同名应跳过并带 reason', () => {
+    const project = useOntologyStore.getState().project!;
+    useOntologyStore.setState({
+      project: {
+        ...project,
+        metaElements: [
+          {
+            id: 'el-draft',
+            name: '用户管理',
+            dimension: 'E1',
+            visibility: 'project',
+            description: '旧描述',
+          } as MetaElement & { description: string },
+          { id: 'el-confirmed', name: '订单审核', dimension: 'E2', visibility: 'project' },
+        ],
+        moduleVersionRecords: [
+          {
+            id: 'rec-1',
+            moduleKind: 'E2',
+            moduleId: 'el-confirmed',
+            status: 'confirmed',
+            version: 'v1',
+            snapshot: { id: 'el-confirmed', name: '订单审核', dimension: 'E2' },
+            createdAt: '2026-06-24T12:00:00.000Z',
+          },
+        ],
+      },
+    });
+
     const result = useOntologyStore.getState().applyAiElementDrafts([
-      { name: '用户管理', dimension: 'E1' },  // 已存在
-      { name: '新要素', dimension: 'E3' },
-      { name: '订单审核', dimension: 'E2' },  // 已存在
+      { name: '用户管理', dimension: 'E1', description: '新描述' },
+      { name: '订单审核', dimension: 'E2', description: '不应写入' },
+      { name: '全新要素', dimension: 'E3' },
     ]);
 
     expect(result.inserted).toBe(1);
+    expect(result.updated).toBe(1);
     expect(result.skipped).toEqual([
-      { name: '用户管理', dimension: 'E1' },
-      { name: '订单审核', dimension: 'E2' },
+      { name: '订单审核', dimension: 'E2', reason: 'confirmed' },
     ]);
 
-    const project = useOntologyStore.getState().project!;
-    // 原有 3 个 + 新 1 个 = 4 个
-    expect(project.metaElements ?? []).toHaveLength(4);
-    // 原有的要素应未被修改
-    expect((project.metaElements ?? []).find((m) => m.id === 'el-1')?.name).toBe('用户管理');
-    expect((project.metaElements ?? []).find((m) => m.id === 'el-2')?.name).toBe('订单审核');
+    const updated = useOntologyStore.getState().project!;
+    const draftEl = updated.metaElements!.find((m) => m.id === 'el-draft')!;
+    expect((draftEl as { description?: string }).description).toBe('旧描述\n新描述');
+    expect(updated.metaElements!.find((m) => m.name === '全新要素')).toBeDefined();
+  });
+
+  // ---------- 场景 2b：无 confirmed 记录的同名要素走 draft 更新 ----------
+  it('无 confirmed 记录的同名要素应更新而非跳过', () => {
+    const result = useOntologyStore.getState().applyAiElementDrafts([
+      { name: '用户管理', dimension: 'E1', description: '补充描述' },
+      { name: '新要素', dimension: 'E3' },
+    ]);
+
+    expect(result.inserted).toBe(1);
+    expect(result.updated).toBe(1);
+    expect(result.skipped).toEqual([]);
   });
 
   // ---------- 场景 3：已有要素不修改、不删除 ----------
@@ -130,14 +168,33 @@ describe('US-S19-Task2: applyAiElementDrafts', () => {
   });
 
   // ---------- 场景 4：返回值正确 ----------
-  it('应返回正确的 inserted 和 skipped 值', () => {
-    // 全重复
+  it('应返回正确的 inserted、updated 和 skipped 值', () => {
+    // confirmed 跳过
+    const project = useOntologyStore.getState().project!;
+    useOntologyStore.setState({
+      project: {
+        ...project,
+        moduleVersionRecords: [
+          {
+            id: 'rec-el1',
+            moduleKind: 'E1',
+            moduleId: 'el-1',
+            status: 'confirmed',
+            version: 'v1',
+            snapshot: { id: 'el-1', name: '用户管理', dimension: 'E1' },
+            createdAt: '2026-06-24T12:00:00.000Z',
+          },
+        ],
+      },
+    });
+
     const r1 = useOntologyStore.getState().applyAiElementDrafts([
       { name: '用户管理', dimension: 'E1' },
     ]);
     expect(r1.inserted).toBe(0);
+    expect(r1.updated).toBe(0);
     expect(r1.skipped).toHaveLength(1);
-    expect(r1.skipped[0]).toEqual({ name: '用户管理', dimension: 'E1' });
+    expect(r1.skipped[0]).toEqual({ name: '用户管理', dimension: 'E1', reason: 'confirmed' });
 
     // 全为新
     const r2 = useOntologyStore.getState().applyAiElementDrafts([
@@ -146,18 +203,17 @@ describe('US-S19-Task2: applyAiElementDrafts', () => {
       { name: 'C', dimension: 'E3' },
     ]);
     expect(r2.inserted).toBe(3);
+    expect(r2.updated).toBe(0);
     expect(r2.skipped).toEqual([]);
 
-    // 混合：重复 + 新 + 重复
+    // draft 更新 + 新
     const r3 = useOntologyStore.getState().applyAiElementDrafts([
-      { name: 'A', dimension: 'E1' },      // 已存在（上一步刚插入）
+      { name: 'A', dimension: 'E1', description: '更新' },
       { name: 'D', dimension: 'E4' },
-      { name: '订单审核', dimension: 'E2' }, // 已存在（原始）
     ]);
     expect(r3.inserted).toBe(1);
-    expect(r3.skipped).toHaveLength(2);
-    expect(r3.skipped[0]).toEqual({ name: 'A', dimension: 'E1' });
-    expect(r3.skipped[1]).toEqual({ name: '订单审核', dimension: 'E2' });
+    expect(r3.updated).toBe(1);
+    expect(r3.skipped).toEqual([]);
   });
 
   // ---------- 场景 5：索引重建 ----------

@@ -12,6 +12,8 @@ describe('legacy entrypoints audit (US-S12-U01)', () => {
   it('should define forbidden legacy segments', () => {
     expect(FORBIDDEN_LEGACY_API_SEGMENTS).toContain('agent-semantic-layer');
     expect(FORBIDDEN_LEGACY_API_SEGMENTS).toContain('entity-lifecycle');
+    expect(FORBIDDEN_LEGACY_API_SEGMENTS).toContain('generate-model');
+    expect(FORBIDDEN_LEGACY_API_SEGMENTS).toContain('extract-entities');
   });
 
   it('should not find forbidden legacy API routes', () => {

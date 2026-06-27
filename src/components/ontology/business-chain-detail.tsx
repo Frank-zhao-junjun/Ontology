@@ -20,7 +20,8 @@ import { getLatestConfirmed, getModuleDraft } from '@/lib/module-version';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { EpcProcess, MetaDimension, ModuleVersionRecord, Scenario } from '@/types/ontology';
+import type { EpcProcess, MetaDimension, ModuleVersionRecord, Scenario, EpcStep } from '@/types/ontology';
+import type { EpcStepSuggestion } from '@/lib/ai-draft/epc-doc-prompt';
 import { generateId } from '@/lib/id';
 
 
@@ -44,6 +45,7 @@ export function BusinessChainDetail({ onNavigateToElement }: BusinessChainDetail
   const cancelModuleDraft = useOntologyStore((s) => s.cancelModuleDraft);
   const forkModuleToDraft = useOntologyStore((s) => s.forkModuleToDraft);
   const applyAiModuleDraft = useOntologyStore((s) => s.applyAiModuleDraft);
+  const applyAiEpcDraft = useOntologyStore((s) => s.applyAiEpcDraft);
   const getModuleVersions = useOntologyStore((s) => s.getModuleVersions);
   const deriveEpcStepsFromScenario = useOntologyStore((s) => s.deriveEpcStepsFromScenario);
   const applyDerivedStepsToScenarioEpc = useOntologyStore((s) => s.applyDerivedStepsToScenarioEpc);
@@ -163,6 +165,11 @@ export function BusinessChainDetail({ onNavigateToElement }: BusinessChainDetail
     applyAiModuleDraft(selected.kind, selected.id, suggestion);
   };
 
+  const handleApplyEpcDraft = (steps: EpcStepSuggestion[]) => {
+    applyAiEpcDraft(selected.id, steps as unknown as EpcStep[]);
+    toast.success('EPC 步骤已写入草稿');
+  };
+
   return (
     <div className="flex-1 p-6 space-y-6 overflow-auto">
       <div>
@@ -194,6 +201,7 @@ export function BusinessChainDetail({ onNavigateToElement }: BusinessChainDetail
             project={project}
             onEnsureDraft={ensureDraftForAi}
             onApply={handleApplyAiDraft}
+            onApplyEpcDraft={selected.kind === 'EPC' ? handleApplyEpcDraft : undefined}
           />
         )}
       </div>

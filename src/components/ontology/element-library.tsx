@@ -18,6 +18,11 @@ import type { MetaDimension } from '@/types/ontology';
 import { ElementCoverageBadge } from '@/components/ontology/element-coverage-badge';
 import { Button } from '@/components/ui/button';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -164,7 +169,8 @@ export function ElementLibrary({
         result.skipped.length > 0
           ? `，跳过 ${result.skipped.length} 个重复要素`
           : '';
-      toast.success(`成功插入 ${result.inserted} 个要素${skipMsg}`);
+      const updateMsg = result.updated > 0 ? `，更新 ${result.updated} 个 draft 要素` : '';
+      toast.success(`成功插入 ${result.inserted} 个要素${updateMsg}${skipMsg}`);
       setDialogOpen(false);
       setDocumentText('');
       setDocumentName('');
@@ -200,16 +206,23 @@ export function ElementLibrary({
           />
           <Label htmlFor="element-library-unreferenced">仅显示未引用</Label>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={() => setDialogOpen(true)}
-          data-testid="ai-element-draft-btn"
-        >
-          <FileText className="h-4 w-4 mr-1" />
-          AI 解析文档
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => setDialogOpen(true)}
+              data-testid="ai-element-draft-btn"
+            >
+              <FileText className="h-4 w-4 mr-1" />
+              AI 解析文档
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent data-testid="legacy-ai-copilot-tooltip">
+            建议使用右侧 Copilot
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       <div className="flex flex-wrap gap-2" role="tablist">
