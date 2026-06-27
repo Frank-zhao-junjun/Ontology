@@ -20,6 +20,23 @@ import { getAggregateRootEntities, normalizeEntityRoleFields, resolveEntityRole 
 import { toast } from 'sonner';
 import type { Entity, Attribute, Relation, ComputedProperty, SourceMapping, EventDefinition } from '@/types/ontology';
 import { generateId } from '@/lib/id';
+import {
+  ATTRIBUTE_TYPES,
+  DIRECT_ATTRIBUTE_TYPES,
+  RELATION_TYPES,
+  parseMasterDataFields,
+  applyMetadataTemplateToAttributeDraft,
+  formatMetadataOptionLabel,
+  getLinkableDomainEvents,
+  validateIndexDraft,
+  buildIndexFromDraft,
+  validateAttribute,
+  buildAttributeFromDraft,
+  validateRelation,
+  buildRelationFromDraft,
+  upsertInList,
+  parseEntityAliases,
+} from '@/lib/data-model/helpers';
 
 interface IndexDraft {
   fields: string;
@@ -30,38 +47,6 @@ interface IndexDraft {
 interface DataModelEditorProps {
   mode?: 'full' | 'entity-detail' | 'button-only';
   entityId?: string;
-}
-
-const ATTRIBUTE_TYPES = [
-  { value: 'string', label: '字符串 (String)' },
-  { value: 'text', label: '长文本 (Text)' },
-  { value: 'integer', label: '整数 (Integer)' },
-  { value: 'decimal', label: '小数 (Decimal)' },
-  { value: 'boolean', label: '布尔 (Boolean)' },
-  { value: 'date', label: '日期 (Date)' },
-  { value: 'datetime', label: '日期时间 (DateTime)' },
-  { value: 'enum', label: '枚举 (Enum)' },
-  { value: 'reference', label: '引用 (Reference)' },
-];
-
-const DIRECT_ATTRIBUTE_TYPES = ATTRIBUTE_TYPES.filter((type) => type.value !== 'reference');
-
-const RELATION_TYPES = [
-  { value: 'one_to_one', label: '一对一 (1:1)' },
-  { value: 'one_to_many', label: '一对多 (1:N)' },
-  { value: 'many_to_many', label: '多对多 (N:M)' },
-];
-
-
-function parseMasterDataFields(fieldNames?: string): string[] {
-  if (!fieldNames) {
-    return [];
-  }
-
-  return fieldNames
-    .split(/[，,、\n]/)
-    .map((field) => field.trim())
-    .filter(Boolean);
 }
 
 export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProps) {
@@ -100,49 +85,12 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
     ? masterDataList.find((item) => item.id === editingAttribute.masterDataType)
     : undefined;
   const selectableMasterDataFields = parseMasterDataFields(selectedMasterData?.fieldNames);
-  
-  // 根据元数据类型映射到属性类型
-  const mapMetadataTypeToAttributeType = (metadataType: string): Attribute['dataType'] => {
-    const typeMap: Record<string, Attribute['dataType']> = {
-      '字符串': 'string',
-      '文本': 'text',
-      '整数': 'integer',
-      '小数': 'decimal',
-      '布尔': 'boolean',
-      '日期': 'date',
-      '日期时间': 'datetime',
-      '枚举': 'enum',
-      'string': 'string',
-      'text': 'text',
-      'integer': 'integer',
-      'decimal': 'decimal',
-      'boolean': 'boolean',
-      'date': 'date',
-      'datetime': 'datetime',
-      'enum': 'enum',
-    };
-    return typeMap[metadataType] || 'string';
-  };
-  
+
   // 选择元数据时自动填充属性信息
   const handleMetadataSelect = (metadataId: string) => {
     const metadata = metadataList.find(m => m.id === metadataId);
     if (metadata) {
-      const dataType = mapMetadataTypeToAttributeType(metadata.type);
-      setEditingAttribute({
-        ...editingAttribute,
-        metadataTemplateId: metadata.id,
-        metadataTemplateName: metadata.name,
-        name: editingAttribute.name || metadata.name,
-        nameEn: editingAttribute.nameEn || metadata.nameEn,
-        dataType,
-        referenceKind: dataType === 'reference' ? editingAttribute.referenceKind || 'entity' : undefined,
-        referencedEntityId: dataType === 'reference' ? editingAttribute.referencedEntityId : undefined,
-        isMasterDataRef: dataType === 'reference' ? Boolean(editingAttribute.isMasterDataRef) : false,
-        masterDataType: dataType === 'reference' && editingAttribute.isMasterDataRef ? editingAttribute.masterDataType : undefined,
-        masterDataField: dataType === 'reference' && editingAttribute.isMasterDataRef ? editingAttribute.masterDataField : undefined,
-        description: editingAttribute.description || metadata.description,
-      });
+      setEditingAttribute(applyMetadataTemplateToAttributeDraft(editingAttribute, metadata));
     }
   };
   
@@ -153,12 +101,8 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
     setShowAttributeDialog(true);
   };
 
-  const getAvailableDomainEvents = () => {
-    if (!selectedEntity) return [];
-    return eventDefinitions.filter(
-      (event) => event.isDomainEvent && !(selectedEntity.domainEvents || []).includes(event.id),
-    );
-  };
+  const getAvailableDomainEvents = () =>
+    getLinkableDomainEvents(selectedEntity, eventDefinitions);
 
   const openIndexDialog = () => {
     setIndexDraft({ fields: '', type: 'btree', unique: false });
@@ -167,16 +111,16 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
 
   const handleSaveIndex = () => {
     if (!selectedEntity) return;
-    const fields = indexDraft.fields.split(',').map((field) => field.trim()).filter(Boolean);
-    if (fields.length === 0) {
-      toast.error('请输入至少一个索引字段');
+    const validation = validateIndexDraft(indexDraft.fields);
+    if (!validation.valid) {
+      toast.error(validation.error || '请输入至少一个索引字段');
       return;
     }
     updateEntity(selectedEntity.id, {
       ...selectedEntity,
       indexes: [
         ...(selectedEntity.indexes || []),
-        { fields, type: indexDraft.type, unique: indexDraft.unique },
+        buildIndexFromDraft(indexDraft.fields, indexDraft.type, indexDraft.unique),
       ],
     });
     setShowIndexDialog(false);
@@ -214,63 +158,30 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
   const handleSaveAttribute = () => {
     if (!entityId || !selectedEntity) return;
 
-    const dataType = editingAttribute.dataType || 'string';
-    const referenceKind = dataType === 'reference'
-      ? (editingAttribute.isMasterDataRef ? 'masterData' : (editingAttribute.referenceKind || 'entity'))
-      : undefined;
-    const isMasterDataRef = dataType === 'reference' && referenceKind === 'masterData';
-
-    if (isMasterDataRef && !editingAttribute.masterDataType) {
-      toast.error('关联主数据时必须选择主数据类型');
+    const validation = validateAttribute(editingAttribute);
+    if (!validation.valid) {
+      toast.error(validation.errors[0] || '属性校验失败');
       return;
     }
 
-    if (dataType === 'reference' && !isMasterDataRef && !editingAttribute.referencedEntityId) {
-      toast.error('引用实体时必须选择目标实体');
-      return;
-    }
-    
-    const attrData: Attribute = {
-      id: editingAttributeId || generateId(),
-      name: editingAttribute.name || '新属性',
-      nameEn: editingAttribute.nameEn,
-      businessMeaning: editingAttribute.businessMeaning,
-      dataType,
-      required: editingAttribute.required || false,
-      unique: editingAttribute.unique || false,
-      description: editingAttribute.description,
-      length: editingAttribute.length,
-      precision: editingAttribute.precision,
-      scale: editingAttribute.scale,
-      enumRef: dataType === 'enum' ? editingAttribute.enumRef : undefined,
-      referenceKind,
-      referencedEntityId: dataType === 'reference' && referenceKind === 'entity' ? editingAttribute.referencedEntityId : undefined,
-      referenceDisplayField: dataType === 'reference' && referenceKind === 'entity' ? editingAttribute.referenceDisplayField : undefined,
-      isMasterDataRef,
-      masterDataType: isMasterDataRef ? editingAttribute.masterDataType : undefined,
-      masterDataField: isMasterDataRef ? editingAttribute.masterDataField : undefined,
-      autoFill: editingAttribute.autoFill,
-      default: editingAttribute.default,
-      metadataTemplateId: editingAttribute.metadataTemplateId,
-      metadataTemplateName: editingAttribute.metadataTemplateName,
-    };
-    
-    let newAttributes: Attribute[];
-    if (editingAttributeId) {
-      // 更新现有属性
-      newAttributes = selectedEntity.attributes.map(a => 
-        a.id === editingAttributeId ? attrData : a
-      );
-    } else {
-      // 添加新属性
-      newAttributes = [...selectedEntity.attributes, attrData];
-    }
-    
+    const attrData = buildAttributeFromDraft(
+      editingAttribute,
+      editingAttributeId,
+      entityId,
+    );
+    attrData.id = editingAttributeId || generateId();
+
+    const newAttributes = upsertInList(
+      selectedEntity.attributes,
+      attrData,
+      editingAttributeId,
+    );
+
     updateEntity(entityId, {
       ...selectedEntity,
       attributes: newAttributes,
     });
-    
+
     setEditingAttribute({});
     setEditingAttributeId(null);
     setShowAttributeDialog(false);
@@ -419,8 +330,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                 <Input
                   value={editingEntity.aliases?.join(', ') || ''}
                   onChange={(e) => {
-                    const strs = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                    setEditingEntity({ ...editingEntity, aliases: strs.length ? strs : undefined });
+                    setEditingEntity({ ...editingEntity, aliases: parseEntityAliases(e.target.value) });
                   }}
                   placeholder="多个同义词用逗号隔开，如：消费者, 散客、买家"
                   className="bg-blue-50 border-blue-200"
@@ -513,7 +423,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                               <span className="truncate">
                                 {(() => {
                                   const m = metadataList.find(meta => meta.id === editingAttribute.metadataTemplateId);
-                                  return m ? `${m.name} (${m.nameEn}) - ${m.domain}` : '选择元数据自动填充属性信息...';
+                                  return m ? formatMetadataOptionLabel(m) : '选择元数据自动填充属性信息...';
                                 })()}
                               </span>
                             ) : (
@@ -1171,32 +1081,26 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                       />
                     </div>
                     <Button onClick={() => {
-                      if (!entityId) return;
-                      const targetEntity = editingRelation.isRecursive ? entityId : editingRelation.targetEntity;
-                      if (!targetEntity) {
-                        toast.error('关系必须选择目标实体');
+                      if (!entityId || !selectedEntity) return;
+                      const validation = validateRelation(
+                        editingRelation,
+                        editingRelation.isRecursive ? entityId : undefined,
+                      );
+                      if (!validation.valid) {
+                        toast.error(validation.errors[0] || '关系校验失败');
                         return;
                       }
-                      if (editingRelation.type === 'many_to_many' && !editingRelation.viaEntity?.trim()) {
-                        toast.error('多对多关系必须填写中间实体');
-                        return;
-                      }
-                      const relationData: Relation = {
-                        id: editingRelationId || generateId(),
-                        name: editingRelation.name || '新关系',
-                        type: editingRelation.type || 'one_to_many',
-                        targetEntity,
-                        foreignKey: editingRelation.foreignKey || undefined,
-                        cascade: editingRelation.cascade || 'none',
-                        description: editingRelation.description,
-                        directionality: editingRelation.directionality || 'directed',
-                        isRecursive: editingRelation.isRecursive || false,
-                        viaEntity: editingRelation.type === 'many_to_many' ? editingRelation.viaEntity?.trim() : undefined,
-                        attributes: editingRelation.attributes || [], // 默认空属性表
-                      };
-                      const nextRelations = editingRelationId
-                        ? selectedEntity.relations.map((relation) => relation.id === editingRelationId ? relationData : relation)
-                        : [...selectedEntity.relations, relationData];
+                      const relationData = buildRelationFromDraft(
+                        editingRelation,
+                        editingRelationId,
+                        entityId,
+                      );
+                      relationData.id = editingRelationId || generateId();
+                      const nextRelations = upsertInList(
+                        selectedEntity.relations,
+                        relationData,
+                        editingRelationId,
+                      );
                       updateEntity(entityId, {
                         ...selectedEntity,
                         relations: nextRelations,
@@ -1430,8 +1334,7 @@ export function DataModelEditor({ mode = 'full', entityId }: DataModelEditorProp
                       <Input
                         value={editingEntity.aliases?.join(', ') || ''}
                         onChange={(e) => {
-                          const strs = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                          setEditingEntity({ ...editingEntity, aliases: strs.length ? strs : undefined });
+                          setEditingEntity({ ...editingEntity, aliases: parseEntityAliases(e.target.value) });
                         }}
                         placeholder="多个同义词用逗号隔开"
                         className="bg-blue-50 border-blue-200"

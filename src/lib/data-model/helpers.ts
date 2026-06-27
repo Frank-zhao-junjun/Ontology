@@ -8,9 +8,10 @@ import type {
   Attribute,
   AttributeDataType,
   Entity,
+  EntityRole,
+  EventDefinition,
+  Metadata,
   Relation,
-  ComputedProperty,
-  SourceMapping,
 } from '@/types/ontology';
 
 // ============================================================
@@ -389,4 +390,150 @@ export function buildEntityFromDraft(
     attributes: draft.attributes || [],
     relations: draft.relations || [],
   };
+}
+
+// ============================================================
+// 索引 & 领域事件
+// ============================================================
+
+/**
+ * 解析索引字段列表（逗号分隔）。
+ */
+export function parseIndexFieldList(fields: string): string[] {
+  return fields.split(',').map((field) => field.trim()).filter(Boolean);
+}
+
+export interface IndexDraftValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
+/**
+ * 校验索引草稿是否可保存。
+ */
+export function validateIndexDraft(fields: string): IndexDraftValidationResult {
+  if (parseIndexFieldList(fields).length === 0) {
+    return { valid: false, error: '请输入至少一个索引字段' };
+  }
+  return { valid: true };
+}
+
+/**
+ * 从索引草稿构建索引对象。
+ */
+export function buildIndexFromDraft(
+  fields: string,
+  type: 'btree' | 'hash',
+  unique: boolean,
+): { fields: string[]; type: 'btree' | 'hash'; unique: boolean } {
+  return { fields: parseIndexFieldList(fields), type, unique };
+}
+
+/**
+ * 获取实体尚未关联、可链接的领域事件列表。
+ */
+export function getLinkableDomainEvents(
+  entity: Pick<Entity, 'domainEvents'> | null | undefined,
+  eventDefinitions: EventDefinition[],
+): EventDefinition[] {
+  if (!entity) return [];
+  const linked = entity.domainEvents || [];
+  return eventDefinitions.filter(
+    (event) => event.isDomainEvent && !linked.includes(event.id),
+  );
+}
+
+// ============================================================
+// 元数据模板 & 列表操作
+// ============================================================
+
+/**
+ * 将元数据模板字段合并到属性编辑草稿（不改变已有名称等已填项）。
+ */
+export function applyMetadataTemplateToAttributeDraft(
+  draft: Partial<Attribute>,
+  metadata: Metadata,
+): Partial<Attribute> {
+  const dataType = mapMetadataTypeToAttributeType(metadata.type);
+  return {
+    ...draft,
+    metadataTemplateId: metadata.id,
+    metadataTemplateName: metadata.name,
+    name: draft.name || metadata.name,
+    nameEn: draft.nameEn || metadata.nameEn,
+    dataType,
+    referenceKind: dataType === 'reference' ? draft.referenceKind || 'entity' : undefined,
+    referencedEntityId: dataType === 'reference' ? draft.referencedEntityId : undefined,
+    isMasterDataRef: dataType === 'reference' ? Boolean(draft.isMasterDataRef) : false,
+    masterDataType: dataType === 'reference' && draft.isMasterDataRef ? draft.masterDataType : undefined,
+    masterDataField: dataType === 'reference' && draft.isMasterDataRef ? draft.masterDataField : undefined,
+    description: draft.description || metadata.description,
+  };
+}
+
+/**
+ * 格式化元数据下拉选项展示文本。
+ */
+export function formatMetadataOptionLabel(metadata: Metadata): string {
+  return `${metadata.name} (${metadata.nameEn}) - ${metadata.domain}`;
+}
+
+/**
+ * 在列表中新增或更新带 id 的项。
+ */
+export function upsertInList<T extends { id: string }>(
+  list: T[],
+  item: T,
+  editId: string | null,
+): T[] {
+  if (editId) {
+    return list.map((entry) => (entry.id === editId ? item : entry));
+  }
+  return [...list, item];
+}
+
+/**
+ * 按 id 从列表中移除项。
+ */
+export function removeFromListById<T extends { id: string }>(
+  list: T[],
+  id: string,
+): T[] {
+  return list.filter((entry) => entry.id !== id);
+}
+
+// ============================================================
+// 实体创建校验
+// ============================================================
+
+export interface EntityCreateValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+/**
+ * 校验实体创建草稿是否满足必填条件。
+ */
+export function validateEntityCreateDraft(
+  draft: Partial<Entity>,
+  entityRole: EntityRole | undefined,
+  options?: { hasProjects?: boolean },
+): EntityCreateValidationResult {
+  const errors: string[] = [];
+  const hasProjects = options?.hasProjects ?? true;
+
+  if (!draft.projectId) {
+    if (!hasProjects) {
+      errors.push('无可用项目');
+    } else {
+      errors.push('请选择项目');
+    }
+  }
+  if (draft.projectId && !draft.businessScenarioId) {
+    errors.push('请选择业务场景');
+  }
+  if (entityRole === 'child_entity' && !draft.parentAggregateId) {
+    errors.push('子实体必须选择父聚合根');
+  }
+  return { valid: errors.length === 0, errors };
 }

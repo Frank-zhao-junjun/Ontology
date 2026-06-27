@@ -21,12 +21,21 @@ import {
   buildAttributeFromDraft,
   buildRelationFromDraft,
   buildEntityFromDraft,
+  parseIndexFieldList,
+  validateIndexDraft,
+  buildIndexFromDraft,
+  getLinkableDomainEvents,
+  applyMetadataTemplateToAttributeDraft,
+  formatMetadataOptionLabel,
+  upsertInList,
+  removeFromListById,
+  validateEntityCreateDraft,
   ATTRIBUTE_TYPES,
   DIRECT_ATTRIBUTE_TYPES,
   RELATION_TYPES,
   CASCADE_OPTIONS,
 } from '@/lib/data-model/helpers';
-import type { Attribute, Relation, Entity } from '@/types/ontology';
+import type { Attribute, Relation, Entity, EventDefinition, Metadata } from '@/types/ontology';
 
 // ============================================================
 // parseMasterDataFields
@@ -579,5 +588,227 @@ describe('Constants consistency', () => {
 
   it('TC-64: CASCADE_OPTIONS should have three options', () => {
     expect(CASCADE_OPTIONS.map((c) => c.value)).toEqual(['none', 'delete', 'all']);
+  });
+});
+
+// ============================================================
+// parseIndexFieldList & validateIndexDraft & buildIndexFromDraft
+// ============================================================
+
+describe('parseIndexFieldList', () => {
+  it('TC-65: should parse comma-separated fields', () => {
+    expect(parseIndexFieldList('id, name , status')).toEqual(['id', 'name', 'status']);
+  });
+
+  it('TC-66: should return empty array for blank input', () => {
+    expect(parseIndexFieldList('   ')).toEqual([]);
+  });
+
+  it('TC-67: should filter empty segments', () => {
+    expect(parseIndexFieldList('a,,b,,')).toEqual(['a', 'b']);
+  });
+});
+
+describe('validateIndexDraft', () => {
+  it('TC-68: should reject empty field list', () => {
+    expect(validateIndexDraft('')).toEqual({
+      valid: false,
+      error: '请输入至少一个索引字段',
+    });
+  });
+
+  it('TC-69: should accept non-empty field list', () => {
+    expect(validateIndexDraft('id, name')).toEqual({ valid: true });
+  });
+});
+
+describe('buildIndexFromDraft', () => {
+  it('TC-70: should build index object from draft strings', () => {
+    expect(buildIndexFromDraft('a, b', 'hash', true)).toEqual({
+      fields: ['a', 'b'],
+      type: 'hash',
+      unique: true,
+    });
+  });
+});
+
+// ============================================================
+// getLinkableDomainEvents
+// ============================================================
+
+describe('getLinkableDomainEvents', () => {
+  const events: EventDefinition[] = [
+    { id: 'e1', name: 'Created', entity: 'Order', trigger: 'create', payload: [], isDomainEvent: true },
+    { id: 'e2', name: 'Updated', entity: 'Order', trigger: 'update', payload: [], isDomainEvent: true },
+    { id: 'e3', name: 'Plain', entity: 'Order', trigger: 'create', payload: [], isDomainEvent: false },
+  ];
+
+  it('TC-71: should return empty when entity is null', () => {
+    expect(getLinkableDomainEvents(null, events)).toEqual([]);
+  });
+
+  it('TC-72: should filter non-domain events', () => {
+    const entity = { domainEvents: [] as string[] };
+    expect(getLinkableDomainEvents(entity, events).map((e) => e.id)).toEqual(['e1', 'e2']);
+  });
+
+  it('TC-73: should exclude already linked events', () => {
+    const entity = { domainEvents: ['e1'] };
+    expect(getLinkableDomainEvents(entity, events).map((e) => e.id)).toEqual(['e2']);
+  });
+
+  it('TC-74: should return empty when all domain events are linked', () => {
+    const entity = { domainEvents: ['e1', 'e2'] };
+    expect(getLinkableDomainEvents(entity, events)).toEqual([]);
+  });
+});
+
+// ============================================================
+// applyMetadataTemplateToAttributeDraft & formatMetadataOptionLabel
+// ============================================================
+
+describe('applyMetadataTemplateToAttributeDraft', () => {
+  const metadata: Metadata = {
+    id: 'md-1',
+    domain: '物料',
+    name: '物料编码',
+    nameEn: 'MATERIAL_CODE',
+    description: '唯一编码',
+    type: '字符串',
+    createdAt: '2026-01-01',
+  };
+
+  it('TC-75: should fill empty draft from metadata', () => {
+    const result = applyMetadataTemplateToAttributeDraft({}, metadata);
+    expect(result.metadataTemplateId).toBe('md-1');
+    expect(result.name).toBe('物料编码');
+    expect(result.nameEn).toBe('MATERIAL_CODE');
+    expect(result.dataType).toBe('string');
+    expect(result.description).toBe('唯一编码');
+  });
+
+  it('TC-76: should preserve user-provided name over metadata', () => {
+    const result = applyMetadataTemplateToAttributeDraft({ name: '自定义名' }, metadata);
+    expect(result.name).toBe('自定义名');
+    expect(result.nameEn).toBe('MATERIAL_CODE');
+  });
+
+  it('TC-77: should clear master data refs for non-reference types', () => {
+    const result = applyMetadataTemplateToAttributeDraft(
+      { isMasterDataRef: true, masterDataType: 'md-type' },
+      metadata,
+    );
+    expect(result.isMasterDataRef).toBe(false);
+    expect(result.masterDataType).toBeUndefined();
+  });
+
+  it('TC-78: should map enum metadata type', () => {
+    const enumMeta = { ...metadata, type: '枚举' };
+    const result = applyMetadataTemplateToAttributeDraft({}, enumMeta);
+    expect(result.dataType).toBe('enum');
+  });
+});
+
+describe('formatMetadataOptionLabel', () => {
+  it('TC-79: should format label with domain', () => {
+    const label = formatMetadataOptionLabel({
+      id: '1',
+      domain: '财务',
+      name: '金额',
+      nameEn: 'AMOUNT',
+      description: '',
+      type: 'decimal',
+      createdAt: '',
+    });
+    expect(label).toBe('金额 (AMOUNT) - 财务');
+  });
+});
+
+// ============================================================
+// upsertInList & removeFromListById
+// ============================================================
+
+describe('upsertInList', () => {
+  it('TC-80: should append when editId is null', () => {
+    const list = [{ id: 'a', name: 'A' }];
+    const result = upsertInList(list, { id: 'b', name: 'B' }, null);
+    expect(result).toHaveLength(2);
+    expect(result[1].id).toBe('b');
+  });
+
+  it('TC-81: should replace item when editId matches', () => {
+    const list = [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }];
+    const result = upsertInList(list, { id: 'b', name: 'B2' }, 'b');
+    expect(result.find((x) => x.id === 'b')?.name).toBe('B2');
+    expect(result).toHaveLength(2);
+  });
+});
+
+describe('removeFromListById', () => {
+  it('TC-82: should remove matching id', () => {
+    const list = [{ id: 'a' }, { id: 'b' }];
+    expect(removeFromListById(list, 'a')).toEqual([{ id: 'b' }]);
+  });
+
+  it('TC-83: should return same length when id not found', () => {
+    const list = [{ id: 'a' }];
+    expect(removeFromListById(list, 'missing')).toEqual([{ id: 'a' }]);
+  });
+});
+
+// ============================================================
+// validateEntityCreateDraft
+// ============================================================
+
+describe('validateEntityCreateDraft', () => {
+  it('TC-84: should require project when projects exist', () => {
+    const result = validateEntityCreateDraft({}, 'aggregate_root', { hasProjects: true });
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('请选择项目');
+  });
+
+  it('TC-85: should require business scenario when project is set', () => {
+    const result = validateEntityCreateDraft(
+      { projectId: 'p1' },
+      'aggregate_root',
+      { hasProjects: true },
+    );
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('请选择业务场景');
+  });
+
+  it('TC-86: should require parent aggregate for child entity', () => {
+    const result = validateEntityCreateDraft(
+      { projectId: 'p1', businessScenarioId: 's1' },
+      'child_entity',
+      { hasProjects: true },
+    );
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('子实体必须选择父聚合根');
+  });
+
+  it('TC-87: should pass for complete aggregate root draft', () => {
+    const result = validateEntityCreateDraft(
+      { projectId: 'p1', businessScenarioId: 's1' },
+      'aggregate_root',
+      { hasProjects: true },
+    );
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('TC-88: should report no projects when hasProjects is false', () => {
+    const result = validateEntityCreateDraft({}, 'aggregate_root', { hasProjects: false });
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('无可用项目');
+  });
+
+  it('TC-89: should pass for complete child entity with parent', () => {
+    const result = validateEntityCreateDraft(
+      { projectId: 'p1', businessScenarioId: 's1', parentAggregateId: 'root-1' },
+      'child_entity',
+      { hasProjects: true },
+    );
+    expect(result.valid).toBe(true);
   });
 });

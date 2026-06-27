@@ -10,8 +10,8 @@
 |---|--------|--------|----------|
 | — | Hermes 目标分解 | `.hermes/GOAL.md` · `GOALS.md` · `REPORT.md` | 2026-06-27 |
 | — | GS-01（部分） | `tests/unit/ontology-store-ui.spec.ts` — **24 tests**（`setActiveModelType` / `setSelectedBusinessChainNode` / `resetProject` / `clearAllModels`） | 已存在 |
-| — | Copilot MVP | `dd9424d` · 29 copilot 测试文件 | 2026-06-27 |
-| — | README/TODO 同步 | Copilot + 测试规模更新 | 2026-06-27 |
+| — | GS-02 部分 | `chain-doc-prompt.spec.ts` · `manifest-validator-collect-ids.spec.ts` — **15 tests** | 2026-06-27 |
+| — | GS-03 | `data-model-editor` 接入 `@/lib/data-model/helpers` + **25 tests**（TC-65~89） | 2026-06-27 |
 
 ---
 
@@ -20,11 +20,11 @@
 | 子目标 | 状态 | 进度 | 备注 |
 |--------|:----:|:----:|------|
 | GS-01 store UI 状态 | 🟡 | ~90% | `ontology-store-ui.spec.ts` 已覆盖主要 setter；store 无 `setLoading`/`setError` |
-| GS-02 lib 函数 | ⏳ | 0% | 待扫 `src/lib/` 未覆盖模块 |
-| GS-03 组件测试 | ⏳ | 0% | 优先 `data-model-editor` 纯函数提取 |
-| GS-04 API 路由 | 🟡 | ~40% | 19 路由中 7 已有 `api-*-route.spec.ts`；缺 analyze-document / copilotkit / generate-* / export / hr-sync 部分 |
+| GS-02 lib 函数 | 🟡 | ~50% | `chain-doc-prompt` 9 · `collect-manifest-ids` 6 tests 新增 |
+| GS-03 组件测试 | ✅ | 100% | `helpers.ts` 新增索引/领域事件/元数据/列表/实体校验；editor 去重接入；**89 tests** in `data-model-helpers.spec.ts` |
+| GS-04 API 路由 | 🟡 | ~70% | 新增 `projects/[id]` · `hr-sync/resolve-conflict` · `export/xlsx-from-manifest` · `export POST`（18 tests） |
 | GS-05 ci:check | ✅ | 100% | **2026-06-27** `pnpm run ci:check` exit 0 |
-| GS-06 覆盖+推送 | ⬜ | 0% | 待 baseline 稳定后确认 ≥80% |
+| GS-06 覆盖+推送 | 🟡 | baseline | scoped unit coverage **42%**（距 80% 差 ~38pp） |
 
 ---
 
@@ -33,9 +33,30 @@
 | 指标 | 值 |
 |------|-----|
 | `ci:check` | ✅ exit 0（lint · ts-check · unit · integration · e2e smoke · phase4） |
-| 全量 `vitest run --coverage` | ⚠️ 1689 tests 中 27 failed（4 uncaught SSL/happy-dom teardown）；需 GS-05 前稳定 |
-| 测试规模（ci 子集） | unit ~1010+ · integration ~265+ · e2e ~32 · **合计 ~1300+** |
-| 覆盖率目标 | ≥80%（statements/branches/functions/lines 任一）— **baseline % 待稳定跑完后填入** |
+| **Scoped unit coverage** | `pnpm exec vitest run --coverage tests/unit` — **1249/1249 pass** |
+| Statements | **42.07%** (4385/10422) |
+| Branches | **34.03%** (3106/9127) |
+| Functions | **36.08%** (1168/3237) |
+| Lines | **42.88%** (3945/9198) |
+| **距 80% 目标** | **~38pp**（以 statements/lines 计） |
+| 测试规模（unit） | **1249 tests** · 149 files |
+| 全量 `vitest run --coverage` | ⚠️ 1689 tests 中 27 failed（e2e/happy-dom teardown）；**GS-06 以 scoped unit 为准** |
+
+### 覆盖率分层（scoped unit）
+
+| 目录 | Statements | 主要缺口 |
+|------|:----------:|----------|
+| `src/lib/**` | ~75–99% | `ralph-loop` 30% · `superpowers/skills` 52% · `module-version/confirm-flow` 57% |
+| `src/store/**` | **70%** | `ontology-store.ts` 主体 67% |
+| `src/app/api/**` | 部分 | draft/generate/analyze 等路由仍低 |
+| `src/components/**` | **~0%** | UI 组件几乎无单测 — **最大拖累** |
+| `src/lib/data-model/helpers.ts` | **99%** | GS-03 已达标 |
+
+**冲 80% 建议路径**（按 ROI）：
+1. 继续 GS-03：behavior/event/epc 等 editor 纯函数提取 + 单测
+2. GS-02/04：`ontology-store` 剩余 action · 未覆盖 API 路由
+3. 评估是否将 `components/ui`（shadcn 壳）从 coverage include 排除，或仅测 ontology 业务组件
+4. 修复 `parse-pptx-markitdown.ts` coverage parse 警告（Buffer 类型 / rolldown）
 
 **未覆盖 API 路由（优先 GS-04）**：
 
@@ -69,13 +90,8 @@
 ## 📋 下一步计划
 
 - [x] 跑 `ci:check` 确认当前绿/红
-- [ ] 跑稳定 coverage baseline（`pnpm exec vitest run --coverage` 仅 unit+lib scope）
-- [x] GS-01: store UI 状态测试（已有 24 tests，补 gap 如有）
-- [ ] GS-02: lib 纯函数测试（≥15 tests）
-- [ ] GS-03: 组件纯函数提取+测试（≥25 tests）
-- [ ] GS-04: API 路由测试（≥15 tests）
-- [x] GS-05: ci:check 全绿
-- [ ] GS-06: 覆盖确认 ≥80% + commit & push
+- [x] 跑稳定 coverage baseline（`pnpm exec vitest run --coverage tests/unit` → **42%**）
+- [x] GS-03: 组件纯函数提取+测试（data-model-editor 接入 helpers，**+25 tests**）
 
 ---
 
