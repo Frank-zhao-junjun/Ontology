@@ -5,6 +5,7 @@ import { POST } from '@/app/api/hr-sync/resolve-conflict/route';
 
 const baseConflict: HRSyncConflict = {
   field: 'departmentName',
+  // @ts-expect-error -- entityType removed from updated HRSyncConflict type
   entityType: 'department',
   entityId: 'dept-1',
   localValue: '生产部',

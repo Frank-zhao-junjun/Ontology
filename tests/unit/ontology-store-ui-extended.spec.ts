@@ -175,7 +175,7 @@ describe('ontology-store UI State — business chain node deletion clears select
   it('should preserve selected EPC when deleting a different EPC process', () => {
     const { epc: epc1 } = addFullChain();
     const epc2 = useOntologyStore.getState().addEpcProcess(
-      useOntologyStore.getState().project.scenarios[0].id,
+      useOntologyStore.getState().project!.scenarios![0].id,
       { name: '备选流程' },
     );
     useOntologyStore.getState().setSelectedBusinessChainNode({ kind: 'EPC', id: epc1 });

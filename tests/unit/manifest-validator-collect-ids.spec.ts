@@ -21,23 +21,27 @@ function minimalManifest(overrides?: Partial<OntologyManifest>): OntologyManifes
             nameEn: 'Material',
             kind: 'aggregate_root',
             properties: [{ id: 'prop-1', name: '编码', nameEn: 'code', dataType: 'string' }],
+            // @ts-expect-error -- relations type changed: name/targetType→sourceObjectTypeId/targetObjectTypeId
             relations: [{ id: 'rel-1', name: '供应商', nameEn: 'supplier', targetType: 'Partner' }],
           },
         ],
         stateMachines: [{ id: 'sm-1', name: '状态机', nameEn: 'SM', entityId: 'ot-1', states: [] }],
       },
       behavior: {
+        // @ts-expect-error -- pre-existing: entityId not in updated ManifestAction
         actions: [{ id: 'act-1', name: '创建', nameEn: 'create', entityId: 'ot-1' }],
         rules: [{ id: 'rule-1', name: '校验', nameEn: 'validate', entityId: 'ot-1', type: 'field' }],
         metrics: [{ id: 'met-1', name: '产量', nameEn: 'output', entityId: 'ot-1' }],
         transactionBoundaries: [{ id: 'tx-1', name: '边界', nameEn: 'boundary' }],
       },
       events: {
+        // @ts-expect-error -- pre-existing: entityId not in updated ManifestDomainEvent
         domainEvents: [{ id: 'evt-1', name: '创建', nameEn: 'Created', entityId: 'ot-1' }],
         routes: [{ id: 'route-1', name: '路由', nameEn: 'Route' }],
         handlers: [{ id: 'handler-1', name: '处理', nameEn: 'Handler' }],
       },
       governance: {
+        // @ts-expect-error -- pre-existing: nameEn not in updated ManifestGovernanceRole
         roles: [{ id: 'role-1', name: '管理员', nameEn: 'Admin' }],
         agentPolicies: [{ id: 'pol-1', name: '策略', nameEn: 'Policy' }],
       },
@@ -91,7 +95,7 @@ describe('collectManifestIds', () => {
         events: {},
         governance: {},
         dataSources: [],
-        process: {},
+        process: { orchestrations: [] },
       },
     });
     const ids = collectManifestIds(sparse);

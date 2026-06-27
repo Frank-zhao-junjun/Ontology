@@ -28,35 +28,27 @@ const minimalManifest: OntologyManifest = {
           relations: [
             {
               id: 'rel-1',
-              name: '供应商',
-              nameEn: 'supplier',
-              targetType: 'Partner',
-              cardinality: 'many_to_one',
+              sourceObjectTypeId: 'ot-export-1',
+              targetObjectTypeId: 'Partner',
             },
           ],
         },
       ],
-      stateMachines: [{ id: 'sm-1', name: '状态', nameEn: 'State', entityId: 'ot-export-1', states: [] }],
+      stateMachines: [{ id: 'sm-1', name: '状态', states: [] }],
     },
     behavior: {
       actions: [
         {
           id: 'act-1',
           name: '创建',
-          nameEn: 'create',
-          entityId: 'ot-export-1',
-          preRuleIds: ['rule-1'],
-          publishesEventIds: ['evt-1'],
+          aggregateRootId: 'ot-export-1',
         },
       ],
       rules: [
         {
           id: 'rule-1',
           name: '校验',
-          nameEn: 'validate',
-          entityId: 'ot-export-1',
           type: 'field',
-          expression: { field: 'materialCode', op: 'required' },
         },
       ],
       metrics: [
@@ -64,11 +56,13 @@ const minimalManifest: OntologyManifest = {
           id: 'met-1',
           name: '产量',
           nameEn: 'output',
-          entityId: 'ot-export-1',
-          dimensions: { plant: '1010' },
+          formula: 'count',
+          unit: 'pcs',
+          boundActionId: 'act-1',
+          measurementType: 'volume',
         },
       ],
-      transactionBoundaries: [{ id: 'tx-1', name: '边界', nameEn: 'Boundary' }],
+      transactionBoundaries: [{ id: 'tx-1', name: '边界', nameEn: 'Boundary', actionIds: [], aggregateRootIds: [], isolation: 'SERIALIZABLE' }],
     },
     events: {
       domainEvents: [
@@ -76,14 +70,13 @@ const minimalManifest: OntologyManifest = {
           id: 'evt-1',
           name: '创建',
           nameEn: 'MaterialCreated',
-          entityId: 'ot-export-1',
-          payloadSchema: { materialCode: 'string' },
         },
       ],
       routes: [],
       handlers: [],
     },
     governance: {
+      // @ts-expect-error -- nameEn removed from ManifestGovernanceRole
       roles: [{ id: 'role-1', name: '计划员', nameEn: 'Planner' }],
       agentPolicies: [],
     },
@@ -98,6 +91,7 @@ const minimalManifest: OntologyManifest = {
       },
     ],
     process: {
+      // @ts-expect-error -- nameEn removed from ManifestOrchestration
       orchestrations: [{ id: 'orch-1', name: '流程', nameEn: 'Flow', steps: [] }],
     },
   },
@@ -154,7 +148,7 @@ describe('POST /api/export/xlsx-from-manifest (GS-04)', () => {
         events: {},
         governance: {},
         dataSources: [],
-        process: {},
+        process: { orchestrations: [] },
       },
     };
     const response = await POST(manifestRequest(sparse));

@@ -910,8 +910,8 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1782490330.4509811,
-    "ast_hash": "7987f5a771b368e567122bba481b74e7",
+    "mtime": 1782521945.9293015,
+    "ast_hash": "7350fe3da10c1a6a4aeb8c4a257616f6",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -1395,8 +1395,8 @@
     "semantic_hash": "b40093cafab6ece9644cb2ed6b343d32"
   },
   "src/components/ontology/modeling-workspace.tsx": {
-    "mtime": 1782490680.6176612,
-    "ast_hash": "571ad99a004aac669463929b8a7c0f75",
+    "mtime": 1782522155.11422,
+    "ast_hash": "8d7c2e265b1b6b02fdf7d2912c42860e",
     "semantic_hash": ""
   },
   "src/components/ontology/module-detail-actions.tsx": {
@@ -3200,8 +3200,8 @@
     "semantic_hash": ""
   },
   "src/app/api/copilotkit/route.ts": {
-    "mtime": 1782489761.015213,
-    "ast_hash": "c67f5a0475f2f06f830fab6de6404fca",
+    "mtime": 1782522080.8662312,
+    "ast_hash": "c391f11d9578ce1084e9fe31f831cbb3",
     "semantic_hash": ""
   },
   "src/components/ontology/copilot/copilot-system-prompt.ts": {
@@ -3375,8 +3375,8 @@
     "semantic_hash": ""
   },
   "tests/unit/copilot/copilotkit-route.spec.ts": {
-    "mtime": 1782490271.3175855,
-    "ast_hash": "fdc0fb90138b0567b5e70538fd6e8f15",
+    "mtime": 1782522085.8073742,
+    "ast_hash": "f1c2b34a92aabd2bf7511c5d734bf5c2",
     "semantic_hash": ""
   },
   "tests/unit/copilot/create-chain-nodes.spec.ts": {
@@ -9075,8 +9075,8 @@
     "semantic_hash": ""
   },
   "docs/TODO.md": {
-    "mtime": 1782487487.009267,
-    "ast_hash": "93e33d8254882ad8fec0b4970f84c1e1",
+    "mtime": 1782520122.5121741,
+    "ast_hash": "bbe21cb686925cb350467c01177361a6",
     "semantic_hash": ""
   },
   "docs/UI_AUDIT.md": {
@@ -9940,8 +9940,8 @@
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-06-26-copilot-spike-result.md": {
-    "mtime": 1782490280.5017676,
-    "ast_hash": "40b617ac88fa124b455157956a341d19",
+    "mtime": 1782522089.4771047,
+    "ast_hash": "5d10a0edf3320a0acd390df6aacfaca6",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-06-26-copilot-unified-modeling.md": {
@@ -10290,8 +10290,8 @@
     "semantic_hash": ""
   },
   "src/app/api/analyze-document-model/route.ts": {
-    "mtime": 1782490651.5076628,
-    "ast_hash": "04d0206c2fa3a94354d020ca322707db",
+    "mtime": 1782522096.493528,
+    "ast_hash": "a987c82ec4cc1584478e0ff981040a7c",
     "semantic_hash": ""
   },
   "src/lib/copilot/actions/analyze-document-and-model.ts": {
@@ -10432,6 +10432,66 @@
   "test-coverage-gap-analysis.md": {
     "mtime": 1782491647.3704605,
     "ast_hash": "506b0077d8fa2b4432f8f3563f6d4cc7",
+    "semantic_hash": ""
+  },
+  "src/lib/copilot/actions/create-capability.ts": {
+    "mtime": 1782521873.4993782,
+    "ast_hash": "eef4cf868f118f10d452990b8da4db1f",
+    "semantic_hash": ""
+  },
+  "src/lib/copilot/actions/create-epc-process.ts": {
+    "mtime": 1782521873.459157,
+    "ast_hash": "2565ca844f54b3e2033f6c4f6554bf71",
+    "semantic_hash": ""
+  },
+  "src/lib/copilot/actions/create-scenario.ts": {
+    "mtime": 1782521873.459157,
+    "ast_hash": "09d02a3ab0bbf9995959035c0b4ba160",
+    "semantic_hash": ""
+  },
+  "src/lib/copilot/coze-service-adapter.ts": {
+    "mtime": 1782522491.5176542,
+    "ast_hash": "a316948d43d3facb9ab5e1190b67675f",
+    "semantic_hash": ""
+  },
+  "tests/unit/copilot/coze-service-adapter.spec.ts": {
+    "mtime": 1782522194.833385,
+    "ast_hash": "5df97e14d2126be7d580e845edf37ec7",
+    "semantic_hash": ""
+  },
+  "tests/unit/copilot/create-capability.spec.ts": {
+    "mtime": 1782521889.550554,
+    "ast_hash": "4c40608ca1ad160d69afdf050a2aafb4",
+    "semantic_hash": ""
+  },
+  "tests/unit/copilot/create-epc-process.spec.ts": {
+    "mtime": 1782521889.520483,
+    "ast_hash": "22c343b17a6b1f33caf3377c75511240",
+    "semantic_hash": ""
+  },
+  "tests/unit/copilot/create-scenario.spec.ts": {
+    "mtime": 1782521889.5511737,
+    "ast_hash": "6f5603cfd70c38a545a2dcdd0a7e8d3a",
+    "semantic_hash": ""
+  },
+  "tests/unit/ontology-store-data-model.spec.ts": {
+    "mtime": 1782519636.352815,
+    "ast_hash": "b4be01388ce14c6628b51fbea56defe4",
+    "semantic_hash": ""
+  },
+  "tests/unit/ontology-store-metadata.spec.ts": {
+    "mtime": 1782520006.1177258,
+    "ast_hash": "ceb14877c32cfedd2e6e795fdd47a3a2",
+    "semantic_hash": ""
+  },
+  "tests/unit/ontology-store-rules-events.spec.ts": {
+    "mtime": 1782519904.9898582,
+    "ast_hash": "1def39a6fba68ceda35e5308cb884bf7",
+    "semantic_hash": ""
+  },
+  "tests/unit/validation.spec.ts": {
+    "mtime": 1782492621.4906714,
+    "ast_hash": "eae7f0bdc5ee44ee6b0373df8ba0e1ac",
     "semantic_hash": ""
   }
 }

@@ -676,6 +676,7 @@ describe('applyMetadataTemplateToAttributeDraft', () => {
     description: '唯一编码',
     type: '字符串',
     createdAt: '2026-01-01',
+    updatedAt: '2026-01-01',
   };
 
   it('TC-75: should fill empty draft from metadata', () => {
@@ -719,6 +720,7 @@ describe('formatMetadataOptionLabel', () => {
       description: '',
       type: 'decimal',
       createdAt: '',
+      updatedAt: '',
     });
     expect(label).toBe('金额 (AMOUNT) - 财务');
   });

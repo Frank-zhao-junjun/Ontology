@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it } from 'vitest';
 import {
   resolveEntityRole, isEntityAggregateRoot, normalizeEntityRoleFields,
   getAggregateRootEntities, getEntityRoleLabel, normalizeOntologyProjectEntityRoles
 } from '@/lib/entity-role';
-import type { OntologyProject } from '@/lib/ontology';
+import type { OntologyProject } from '@/types/ontology';
 
 describe('resolveEntityRole', () => {
   it('returns aggregate_root when entityRole is set', () => {
@@ -93,7 +94,7 @@ describe('normalizeOntologyProjectEntityRoles', () => {
       },
     };
     const result = normalizeOntologyProjectEntityRoles(project as any);
-    expect(result.dataModel.entities[0].isAggregateRoot).toBe(true);
-    expect(result.dataModel.entities[1].isAggregateRoot).toBe(false);
+    expect(result.dataModel?.entities[0].isAggregateRoot).toBe(true);
+    expect(result.dataModel?.entities[1].isAggregateRoot).toBe(false);
   });
 });

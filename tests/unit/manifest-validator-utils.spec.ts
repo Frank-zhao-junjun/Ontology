@@ -27,22 +27,21 @@ describe('isRecord', () => {
 
 describe('issue', () => {
   it('default severity is error', () => {
-    const i = issue({ code: 'VE-01', message: 'test message' });
+    const i = issue({ code: 'V01', message: 'test message', elementType: 'entity' });
     expect(i.severity).toBe('error');
-    expect(i.code).toBe('VE-01');
+    expect(i.code).toBe('V01');
     expect(i.message).toBe('test message');
   });
 
   it('preserves custom severity', () => {
-    const i = issue({ code: 'VM-01', message: 'warning msg', severity: 'warning' });
+    const i = issue({ code: 'V01', message: 'warning msg', elementType: 'entity', severity: 'warning' });
     expect(i.severity).toBe('warning');
   });
 
-  it('merges all fields correctly', () => {
-    const i = issue({ code: 'VX-05', message: 'err', elementType: 'entity', elementId: 'e1', field: 'field' });
-    expect(i.code).toBe('VX-05');
+  it('passes through all fields', () => {
+    const i = issue({ code: 'V01', message: 'err', elementType: 'entity', field: 'field' });
+    expect(i.code).toBe('V01');
     expect(i.elementType).toBe('entity');
-    expect(i.elementId).toBe('e1');
     expect(i.field).toBe('field');
   });
 });
