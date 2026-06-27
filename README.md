@@ -122,13 +122,18 @@ EPC 通过 **A→B→C→EPC 业务树** 将八维要素（E1–E8）串联为�
 ## 测试覆盖
 
 | 层 | 用例数 | 目录 |
-|---|:---:|------|
-| Unit 测试 | ~1010 | `tests/unit/`（125+ 文件）+ `src/lib/**` / API route inline |
-| Integration 测试 | ~265 | `tests/integration/`（67+ 文件） |
-| E2E | ~32（24 @smoke） | `tests/e2e/`（17+ 文件，含 `tests/e2e/copilot/`） |
-| **合计** | **~1300** | |
+|:---|:---:|------|
+| Unit 测试 | **1134** | `tests/unit/`（139 文件） |
+| Integration 测试 | **277** | `tests/integration/`（67 文件） |
+| E2E smoke | **27**（15 文件） | `tests/e2e/` |
+| Phase 4 回归 | **32**（7 文件） | `test:phase4` |
+| **合计** | **~1470** | |
 
-`pnpm run ci:check` 全绿（2026-06-27）：lint **0 error** · ts-check pass · unit · integration · e2e smoke · phase4
+`pnpm run ci:check` 全绿（2026-06-27）：lint **0 error** · ts-check pass · unit **1134/1134** · integration **277/277** · e2e smoke **27/27** · phase4 **32/32**
+
+覆盖率 **40.61%**（Statements），核心逻辑已覆盖，组件渲染留待后续。
+
+Copilot 专项：`pnpm exec vitest run tests/unit/copilot tests/integration/copilot tests/e2e/copilot`
 
 Copilot 专项：`pnpm exec vitest run tests/unit/copilot tests/integration/copilot tests/e2e/copilot`
 

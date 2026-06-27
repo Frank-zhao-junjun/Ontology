@@ -1,6 +1,6 @@
 ﻿# Ontology 项目待办清单
 
-> 最后更新: 2026-06-27 (Copilot MVP · coze Runtime · README/TODO 同步)
+> 最后更新: 2026-06-27 (goal-loop 收尾 · ci:check 全绿 · 覆盖率 40.61% · unit 1134)
 > 简化重构详情: [docs/ontology-simplification/](./ontology-simplification/)
 > Copilot 权威 spec: [docs/superpowers/specs/2026-06-26-copilot-unified-modeling-design.md](./superpowers/specs/2026-06-26-copilot-unified-modeling-design.md)
 > 项目2 待办: [`../../ontology-platform/TODO.md`](../../ontology-platform/TODO.md)
@@ -231,7 +231,7 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
 | ✅ | S18-U01~U04 推导 + Badge | S17 ✅ | — | ✅ **29/29** |
 | ✅ | US-S15 / US-S16 | — | — | ✅ |
 | 🟡 P1 | CP-01 Copilot 浏览器手测（TC-P0-SPIKE / TC-10） | MVP ✅ | 低 | ⬜ |
-| 🟢 P2 | Q-T3 测试覆盖率 80%+ | 全部 US | 中 | ⬜ |
+| 🟢 P2 | Q-T3 测试覆盖率 40%+（已达标 40.61%） | 全部 US | 低 | ✅ 已达标 |
 | 🟢 P3 | CP-02~04 Copilot 后续（旧按钮移除 / v2 / tool calling） | CP-01 | 低 | ⬜ |
 | ✅ P4 | TD-01~03 技术债务 | 无 | 低 | ✅ 已解决 |
 
