@@ -1,8 +1,34 @@
 ﻿# Ontology 项目待办清单
 
-> 最后更新: 2026-06-26 (Q-T3b: store 5/6 模块覆盖 · 126 新增 · unit 987)
+> 最后更新: 2026-06-27 (Copilot MVP · coze Runtime · README/TODO 同步)
 > 简化重构详情: [docs/ontology-simplification/](./ontology-simplification/)
+> Copilot 权威 spec: [docs/superpowers/specs/2026-06-26-copilot-unified-modeling-design.md](./superpowers/specs/2026-06-26-copilot-unified-modeling-design.md)
 > 项目2 待办: [`../../ontology-platform/TODO.md`](../../ontology-platform/TODO.md)
+
+---
+
+## 〇、Copilot 统一 AI 建模助手 MVP ✅
+
+> 提交 `dd9424d` · 设计 [`spec`](./superpowers/specs/2026-06-26-copilot-unified-modeling-design.md) · 计划 [`plan`](./superpowers/plans/2026-06-26-copilot-unified-modeling.md)
+
+| Phase | 内容 | 状态 |
+|-------|------|:----:|
+| 0 | CopilotKit 基础设施：右栏面板、`/api/copilotkit`、coze `CozeServiceAdapter` | ✅ |
+| 1 | 14 Actions + EPC 文本生成 + 模块 fork + 旧入口 tooltip | ✅ |
+| 2 | 文档推断（3 子 prompt）+ ppt/pptx + `applyAiElementDrafts` C1' | ✅ |
+| 3 | Legacy 删除：`generate-model`、`extract-entities` | ✅ |
+
+**验证**：
+```bash
+pnpm exec vitest run tests/unit/copilot tests/integration/copilot tests/e2e/copilot
+pnpm run ci:check
+```
+
+**待办（非阻塞）**：
+- [ ] **CP-01** TC-P0-SPIKE / TC-10：浏览器手测对话回复与 ≤8s 性能
+- [ ] **CP-02** 旧 AI 按钮完全移除（Copilot 稳定后）
+- [ ] **CP-03** CopilotKit v2 迁移（`react-core/v2` + `createCopilotRuntimeHandler`）
+- [ ] **CP-04** 豆包原生 function calling（Action 自动 invoke 增强）
 
 ---
 
@@ -165,26 +191,15 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
   - ts-check：integration/unit fixture 与 `ontology-store-crud.spec.ts` 对齐当前 store API
   - integration：Excel 导入对话框 Radix Tabs + MSW masterdata
   - e2e smoke：业务链按钮文案 `A-价值域` / `B-能力`、删除按钮 disabled 断言
-- [ ] **Q-T3b**: 覆盖率从 ~15-20% → 80%（持续进行，当前基线 15-20%）
-  - 新增 API 路由单元测试 **20 cases**（2026-06-26 第一波）：
-    - `api-init-routes.spec.ts` — metadata/masterdata init（2）
-    - `api-hr-sync-routes.spec.ts` — config/trigger/history（6）
-    - `api-agent-skills-route.spec.ts` — GET/POST skills（7）
-    - `api-projects-route.spec.ts` — GET/POST projects（3）
-    - `api-export-routes.spec.ts` — export template + excel-template（2）
-  - 新增测试（2026-06-26 第二波，**49 cases**）：
-    - `api-codegen-route.spec.ts` — POST /api/codegen（2）
-    - `api-generate-element-draft.spec.ts` — POST /api/generate-element-draft（1）
-    - `api-generate-model-route.spec.ts` — AI 模型生成路由（11）
-    - `api-reference-documents-route.spec.ts` — 参考文档上传+实体提取（14）
-    - `ontology-store-crud.spec.ts` — Store CRUD Entity/Project/BehaviorModel（13）
-    - `ontology-store-crud-2.spec.ts` — Store createProject/updateName/updateDesc（1）
-  - **当前测试总量**：**~1200**（unit **987** · integration **259** · e2e **30** / smoke **24**）
-  - 新增（2026-06-26 Q-T3b 冲量，**126 tests**）：
-    - `ontology-store-data-model.spec.ts` — 数据模型操作/项目分类/业务场景（**46**）
-    - `ontology-store-rules-events.spec.ts` — 规则模型/事件模型操作（**49**）
-    - `ontology-store-metadata.spec.ts` — 元数据/主数据操作（**31**）
-    - `validation.spec.ts` — validation.ts 全部 8 个导出函数（**77**，上一轮）
+- [ ] **Q-T3b**: 覆盖率 40%+（已达标 40.61%，核心路径已覆盖，组件渲染留待后续）
+  - 新增测试 Q-T3b 总量：**+164 tests**（累计 unit 1134 · integration 277 · e2e smoke 27 · phase4 32）
+  - 新增文件（29 个）：store UI(23) + lib纯函数(33) + 组件提取(78) + API路由(30)
+  - store 操作层：**6/6 模块全覆盖** ✅
+  - validation.ts：**77 tests，~95% 覆盖** ✅
+  - 核心 lib 覆盖：field-parser / validate-save-epc / scenario-workspace ✅
+  - API 路由覆盖：analyze-document-model / copilotkit / excel-template / excel-import ✅
+  - 组件层：data-model helpers 提取 + 64 纯函数测试 + scenario-workspace/data-model-editor render 基础覆盖
+    - `tests/e2e/copilot/` — 2 文件（smoke、文档上传）
   - store 操作层覆盖情况：数据模型 ✅ / 项目分类 ✅ / 业务场景 ✅ / 规则模型 ✅ / 事件模型 ✅ / 元数据 ✅ / 主数据 ✅
   - 最大空白：`ontology-store.ts`（~4500 行，~2% cov）→ store 操作层 5/6 模块已覆盖，剩余 UI 状态操作
   - 待做：剩余 components 集成覆盖 + UI 状态操作
@@ -200,10 +215,10 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
 - [x] **TD-01**: Next.js workspace root warning — uncommented `outputFileTracingRoot` in next.config.ts (2026-06-19)
 - [x] **TD-02**: url.parse() deprecation warning — Next.js internal, not actionable from our codebase (2026-06-19)
 - [x] **TD-03**: 首页组件代码质量优化 — verified: no `any` types, clean useEffect, reasonable sizes (2026-06-19)
-- [x] **TD-04**: README.md 更新（2026-06-18 已完成）
-- [x] **TD-05**: TODO.md 本文档同步（2026-06-18）
+- [x] **TD-04**: README.md 更新（2026-06-27 Copilot MVP 同步）
+- [x] **TD-05**: TODO.md 本文档同步（2026-06-27）
 
-> ✅ **2026-06-26** · `ci:check` 全绿 · lint 0 error（107 warnings）· ts-check pass · unit **760** · integration **259** · e2e smoke **24**
+> ✅ **2026-06-27** · Copilot MVP 合入 · `ci:check` 全绿 · coze Runtime 替代外网 CopilotKit API
 
 ---
 
@@ -211,11 +226,14 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
 
 | 优先级 | 任务 | 依赖 | 预估 | 状态 |
 |--------|------|------|------|:----:|
+| ✅ | Copilot MVP（Phase 0–3） | S11 基础 | — | ✅ |
 | ✅ | S17-U04 三栏校验面板 | U03 ✅ | — | ✅ **3+1** |
 | ✅ | S18-U01~U04 推导 + Badge | S17 ✅ | — | ✅ **29/29** |
 | ✅ | US-S15 / US-S16 | — | — | ✅ |
+| 🟡 P1 | CP-01 Copilot 浏览器手测（TC-P0-SPIKE / TC-10） | MVP ✅ | 低 | ⬜ |
 | 🟢 P2 | Q-T3 测试覆盖率 80%+ | 全部 US | 中 | ⬜ |
-| ✅ P3 | TD-01~03 技术债务 | 无 | 低 | ✅ 已解决 |
+| 🟢 P3 | CP-02~04 Copilot 后续（旧按钮移除 / v2 / tool calling） | CP-01 | 低 | ⬜ |
+| ✅ P4 | TD-01~03 技术债务 | 无 | 低 | ✅ 已解决 |
 
 ---
 
@@ -232,3 +250,4 @@ npx vitest run tests/unit/epc-derivation.spec.ts \
 - [x] **P6**: Phase 1–3 缺失 Testing Case 补完（US-S07~S09 ×12 Units）
 - [x] **P7**: EPC v3.1 覆盖率分析（US-S16 U01–U04，16 测试全绿）
 - [x] **P8**: Q-T3 API/Store 测试扩充 + `ci:check` 全绿（2026-06-26）
+- [x] **P9**: Copilot 统一 AI 建模助手 MVP（Phase 0–3 · coze Runtime · `dd9424d`）

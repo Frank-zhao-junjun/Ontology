@@ -1,11 +1,11 @@
 # Graph Report - Ontology  (2026-06-27)
 
 ## Corpus Check
-- 2039 files · ~1,952,500 words
+- 2040 files · ~1,954,569 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 26143 nodes · 29599 edges · 2636 communities (2171 shown, 465 thin omitted)
+- 26168 nodes · 29623 edges · 2645 communities (2180 shown, 465 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 191 edges (avg confidence: 0.81)
 - Token cost: 0 input · 0 output
 
@@ -2230,11 +2230,13 @@
 - [[_COMMUNITY_Community 2298|Community 2298]]
 - [[_COMMUNITY_Community 2299|Community 2299]]
 - [[_COMMUNITY_Community 2300|Community 2300]]
+- [[_COMMUNITY_Community 2301|Community 2301]]
 - [[_COMMUNITY_Community 2302|Community 2302]]
 - [[_COMMUNITY_Community 2303|Community 2303]]
 - [[_COMMUNITY_Community 2304|Community 2304]]
 - [[_COMMUNITY_Community 2305|Community 2305]]
 - [[_COMMUNITY_Community 2306|Community 2306]]
+- [[_COMMUNITY_Community 2307|Community 2307]]
 - [[_COMMUNITY_Community 2308|Community 2308]]
 - [[_COMMUNITY_Community 2309|Community 2309]]
 - [[_COMMUNITY_Community 2310|Community 2310]]
@@ -2267,6 +2269,7 @@
 - [[_COMMUNITY_Community 2337|Community 2337]]
 - [[_COMMUNITY_Community 2338|Community 2338]]
 - [[_COMMUNITY_Community 2339|Community 2339]]
+- [[_COMMUNITY_Community 2340|Community 2340]]
 - [[_COMMUNITY_Community 2341|Community 2341]]
 - [[_COMMUNITY_Community 2342|Community 2342]]
 - [[_COMMUNITY_Community 2343|Community 2343]]
@@ -2275,6 +2278,7 @@
 - [[_COMMUNITY_Community 2346|Community 2346]]
 - [[_COMMUNITY_Community 2347|Community 2347]]
 - [[_COMMUNITY_Community 2348|Community 2348]]
+- [[_COMMUNITY_Community 2349|Community 2349]]
 - [[_COMMUNITY_Community 2350|Community 2350]]
 - [[_COMMUNITY_Community 2351|Community 2351]]
 - [[_COMMUNITY_Community 2352|Community 2352]]
@@ -2282,6 +2286,7 @@
 - [[_COMMUNITY_Community 2354|Community 2354]]
 - [[_COMMUNITY_Community 2355|Community 2355]]
 - [[_COMMUNITY_Community 2356|Community 2356]]
+- [[_COMMUNITY_Community 2357|Community 2357]]
 - [[_COMMUNITY_Community 2358|Community 2358]]
 - [[_COMMUNITY_Community 2359|Community 2359]]
 - [[_COMMUNITY_Community 2360|Community 2360]]
@@ -2331,6 +2336,7 @@
 - [[_COMMUNITY_Community 2404|Community 2404]]
 - [[_COMMUNITY_Community 2405|Community 2405]]
 - [[_COMMUNITY_Community 2406|Community 2406]]
+- [[_COMMUNITY_Community 2407|Community 2407]]
 - [[_COMMUNITY_Community 2408|Community 2408]]
 - [[_COMMUNITY_Community 2409|Community 2409]]
 - [[_COMMUNITY_Community 2410|Community 2410]]
@@ -2339,6 +2345,7 @@
 - [[_COMMUNITY_Community 2413|Community 2413]]
 - [[_COMMUNITY_Community 2414|Community 2414]]
 - [[_COMMUNITY_Community 2415|Community 2415]]
+- [[_COMMUNITY_Community 2416|Community 2416]]
 - [[_COMMUNITY_Community 2417|Community 2417]]
 - [[_COMMUNITY_Community 2418|Community 2418]]
 - [[_COMMUNITY_Community 2419|Community 2419]]
@@ -2347,6 +2354,9 @@
 - [[_COMMUNITY_Community 2422|Community 2422]]
 - [[_COMMUNITY_Community 2423|Community 2423]]
 - [[_COMMUNITY_Community 2424|Community 2424]]
+- [[_COMMUNITY_Community 2425|Community 2425]]
+- [[_COMMUNITY_Community 2426|Community 2426]]
+- [[_COMMUNITY_Community 2427|Community 2427]]
 - [[_COMMUNITY_Community 2444|Community 2444]]
 - [[_COMMUNITY_Community 2445|Community 2445]]
 - [[_COMMUNITY_Community 2446|Community 2446]]
@@ -2366,7 +2376,6 @@
 - [[_COMMUNITY_Community 2460|Community 2460]]
 - [[_COMMUNITY_Community 2462|Community 2462]]
 - [[_COMMUNITY_Community 2463|Community 2463]]
-- [[_COMMUNITY_Community 2464|Community 2464]]
 - [[_COMMUNITY_Community 2465|Community 2465]]
 - [[_COMMUNITY_Community 2466|Community 2466]]
 - [[_COMMUNITY_Community 2467|Community 2467]]
@@ -2581,14 +2590,14 @@
 ## Surprising Connections (you probably didn't know these)
 - `BusinessScenario` --implements--> `Ontology Simplification Design Document`  [INFERRED]
   src/types/ontology.ts → docs/superpowers/specs/2026-06-18-ontology-simplification-design.md
-- `MetaElementBase` --implements--> `Ontology Simplification Design Document`  [INFERRED]
-  src/types/ontology.ts → docs/superpowers/specs/2026-06-18-ontology-simplification-design.md
 - `US-S19-U02 Spec` --references--> `MetaElement`  [INFERRED]
   docs/ontology-simplification/units/US-S19-U02-spec.md → src/types/ontology.ts
 - `ModuleVersionRecord` --implements--> `Ontology Simplification Design Document`  [INFERRED]
   src/types/ontology.ts → docs/superpowers/specs/2026-06-18-ontology-simplification-design.md
 - `Writing Skill (Qoder)` --semantically_similar_to--> `Writing Skills (Qwen)`  [INFERRED] [semantically similar]
   .qoder/skills/writing-skills/SKILL.md → .qwen/skills/writing-skills/SKILL.md
+- `RED Phase (Write Failing Test)` --semantically_similar_to--> `RED Phase (Skill Testing)`  [AMBIGUOUS] [semantically similar]
+  .windsurf/skills/test-driven-development/SKILL.md → .vibe/skills/writing-skills/testing-skills-with-subagents.md
 
 ## Import Cycles
 - None detected.
@@ -2747,19 +2756,19 @@
 - **US-S03-U02 Test Suite** — tc_s03_u02_01, tc_s03_u02_02, tc_s03_u02_03 [EXTRACTED 1.00]
 - **US-S04-U01 Test Suite** — tc_s04_u01_01, tc_s04_u01_02, tc_s04_u01_03, tc_s04_u01_04 [EXTRACTED 1.00]
 
-## Communities (2636 total, 465 thin omitted)
+## Communities (2645 total, 465 thin omitted)
 
 ### Community 0 - "UI Component Library"
 Cohesion: 0.01
-Nodes (207): ConfirmOptions, useIsMobile(), versions, cn(), ValidationError, ModuleDetailActions(), ModuleDetailActionsProps, VersionHistoryPanel() (+199 more)
+Nodes (225): ThemeToggle(), ConfirmOptions, useIsMobile(), versions, cn(), ModuleDetailActions(), ModuleDetailActionsProps, VersionHistoryPanel() (+217 more)
 
 ### Community 1 - "Entity Lifecycle API"
-Cohesion: 0.06
-Nodes (36): buildSelectedNodeDetail(), findNodeName(), runGetSelectedNode(), SelectedNodeDetail, getModuleStatusTitle(), MODULE_STATUS_LABEL, MODULE_STATUS_TITLE, buildBusinessChainTree() (+28 more)
+Cohesion: 0.21
+Nodes (12): buildSelectedNodeDetail(), findNodeName(), runGetSelectedNode(), SelectedNodeDetail, buildBusinessChainTree(), canDeleteBusinessChainNode(), emptySlices(), findBusinessChainNode() (+4 more)
 
 ### Community 2 - "Data Source Editor"
-Cohesion: 0.04
-Nodes (134): domain, useConfirm(), domain, metaElements, mockState, sampleSideEffects, generateId(), generatePrefixedId() (+126 more)
+Cohesion: 0.06
+Nodes (105): generateId(), generatePrefixedId(), AgentSkill, CATEGORY_LABELS, GstackWorkflow, GstackWorkflowStep, PRIORITY_LABELS, RalphLoopState (+97 more)
 
 ### Community 3 - "Ontology Store & Dialogs"
 Cohesion: 0.04
@@ -2767,7 +2776,7 @@ Nodes (46): 10.1 只读工具, 10.2 推理与验证工具, 10.3 写入工具, 10
 
 ### Community 4 - "Meta Dimension Utilities"
 Cohesion: 0.02
-Nodes (96): GenerateEpcStepsFromTextInput, GenerateEpcStepsFromTextResult, runGenerateEpcStepsFromText(), StoreSlice, toEpcSteps(), domain, domain, domain (+88 more)
+Nodes (208): buildModuleDetail(), findLiveNode(), GetModuleDetailInput, ModuleDetailResult, runGetModuleDetail(), domain, resolveBusinessChainModuleStatus(), BusinessChainSlices (+200 more)
 
 ### Community 5 - "Project Dependencies"
 Cohesion: 0.03
@@ -2778,56 +2787,60 @@ Cohesion: 0.04
 Nodes (45): 1. 文档范围, 2.1 设计约束, 2.2 命名与版本, 2.3 错误码规范, 2. 统一约定, 3.1 模块职责, 3.2 子组件设计, 3.3 数据结构设计 (+37 more)
 
 ### Community 7 - "EPC Step Derivation"
-Cohesion: 0.01
-Nodes (190): runAnalyzeDocumentAndModel(), runUploadReferenceDocument(), StoreSlice, UploadReferenceDocumentInput, UploadReferenceDocumentResult, generateCodePackage(), CodePackage, FlaskRoute (+182 more)
+Cohesion: 0.02
+Nodes (117): GET(), PUT(), GET(), POST(), syncHistory, mockConfig, mockHistory, MockRoute (+109 more)
 
 ### Community 8 - "Systematic Debugging"
 Cohesion: 0.06
-Nodes (56): Four Phases, Debugging Iron Law, Condition-Based Waiting Technique, Condition Based Waiting Technique, Condition-Based Waiting Technique, Systematic Debugging Creation Log, Debugging Iron Law: No Fixes Without Root Cause Investigation, Defense-in-Depth Validation Technique (+48 more)
+Nodes (55): Four Phases, Debugging Iron Law, Condition-Based Waiting Technique, Condition Based Waiting Technique, Condition-Based Waiting Technique, Systematic Debugging Creation Log, Debugging Iron Law: No Fixes Without Root Cause Investigation, Defense-in-Depth Validation Technique (+47 more)
 
 ### Community 9 - "Code Review Agents"
 Cohesion: 0.05
-Nodes (79): Brainstorming, Code Quality Reviewer, Code Quality Reviewer Prompt, Code Quality Reviewer Subagent Prompt, Code Quality Reviewer Prompt Template, Code Quality Reviewer Subagent, Code Review Agent, Code Reviewer Subagent (+71 more)
+Nodes (87): Brainstorming, Code Quality Reviewer, Code Quality Reviewer Prompt, Code Quality Reviewer Subagent Prompt, Code Quality Reviewer Prompt Template, Code Quality Reviewer Subagent, Code Review Agent, Code Reviewer Subagent (+79 more)
 
 ### Community 10 - "Config Exporter Tests"
-Cohesion: 0.08
-Nodes (38): buildFlowArtifacts(), buildSelfCheckRows(), deriveActivities(), deriveExceptions(), deriveInformationObjects(), deriveValidationSummary(), ensureEpcProfile(), FlowArtifacts (+30 more)
+Cohesion: 0.07
+Nodes (39): buildFlowArtifacts(), buildSelfCheckRows(), deriveActivities(), deriveExceptions(), deriveInformationObjects(), deriveValidationSummary(), ensureEpcProfile(), FlowArtifacts (+31 more)
 
 ### Community 11 - "Excel Sheet Configs"
-Cohesion: 0.05
-Nodes (63): ALL_SHEET_CONFIGS, DESC_COL, DIMENSION_COL, EXCEL_SHEET_CONFIGS, ExcelColumnDef, ExcelModuleRow, ExcelSheetConfig, HIDDEN_REF_SHEET_CONFIG (+55 more)
+Cohesion: 0.12
+Nodes (25): META_DIMENSION_LABELS, META_DIMENSION_ORDER, buildExistingElementRef(), createInlineElementRef(), filterMetaElements(), groupMetaElementsByDimension(), resolveElementLabel(), metaElements (+17 more)
 
 ### Community 12 - "UI Components & E2E Tests"
 Cohesion: 0.04
 Nodes (44): 10. 数据导出, 1. 界面概览, 2. 项目管理, 3. 业务树（A/B/C）, 4. EPC 流程编辑, 5. 要素库（E1–E8）, 6. 模块版本管理, 7. 校验与覆盖率 (+36 more)
 
 ### Community 13 - "Skill Authoring Best Practices"
-Cohesion: 0.06
-Nodes (46): Anthropic Best Practices (Part 1), Anthropic Best Practices for Skills, Anthropic Best Practices Reference, CLAUDE_MD_TESTING Example, Gate Function, Persuasion Principle: Commitment, Persuasion Principle: Scarcity, Persuasion Principle: Social Proof (+38 more)
+Cohesion: 0.08
+Nodes (38): Skill Authoring Best Practices, Anthropic Best Practices, Anthropic Best Practices for Skills, Anthropic Best Practices Reference, Testing CLAUDE.md Documentation, CLAUDE_MD_TESTING Example, Persuasion Principle: Commitment, Persuasion Principle: Scarcity (+30 more)
 
 ### Community 15 - "Code Generation Types"
-Cohesion: 0.03
-Nodes (92): buildModuleDetail(), findLiveNode(), GetModuleDetailInput, ModuleDetailResult, runGetModuleDetail(), applyUpdates(), findNodeSnapshot(), modulesForKind() (+84 more)
+Cohesion: 0.04
+Nodes (56): CreateChainNodeInput, CreateChainNodeResult, runCreateCapability(), runCreateEpcProcess(), runCreateScenario(), StoreSlice, CreateValueDomainInput, CreateValueDomainResult (+48 more)
 
 ### Community 16 - "Module Status & Confirm"
 Cohesion: 0.05
 Nodes (43): 1.1 当前本体模型的 Agent 盲区, 1.2 根因分析, 2.1 Agent 的"一分钟理解", 2.2 设计原则, 3.1 Intent（意图定义）, 3.2 DialogContext（对话上下文模型）, 3.3 SemanticRelation（语义关系）, 3.4 BusinessTerm（业务术语词典） (+35 more)
 
+### Community 17 - "Full-Stack Code Generator"
+Cohesion: 0.07
+Nodes (18): CodeGenerator, generateCodePackage(), createVersion(), CodePackage, FlaskRoute, GeneratedFile, GeneratorContext, ReactComponent (+10 more)
+
 ### Community 18 - "Business Chain Tree UI"
 Cohesion: 0.02
-Nodes (79): domain, ThemeToggle(), materialDefinition, mockMasterdataInit(), useProjectSync(), MockRoute, mockSkills, originalCreateElement (+71 more)
+Nodes (131): domain, domain, BusinessChainNodeKind, Eight-Dimension Element Library, domain, domain, domain, registeredActions (+123 more)
 
 ### Community 19 - "Development Workflow Prompts"
-Cohesion: 0.05
-Nodes (50): Brainstorming Frame Template, Brainstorming Ideas Into Designs, Spec Document Reviewer Prompt Template, Visual Companion Guide, Executing Plans, Finishing a Development Branch, Receiving Code Review, Code Review Agent Prompt (+42 more)
+Cohesion: 0.06
+Nodes (36): Brainstorming Frame Template, Brainstorming Ideas Into Designs, Spec Document Reviewer Prompt Template, Visual Companion Guide, Executing Plans, Finishing a Development Branch, Receiving Code Review, Code Review Agent Prompt (+28 more)
 
 ### Community 20 - "Business Scenario Migration"
 Cohesion: 0.05
 Nodes (43): 10.1 导出格式, 10.2 Excel 导出规范, 10.3 导出质量约束, 10.4 导出内容结构（JSON/YAML）, 10. 发布 · 版本 · 导出, 11. 版本协作, 12. Roadmap, 13.1 基础栈 (+35 more)
 
 ### Community 21 - "Entity Creation Logic"
-Cohesion: 0.03
-Nodes (40): createVersion(), createMockDomain(), createMockEntity(), createMockProject(), ConfigExporter, ConfigPackageManifest, ExportableEpcProfile, ExportConfig (+32 more)
+Cohesion: 0.02
+Nodes (101): buildElementLibrarySummary(), DIMENSIONS, ElementLibrarySummary, runGetElementLibrarySummary(), createMockDomain(), createMockEntity(), createMockProject(), ConfigExporter (+93 more)
 
 ### Community 22 - "Confirmation Dialogs"
 Cohesion: 0.14
@@ -2855,7 +2868,7 @@ Nodes (34): AI 引擎层, AI 编排器模块, API 网关层, 行为模型（状�
 
 ### Community 28 - "Design Doc Workflow"
 Cohesion: 0.06
-Nodes (39): Brainstorming, Brainstorming, Hard Gate (No Implementation Before Design Approval), Frame Template HTML, Brainstorming SKILL, Brainstorming Skills, Spec Document Reviewer Prompt, Spec Document Reviewer Prompt (+31 more)
+Nodes (45): Brainstorming, Brainstorming, Hard Gate (No Implementation Before Design Approval), Frame Template HTML, Brainstorming SKILL, Spec Document Reviewer Prompt, Spec Document Reviewer Prompt, Spec Self-Review Process (+37 more)
 
 ### Community 29 - "Excel Model Parsing"
 Cohesion: 0.10
@@ -2866,16 +2879,16 @@ Cohesion: 0.05
 Nodes (41): Ontology 项目迭代计划, Sprint 1: 核心建模基础, Sprint 2: 数据模型完善, Sprint 3: 行为与规则模型, Sprint 4: 事件模型与 EPC, Sprint 5: 主数据与元数据, Sprint 6: 版本管理与导出, Sprint 7: 增强功能 (+33 more)
 
 ### Community 31 - "Skill Prompt Templates"
-Cohesion: 0.17
-Nodes (18): AnalyzeDocumentAndModelInput, AnalyzeDocumentAndModelResult, applyAnalyzeResult(), applyChainToStore(), applyEpcSteps(), buildMessage(), StoreSlice, toEpcSteps() (+10 more)
+Cohesion: 0.08
+Nodes (24): 1.1 API Routes (src/app/api/) — ✅ ALL COVERED, 1.2 Store (src/store/), 1.3 Lib Core (src/lib/), 1.4 Lib Subdirectories, 1.5 Components, 1.6 Infrastructure, 1. Cover / Uncovered Modules Table, 🔴 #1 — `src/store/validation.ts` (369 lines) (+16 more)
 
 ### Community 32 - "Rule Evaluation Engine"
 Cohesion: 0.05
 Nodes (39): 1. 计划目标, 2. 实施原则, 3. 里程碑总览（建议 14 周）, 4. 分阶段实施明细, 5. 角色与职责建议, 6. 风险与应对, 7. 计划检查点（每周）, 8. 第一周立即行动清单 (+31 more)
 
 ### Community 33 - "Auth Backend"
-Cohesion: 0.05
-Nodes (36): U01 generate route: TC-U01-01~02, U02 prompt/parse: TC-U02-01~06 (6/6 pass), U03 store apply: TC-U03-01, U04 UI trigger: TC-U04-01 (no standalone E2E), US-S11: Testing Cases, P0 — 基础设施（一次性）, P2 — Phase 1 测试深化, P3 — Phase 1.5 测试深化 (+28 more)
+Cohesion: 0.06
+Nodes (31): P0 — 基础设施（一次性）, P1 — ③ Testing Case 文档补全, P2 — Phase 1 测试深化, P3 — Phase 1.5 测试深化, P4 — Phase 2 测试深化, P5 — Phase 3 测试深化, P6 — Phase 4 测试深化, P7 — 跨 Phase 回归与门禁 (+23 more)
 
 ### Community 34 - "EPC Linting Warnings"
 Cohesion: 0.05
@@ -2898,8 +2911,8 @@ Cohesion: 0.07
 Nodes (28): AI Tells, Atlassian Design System, Bootstrap, Brief Inference, Carbon Design System, Anti-Slop Frontend Skill, DESIGN_VARIANCE, Em-Dash Ban (+20 more)
 
 ### Community 39 - "Ontology Simplification"
-Cohesion: 0.13
-Nodes (25): Git Worktrees, Ontology Simplification Design Document, Code Quality Reviewer Prompt, Code Review Agent Template, Implementer Subagent Prompt, Plan Document Reviewer Prompt, Spec Compliance Reviewer Prompt, BusinessCapability (+17 more)
+Cohesion: 0.08
+Nodes (35): Brainstorming Skills, Spec Document Reviewer Prompt, Subagent, Git Worktrees, Writing Plans Skill, Ontology Simplification Design Document, Dispatching Parallel Agents, Code Quality Reviewer Prompt (+27 more)
 
 ### Community 40 - "Auth & Meta Models"
 Cohesion: 0.06
@@ -2914,8 +2927,8 @@ Cohesion: 0.09
 Nodes (27): Executing Plans, Finishing a Development Branch, Code Reviewer Prompt, Requesting Code Review, Code Quality Reviewer Prompt, Implementer Subagent Prompt, Subagent-Driven Development, Spec Compliance Reviewer Prompt (+19 more)
 
 ### Community 43 - "Skill Testing & TDD"
-Cohesion: 0.08
-Nodes (39): Skill Authoring Best Practices, Skill Creation Checklist and TDD for Skills, Testing Skills With Subagents, Systematic Debugging Skill Creation Log, Anthropic Best Practices, Testing CLAUDE.md Documentation, Pressure Testing, Progressive Disclosure (+31 more)
+Cohesion: 0.10
+Nodes (29): Skill Creation Checklist and TDD for Skills, Testing Skills With Subagents, Systematic Debugging Skill Creation Log, Pressure Testing, Rationalization Table, RED-GREEN-REFACTOR Cycle, TDD (Test-Driven Development), GREEN Phase (Write Minimal Skill) (+21 more)
 
 ### Community 44 - "Query Service"
 Cohesion: 0.12
@@ -2934,8 +2947,8 @@ Cohesion: 0.11
 Nodes (5): GSAP, AcceptanceCriteria(), CTA(), Hero(), gsap
 
 ### Community 48 - "Manifest Process Mapping"
-Cohesion: 0.04
-Nodes (63): runGetProjectSummary(), buildProjectSummary(), ProjectSummary, buildE1Entity(), CreateE1EntityInput, resolveDefaultBusinessScenarioId(), resolveDefaultProjectId(), domain (+55 more)
+Cohesion: 0.17
+Nodes (20): buildModuleDraftContext(), buildModuleDraftPrompt(), businessChainSlices(), ConfirmedElementCatalogItem, findCurrentSnapshot(), getConfirmedElementIds(), listConfirmedMetaElements(), mergeAiDraftSuggestion() (+12 more)
 
 ### Community 49 - "Frontend Dev Dependencies"
 Cohesion: 0.08
@@ -2946,8 +2959,8 @@ Cohesion: 0.10
 Nodes (12): SKILL.md (executing-plans), SKILL.md (finishing-a-development-branch), code-reviewer.md (requesting-code-review), SKILL.md (requesting-code-review), SKILL.md (subagent-driven-development), CREATION-LOG.md (systematic-debugging), SKILL.md (systematic-debugging), SKILL.md (test-driven-development) (+4 more)
 
 ### Community 51 - "Version Bar & Meta API"
-Cohesion: 0.05
-Nodes (37): U01 audit: TC-U01-01~08 (8/8) + entrypoints, U02 store removal: TC-U02-01~03 (3/3), U03 migration: TC-U03-01~07 (5+2), U04 store API: TC-U04-01, US-S12: Testing Cases, U01 simplified chain: TC-U01-01~02 (2/2), U02 extensions: TC-U02-01, U03 golden: TC-U03-01 (manufacturing golden) (+29 more)
+Cohesion: 0.07
+Nodes (27): U01 generate route: TC-U01-01~02, U02 prompt/parse: TC-U02-01~06 (6/6 pass), U03 store apply: TC-U03-01, U04 UI trigger: TC-U04-01 (no standalone E2E), US-S11: Testing Cases, Phase 1.5 复测报告（Test Lead · 2026-06-18）, Phase 1.5 — 模块确认/归档 UI, Phase 2 — EPC 编辑器 + 要素库 (+19 more)
 
 ### Community 52 - "Manifest Compilation"
 Cohesion: 0.19
@@ -2975,7 +2988,7 @@ Nodes (21): scripts, build, ci:check, dev, lint, preinstall, start, test (+13 mo
 
 ### Community 58 - "Business Chain Test Cases"
 Cohesion: 0.14
-Nodes (21): tests/unit/business-chain-store.spec.ts, tests/integration/business-chain-tree.spec.tsx, tests/e2e/module-confirm.e2e.spec.ts, TC-U02-01: 新建 A 并写入 module draft, TC-U02-02: 通过 store API 构建完整链 A→B→C→EPC, TC-U02-03: 有子节点时 block delete；空 C 可删, TC-U02-04: 新节点 module status 为 draft, TC-U02-05: 选中态更新 (+13 more)
+Nodes (20): tests/integration/business-chain-tree.spec.tsx, tests/unit/business-chain-tree.spec.ts, tests/e2e/module-confirm.e2e.spec.ts, TC-U01-01: 构建严格 A→B→C→EPC 树，过滤 orphan B, TC-U01-02: 显示路径为 name 链, TC-U01-03: 按 kind + id 查找节点, TC-U01-04: 有子节点时禁止删除, TC-U03-01: 渲染 A/B/C/EPC 层级 (+12 more)
 
 ### Community 59 - "Module Draft Context"
 Cohesion: 0.07
@@ -2994,8 +3007,8 @@ Cohesion: 0.07
 Nodes (29): 1. Explicit Negation in Rules, 2. Entry in Rationalization Table, 3. Red Flag Entry, 4. Update description, Common Mistakes (Same as TDD), Example: TDD Skill Bulletproofing, GREEN Phase: Write Minimal Skill (Make It Pass), Initial Test (Failed) (+21 more)
 
 ### Community 64 - "Manifest Types"
-Cohesion: 0.11
-Nodes (19): ManifestAction, ManifestDomainEvent, ManifestMetric, ManifestOrchestration, ManifestProcessStep, ManifestRule, ManifestSideEffect, ManifestState (+11 more)
+Cohesion: 0.10
+Nodes (23): mapOrchestration(), mapStep(), ManifestAction, ManifestDomainEvent, ManifestMetric, ManifestOrchestration, ManifestProcessStep, ManifestRule (+15 more)
 
 ### Community 65 - "California AI Regulation"
 Cohesion: 0.15
@@ -3006,8 +3019,8 @@ Cohesion: 0.10
 Nodes (19): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+11 more)
 
 ### Community 67 - "EPC Dialog Tests"
-Cohesion: 0.16
-Nodes (18): buildCatalogLines(), buildEpcDocPrompt(), buildJsonSchema(), ElementRefSchema, EpcDocOutputSchema, EpcDocParseError, EpcDocParseResult, EpcDocPrompt (+10 more)
+Cohesion: 0.21
+Nodes (11): buildCatalogLines(), buildEpcDocPrompt(), buildJsonSchema(), ElementRefSchema, EpcDocOutputSchema, EpcDocParseError, EpcDocParseResult, EpcDocPrompt (+3 more)
 
 ### Community 68 - "Meta Model Admin API"
 Cohesion: 0.07
@@ -3075,7 +3088,7 @@ Nodes (13): getSupabaseClient(), hasSupabaseConfig(), DELETE(), GET(), OntologyP
 
 ### Community 85 - "HR Sync API Route"
 Cohesion: 0.22
-Nodes (9): TDD Iron Law, Verification Iron Law, Anthropic Best Practices, Testing Anti-Patterns, YAGNI, receiving-code-review, test-driven-development, verification-before-completion (+1 more)
+Nodes (11): resolveEpcName(), filterMetaElementsByDimension(), filterUnreferencedElements(), getUsageCount(), isUnreferencedElement(), isElementEpcCovered(), domain, ElementCoverageBadge() (+3 more)
 
 ### Community 86 - "Version History Panel"
 Cohesion: 0.07
@@ -3110,8 +3123,8 @@ Cohesion: 0.11
 Nodes (20): Concise Skill Authoring, Degrees of Freedom, Skill Authoring Best Practices, Progressive Disclosure, Skill Authoring Best Practices, Anti-patterns to Avoid, Checklist for Effective Skills, Concise is Key (+12 more)
 
 ### Community 95 - "AI Testing Skills"
-Cohesion: 0.15
-Nodes (12): Done When, Forbidden, Inputs, Outputs, Overview, Skills to Load, TC 设计规则, Test Designer（测试设计） (+4 more)
+Cohesion: 0.24
+Nodes (10): Baseline Testing, Iron Law, Rationalization, Anthropic Best Practices, CLAUDE.md Testing, Persuasion Principles, Writing Skills, Testing Skills With Subagents (+2 more)
 
 ### Community 96 - "Agent Workflows Skills"
 Cohesion: 0.14
@@ -3158,8 +3171,8 @@ Cohesion: 0.23
 Nodes (12): Anti-Slop Frontend Skill (Design Taste), Bento Grid, Design Brief Inference, Design Variance Dial, Em-Dash Ban, Hero Section, Motion Intensity Dial, Pre-Flight Check (+4 more)
 
 ### Community 107 - "LLM Generate Route"
-Cohesion: 0.33
-Nodes (8): mapOrchestration(), mapStep(), compileSemantic(), OntologyManifestSemantic, mapBusinessScenarios(), mapObjectTypes(), mapStateMachines(), toStableId()
+Cohesion: 0.53
+Nodes (5): compileSemantic(), OntologyManifestSemantic, mapBusinessScenarios(), mapObjectTypes(), mapStateMachines()
 
 ### Community 108 - "EPC Draft Tests"
 Cohesion: 0.07
@@ -3786,8 +3799,8 @@ Cohesion: 0.06
 Nodes (31): 2.1 VE 系列（EPC → 模型）：17 → 12+5, 2.2 VM 系列（模型 → EPC 覆盖率）：39 → 22, 2.3 VX 系列（交叉一致性）：15 → 10, 3.1 规模对比, 3.2 W-EPC 扩展（VE 系列）, 3.3 VM 覆盖率（模型→EPC）, 3.4 VX 交叉一致性, 4.1 新增类型 (+23 more)
 
 ### Community 620 - "Empty State Component"
-Cohesion: 0.06
-Nodes (30): TC01: 空项目返回 all-zero report, TC02: C 未确认返回 all-zero, TC03: 有 C 无 EPC → 所有 element 未覆盖, TC04: EPC 未确认 → 引用不计入, TC05: 全覆盖 100%, TC06: 部分覆盖 50%, TC07: 跨维度混合, TC08: 隔离性 — 两个 C 互不干扰 (+22 more)
+Cohesion: 0.09
+Nodes (21): 2.1 文件, 2.2 类型, 2.3 输入, 2.4 算法, 2.5 已确认判定, 3.1 方法签名, 3.2 实现, 3.3 Store 接口声明 (+13 more)
 
 ### Community 621 - "Toggle Component"
 Cohesion: 0.09
@@ -4874,8 +4887,8 @@ Cohesion: 0.12
 Nodes (15): Code Examples, Common Rationalizations for Skipping Testing, Directory Structure, Discovery Workflow, Flowchart Usage, Overview, Skill Creation Checklist (TDD Adapted), SKILL.md Structure (+7 more)
 
 ### Community 892 - "Community 892"
-Cohesion: 0.17
-Nodes (11): Forbidden, Inputs, Outputs, Overview, Parallel Dispatch Rules, Skills to Load, Test Lead（测试负责人）, When to Use (+3 more)
+Cohesion: 0.20
+Nodes (9): TC01: 空项目返回 all-zero report, TC02: C 未确认返回 all-zero, TC03: 有 C 无 EPC → 所有 element 未覆盖, TC04: EPC 未确认 → 引用不计入, TC05: 全覆盖 100%, TC06: 部分覆盖 50%, TC07: 跨维度混合, TC08: 隔离性 — 两个 C 互不干扰 (+1 more)
 
 ### Community 893 - "Community 893"
 Cohesion: 0.12
@@ -5386,8 +5399,8 @@ Cohesion: 0.12
 Nodes (15): Code Examples, Common Rationalizations for Skipping Testing, Directory Structure, Discovery Workflow, Flowchart Usage, Overview, Skill Creation Checklist (TDD Adapted), SKILL.md Structure (+7 more)
 
 ### Community 1020 - "Community 1020"
-Cohesion: 0.18
-Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
+Cohesion: 0.13
+Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
 
 ### Community 1021 - "Community 1021"
 Cohesion: 0.13
@@ -5422,8 +5435,8 @@ Cohesion: 0.13
 Nodes (14): 1. 目标, 2. Sprint E 进入条件, 3. Epic 总览, 4.1 跨进程事件总线（EVT）, 4.2 多租户与 ABAC 扩展（AUTH）, 4.3 生成器平台化（GEN）, 4.4 运维控制台与观测面板（OPS）, 4.5 测试与发布治理（QA） (+6 more)
 
 ### Community 1029 - "Community 1029"
-Cohesion: 0.13
-Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
+Cohesion: 0.18
+Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
 
 ### Community 1030 - "Community 1030"
 Cohesion: 0.13
@@ -5478,16 +5491,16 @@ Cohesion: 0.13
 Nodes (15): 6.1 最小生成条件, 6.2.10 角色权限矩阵, 6.2.11 异常处理, 6.2.12 性能指标、系统集成、合规要求, 6.2.1 基本信息, 6.2.2 EPC流程概述, 6.2.3 事件表, 6.2.4 功能表 (+7 more)
 
 ### Community 1043 - "Community 1043"
-Cohesion: 0.13
-Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
+Cohesion: 0.18
+Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
 
 ### Community 1044 - "Community 1044"
 Cohesion: 0.13
 Nodes (15): Appendix B - Canonical Sources (read these before reinventing), Apple Liquid Glass (Apple platforms only), Atlassian, Bootstrap, Carbon, Fluent UI, GOV.UK, Material Web (+7 more)
 
 ### Community 1045 - "Community 1045"
-Cohesion: 0.18
-Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
+Cohesion: 0.13
+Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
 
 ### Community 1046 - "Community 1046"
 Cohesion: 0.13
@@ -5522,8 +5535,8 @@ Cohesion: 0.13
 Nodes (15): Appendix B - Canonical Sources (read these before reinventing), Apple Liquid Glass (Apple platforms only), Atlassian, Bootstrap, Carbon, Fluent UI, GOV.UK, Material Web (+7 more)
 
 ### Community 1054 - "Community 1054"
-Cohesion: 0.13
-Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
+Cohesion: 0.18
+Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
 
 ### Community 1055 - "Community 1055"
 Cohesion: 0.13
@@ -5546,16 +5559,16 @@ Cohesion: 0.13
 Nodes (15): Appendix B - Canonical Sources (read these before reinventing), Apple Liquid Glass (Apple platforms only), Atlassian, Bootstrap, Carbon, Fluent UI, GOV.UK, Material Web (+7 more)
 
 ### Community 1060 - "Community 1060"
-Cohesion: 0.18
-Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
+Cohesion: 0.13
+Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
 
 ### Community 1061 - "Community 1061"
 Cohesion: 0.13
 Nodes (15): Appendix B - Canonical Sources (read these before reinventing), Apple Liquid Glass (Apple platforms only), Atlassian, Bootstrap, Carbon, Fluent UI, GOV.UK, Material Web (+7 more)
 
 ### Community 1062 - "Community 1062"
-Cohesion: 0.13
-Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
+Cohesion: 0.18
+Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
 
 ### Community 1063 - "Community 1063"
 Cohesion: 0.13
@@ -5590,8 +5603,8 @@ Cohesion: 0.13
 Nodes (15): Appendix B - Canonical Sources (read these before reinventing), Apple Liquid Glass (Apple platforms only), Atlassian, Bootstrap, Carbon, Fluent UI, GOV.UK, Material Web (+7 more)
 
 ### Community 1071 - "Community 1071"
-Cohesion: 0.13
-Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
+Cohesion: 0.18
+Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
 
 ### Community 1072 - "Community 1072"
 Cohesion: 0.13
@@ -5626,8 +5639,8 @@ Cohesion: 0.14
 Nodes (13): 1. 领域与项目管理, 2. 五大元模型编辑, 3. 元数据管理 ✅, 4. AI智能生成, 5. 建模手册导出, API接口, 技术栈, 最近修复 (+5 more)
 
 ### Community 1080 - "Community 1080"
-Cohesion: 0.14
-Nodes (13): Commands, Done When, E2E Smoke Tester, Forbidden, Mock 重型边界, Naming, Overview, Patterns (+5 more)
+Cohesion: 0.17
+Nodes (12): Commands, Done When, E2E Smoke Tester, Forbidden, Mock 重型边界, Naming, Overview, Patterns (+4 more)
 
 ### Community 1081 - "Community 1081"
 Cohesion: 0.17
@@ -5650,8 +5663,8 @@ Cohesion: 0.14
 Nodes (14): 1. 目标, 2. 范围, 3. 技术设计, 4. PRD 验收条款, 5. 测试用例, 6. 六步验证, 7. 验证命令, E2E Smoke（`tests/e2e/epc-derivation.e2e.spec.ts`） (+6 more)
 
 ### Community 1086 - "Community 1086"
-Cohesion: 0.50
-Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
+Cohesion: 0.36
+Nodes (5): getModuleStatusTitle(), MODULE_STATUS_LABEL, MODULE_STATUS_TITLE, domain, ModuleStatusBadge()
 
 ### Community 1087 - "Community 1087"
 Cohesion: 0.15
@@ -5938,8 +5951,8 @@ Cohesion: 0.17
 Nodes (12): Advanced: Skills with executable code, [Analysis Title], Anti-patterns to avoid, Avoid offering too many options, Avoid Windows-style paths, Conditional workflow pattern, Examples pattern, Executive summary (+4 more)
 
 ### Community 1158 - "Community 1158"
-Cohesion: 0.14
-Nodes (13): Commands, Done When, Forbidden, Integration / UI Tester, Mock 策略, Overview, Patterns, Scope (+5 more)
+Cohesion: 0.17
+Nodes (12): Commands, Done When, Forbidden, Integration / UI Tester, Mock 策略, Overview, Patterns, Scope (+4 more)
 
 ### Community 1159 - "Community 1159"
 Cohesion: 0.17
@@ -6118,8 +6131,8 @@ Cohesion: 0.17
 Nodes (11): Bite-Sized Task Granularity, Execution Handoff, File Structure, No Placeholders, Overview, Plan Document Header, Remember, Scope Check (+3 more)
 
 ### Community 1203 - "Community 1203"
-Cohesion: 0.17
-Nodes (12): Advanced: Skills with executable code, [Analysis Title], Anti-patterns to avoid, Avoid offering too many options, Avoid Windows-style paths, Conditional workflow pattern, Examples pattern, Executive summary (+4 more)
+Cohesion: 0.15
+Nodes (13): Advanced: Skills with executable code, [Analysis Title], Build evaluations first, Conditional workflow pattern, Develop Skills iteratively with Claude, Evaluation and iteration, Examples pattern, Executive summary (+5 more)
 
 ### Community 1204 - "Community 1204"
 Cohesion: 0.17
@@ -6218,8 +6231,8 @@ Cohesion: 0.17
 Nodes (11): Bite-Sized Task Granularity, Execution Handoff, File Structure, No Placeholders, Overview, Plan Document Header, Remember, Scope Check (+3 more)
 
 ### Community 1228 - "Community 1228"
-Cohesion: 0.15
-Nodes (13): Advanced: Skills with executable code, [Analysis Title], Build evaluations first, Conditional workflow pattern, Develop Skills iteratively with Claude, Evaluation and iteration, Examples pattern, Executive summary (+5 more)
+Cohesion: 0.17
+Nodes (12): Advanced: Skills with executable code, [Analysis Title], Anti-patterns to avoid, Avoid offering too many options, Avoid Windows-style paths, Conditional workflow pattern, Examples pattern, Executive summary (+4 more)
 
 ### Community 1229 - "Community 1229"
 Cohesion: 0.17
@@ -6246,8 +6259,8 @@ Cohesion: 0.17
 Nodes (12): Advanced: Skills with executable code, [Analysis Title], Anti-patterns to avoid, Avoid offering too many options, Avoid Windows-style paths, Conditional workflow pattern, Examples pattern, Executive summary (+4 more)
 
 ### Community 1235 - "Community 1235"
-Cohesion: 0.14
-Nodes (13): Unit & Store Tester, Commands, Done When, Forbidden, Overview, Patterns（Ontology）, RED-GREEN, Scope (+5 more)
+Cohesion: 0.17
+Nodes (12): Commands, Done When, Forbidden, Overview, Patterns（Ontology）, RED-GREEN, Scope, Skills to Load (+4 more)
 
 ### Community 1236 - "Community 1236"
 Cohesion: 0.18
@@ -6270,8 +6283,8 @@ Cohesion: 0.17
 Nodes (12): 1. 目标, 2. 范围, 3. 技术设计, 4. PRD 验收条款, 5. 测试用例清单, 6. 六步验证, 7. 验证命令, In Scope (+4 more)
 
 ### Community 1241 - "Community 1241"
-Cohesion: 0.10
-Nodes (20): 1. 目标, 2. 范围, 3. 技术设计, 4. PRD 验收条款, 5. 测试用例（⚠️ TDD：先于编码）, 6. 依赖, 7. 六步验证, 8. 完成证据 (+12 more)
+Cohesion: 0.17
+Nodes (11): 1. 目标, 2. 范围, 4. PRD 验收条款, 5. 测试用例（⚠️ TDD：先于编码）, 6. 依赖, 7. 六步验证, 8. 完成证据, E2E Smoke（`tests/e2e/epc-validation-panel.e2e.spec.ts`） (+3 more)
 
 ### Community 1242 - "Community 1242"
 Cohesion: 0.17
@@ -6338,8 +6351,8 @@ Cohesion: 0.17
 Nodes (11): Bite-Sized Task Granularity, Execution Handoff, File Structure, No Placeholders, Overview, Plan Document Header, Remember, Scope Check (+3 more)
 
 ### Community 1258 - "Community 1258"
-Cohesion: 0.17
-Nodes (12): Advanced: Skills with executable code, [Analysis Title], Anti-patterns to avoid, Avoid offering too many options, Avoid Windows-style paths, Conditional workflow pattern, Examples pattern, Executive summary (+4 more)
+Cohesion: 0.15
+Nodes (13): Advanced: Skills with executable code, [Analysis Title], Build evaluations first, Conditional workflow pattern, Develop Skills iteratively with Claude, Evaluation and iteration, Examples pattern, Executive summary (+5 more)
 
 ### Community 1259 - "Community 1259"
 Cohesion: 0.18
@@ -6354,8 +6367,8 @@ Cohesion: 0.18
 Nodes (11): Avoid assuming tools are installed, Create verifiable intermediate outputs, MCP tool references, Next steps, Package dependencies, Returns: "OK" or lists conflicts, Runtime environment, Technical notes (+3 more)
 
 ### Community 1262 - "Community 1262"
-Cohesion: 0.18
-Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
+Cohesion: 0.13
+Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
 
 ### Community 1263 - "Community 1263"
 Cohesion: 0.18
@@ -6410,8 +6423,8 @@ Cohesion: 0.18
 Nodes (11): Avoid assuming tools are installed, Create verifiable intermediate outputs, MCP tool references, Next steps, Package dependencies, Returns: "OK" or lists conflicts, Runtime environment, Technical notes (+3 more)
 
 ### Community 1276 - "Community 1276"
-Cohesion: 0.18
-Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
+Cohesion: 0.13
+Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
 
 ### Community 1277 - "Community 1277"
 Cohesion: 0.18
@@ -6450,8 +6463,8 @@ Cohesion: 0.18
 Nodes (11): Avoid assuming tools are installed, Create verifiable intermediate outputs, MCP tool references, Next steps, Package dependencies, Returns: "OK" or lists conflicts, Runtime environment, Technical notes (+3 more)
 
 ### Community 1286 - "Community 1286"
-Cohesion: 0.22
-Nodes (9): CopilotCreatedItem, CopilotElementSummary, CopilotForkedItem, CopilotReplyKind, formatCopilotReply(), FormatCopilotReplyInput, formatCreatedSection(), KIND_LABELS (+1 more)
+Cohesion: 0.13
+Nodes (20): AnalyzeDocumentAndModelInput, AnalyzeDocumentAndModelResult, applyAnalyzeResult(), applyChainToStore(), applyEpcSteps(), buildMessage(), runAnalyzeDocumentAndModel(), StoreSlice (+12 more)
 
 ### Community 1287 - "Community 1287"
 Cohesion: 0.18
@@ -6466,8 +6479,8 @@ Cohesion: 0.18
 Nodes (11): Avoid assuming tools are installed, Create verifiable intermediate outputs, MCP tool references, Next steps, Package dependencies, Returns: "OK" or lists conflicts, Runtime environment, Technical notes (+3 more)
 
 ### Community 1290 - "Community 1290"
-Cohesion: 0.13
-Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
+Cohesion: 0.18
+Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
 
 ### Community 1291 - "Community 1291"
 Cohesion: 0.18
@@ -6482,8 +6495,8 @@ Cohesion: 0.18
 Nodes (11): Avoid assuming tools are installed, Create verifiable intermediate outputs, MCP tool references, Next steps, Package dependencies, Returns: "OK" or lists conflicts, Runtime environment, Technical notes (+3 more)
 
 ### Community 1294 - "Community 1294"
-Cohesion: 0.57
-Nodes (7): tests/unit/business-chain-tree.spec.ts, TC-U01-01: 构建严格 A→B→C→EPC 树，过滤 orphan B, TC-U01-02: 显示路径为 name 链, TC-U01-03: 按 kind + id 查找节点, TC-U01-04: 有子节点时禁止删除, US-S04-U01：business-chain 树纯函数, US-S04-U01: 业务链树纯函数
+Cohesion: 0.22
+Nodes (9): 3. 技术设计, Props, VE Tab, VM Tab, VX Tab, 三 Tab 结构, 数据获取（通过 Zustand store）, 集成点 (+1 more)
 
 ### Community 1295 - "Community 1295"
 Cohesion: 0.18
@@ -6542,8 +6555,8 @@ Cohesion: 0.18
 Nodes (11): Avoid assuming tools are installed, Create verifiable intermediate outputs, MCP tool references, Next steps, Package dependencies, Returns: "OK" or lists conflicts, Runtime environment, Technical notes (+3 more)
 
 ### Community 1309 - "Community 1309"
-Cohesion: 0.13
-Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
+Cohesion: 0.18
+Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
 
 ### Community 1310 - "Community 1310"
 Cohesion: 0.18
@@ -6594,8 +6607,8 @@ Cohesion: 0.18
 Nodes (11): Avoid assuming tools are installed, Create verifiable intermediate outputs, MCP tool references, Next steps, Package dependencies, Returns: "OK" or lists conflicts, Runtime environment, Technical notes (+3 more)
 
 ### Community 1322 - "Community 1322"
-Cohesion: 0.13
-Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
+Cohesion: 0.18
+Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
 
 ### Community 1323 - "Community 1323"
 Cohesion: 0.18
@@ -6762,8 +6775,8 @@ Cohesion: 0.18
 Nodes (11): Avoid assuming tools are installed, Create verifiable intermediate outputs, MCP tool references, Next steps, Package dependencies, Returns: "OK" or lists conflicts, Runtime environment, Technical notes (+3 more)
 
 ### Community 1364 - "Community 1364"
-Cohesion: 0.13
-Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
+Cohesion: 0.18
+Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
 
 ### Community 1365 - "Community 1365"
 Cohesion: 0.18
@@ -6950,8 +6963,8 @@ Cohesion: 0.20
 Nodes (10): 4.1 API 路由, 4.2 同步流程, 4.3 差异比对算法, 4.4 安全要求, 四、HR 同步 API, 处理同步冲突, 手动触发同步, 更新同步配置 (+2 more)
 
 ### Community 1411 - "Community 1411"
-Cohesion: 0.09
-Nodes (20): Commands, Domain Rule Tester（领域规则）, Done When, Forbidden, Gate Conditions（必测）, Helpers, Overview, Scope (+12 more)
+Cohesion: 0.03
+Nodes (55): Anthropic Best Practices (Part 1), Gate Function, Commands, Domain Rule Tester（领域规则）, Done When, Forbidden, Gate Conditions（必测）, Helpers (+47 more)
 
 ### Community 1412 - "Community 1412"
 Cohesion: 0.20
@@ -7274,8 +7287,8 @@ Cohesion: 0.20
 Nodes (10): 1. 目标, 5. 测试计划（⚠️ Testing case 必须在 Coding 之前定义）, 7. 流水线检查（严格按顺序执行）, TDD 原则遵循, Unit 测试用例清单, US-S02-U01 ~ U04：类型骨架, 产出文件, 命令行验证结果 (+2 more)
 
 ### Community 1492 - "Community 1492"
-Cohesion: 0.16
-Nodes (10): createInferFns(), POST(), ProjectSlice, truncateDocumentText(), AnalyzeDocumentProjectSlice, parseChainDoc(), MockConfig, MockLLMClient (+2 more)
+Cohesion: 0.14
+Nodes (19): ElementDraftSuggestion, EpcStepSuggestion, createInferFns(), POST(), ProjectSlice, truncateDocumentText(), AnalyzeDocumentProjectSlice, AnalyzeDocumentResult (+11 more)
 
 ### Community 1493 - "Community 1493"
 Cohesion: 0.29
@@ -7570,8 +7583,8 @@ Cohesion: 0.22
 Nodes (8): TC-U01-01: {场景简述}, TC-U02-01: {场景简述}, US-SXX: Testing Cases — {US 标题}, US-SXX-U01：{Unit 标题}, US-SXX-U02：{Unit 标题}, 使用说明, 回归命令, 汇总
 
 ### Community 1566 - "Community 1566"
-Cohesion: 0.33
-Nodes (6): P1 — ③ Testing Case 文档补全, Phase 1, Phase 1.5, Phase 2, Phase 3, Phase 4
+Cohesion: 0.54
+Nodes (8): tests/unit/business-chain-store.spec.ts, TC-U02-01: 新建 A 并写入 module draft, TC-U02-02: 通过 store API 构建完整链 A→B→C→EPC, TC-U02-03: 有子节点时 block delete；空 C 可删, TC-U02-04: 新节点 module status 为 draft, TC-U02-05: 选中态更新, US-S04-U02：store CRUD + module draft, US-S04-U02: Store CRUD+draft
 
 ### Community 1567 - "Community 1567"
 Cohesion: 0.22
@@ -7586,8 +7599,8 @@ Cohesion: 0.22
 Nodes (8): 1. 目标, 2. 范围, 4. PRD 验收条款, 5. 测试计划（先于 Coding）, 7. 流水线检查, In Scope, Out of Scope, US-S04-U02：Store 业务链 CRUD + draft 挂钩
 
 ### Community 1570 - "Community 1570"
-Cohesion: 0.50
-Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
+Cohesion: 0.33
+Nodes (5): U01 audit: TC-U01-01~08 (8/8) + entrypoints, U02 store removal: TC-U02-01~03 (3/3), U03 migration: TC-U03-01~07 (5+2), U04 store API: TC-U04-01, US-S12: Testing Cases
 
 ### Community 1571 - "Community 1571"
 Cohesion: 0.22
@@ -7842,8 +7855,8 @@ Cohesion: 0.25
 Nodes (7): Codex App Finishing, Codex Tool Mapping, Environment Detection, Message framing, Named agent dispatch, Subagent dispatch requires multi-agent support, When this workaround can be removed
 
 ### Community 1634 - "Community 1634"
-Cohesion: 0.50
-Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
+Cohesion: 0.33
+Nodes (5): U01 simplified chain: TC-U01-01~02 (2/2), U02 extensions: TC-U02-01, U03 golden: TC-U03-01 (manufacturing golden), U04 export regression: TC-U04-01, US-S13: Testing Cases
 
 ### Community 1635 - "Community 1635"
 Cohesion: 0.25
@@ -7918,8 +7931,8 @@ Cohesion: 0.25
 Nodes (7): Codex App Finishing, Codex Tool Mapping, Environment Detection, Message framing, Named agent dispatch, Subagent dispatch requires multi-agent support, When this workaround can be removed
 
 ### Community 1653 - "Community 1653"
-Cohesion: 0.06
-Nodes (31): CreateChainNodeInput, CreateChainNodeResult, runCreateCapability(), runCreateEpcProcess(), runCreateScenario(), StoreSlice, CreateValueDomainInput, CreateValueDomainResult (+23 more)
+Cohesion: 0.33
+Nodes (6): Phase 1, Phase 1.5, Phase 2, Phase 3, Phase 4, 附录 B — 测试文件索引（Phase 1–4）
 
 ### Community 1654 - "Community 1654"
 Cohesion: 0.29
@@ -8798,8 +8811,8 @@ Cohesion: 0.33
 Nodes (5): U01 prompt/parse: TC-U01-01~09 (9/9 pass), U02 store apply: TC-U02-01~07 (7/7 pass), U03 API + UI: TC-U03-01~10 (10/10 pass), U04 E2E insert & dedup: TC-U04-01~04 (4/4 pass), US-S19: Testing Cases
 
 ### Community 1873 - "Community 1873"
-Cohesion: 0.50
-Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
+Cohesion: 0.40
+Nodes (5): Phase 1 — 业务树 + 版本门禁, Phase 1 复测报告（Test Lead · 2026-06-18）, US-S03 模块版本 Store, US-S04 业务链树, US-S05 saveEpc 流水线
 
 ### Community 1874 - "Community 1874"
 Cohesion: 0.50
@@ -10390,8 +10403,8 @@ Cohesion: 0.50
 Nodes (4): 9.1 文档导出, 9.2 结构化导出, 9.3 导出 manifest 扩展, 9. 导出格式
 
 ### Community 2274 - "Community 2274"
-Cohesion: 0.67
-Nodes (3): Anti-patterns to avoid, Avoid offering too many options, Avoid Windows-style paths
+Cohesion: 0.50
+Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
 
 ### Community 2275 - "Community 2275"
 Cohesion: 0.50
@@ -10493,6 +10506,10 @@ Nodes (4): 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-1
 Cohesion: 0.50
 Nodes (3): Additional Gemini CLI tools, Gemini CLI Tool Mapping, No subagent support
 
+### Community 2301 - "Community 2301"
+Cohesion: 0.50
+Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
+
 ### Community 2302 - "Community 2302"
 Cohesion: 0.50
 Nodes (4): Checklist for effective Skills, Code and scripts, Core quality, Testing
@@ -10512,6 +10529,10 @@ Nodes (4): GREEN: Write Minimal Skill, RED-GREEN-REFACTOR for Skills, RED: Write
 ### Community 2306 - "Community 2306"
 Cohesion: 0.50
 Nodes (4): Pattern, Reference, Skill Types, Technique
+
+### Community 2307 - "Community 2307"
+Cohesion: 0.50
+Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
 
 ### Community 2308 - "Community 2308"
 Cohesion: 0.50
@@ -10641,6 +10662,10 @@ Nodes (4): GREEN: Write Minimal Skill, RED-GREEN-REFACTOR for Skills, RED: Write
 Cohesion: 0.50
 Nodes (4): Pattern, Reference, Skill Types, Technique
 
+### Community 2340 - "Community 2340"
+Cohesion: 0.50
+Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
+
 ### Community 2341 - "Community 2341"
 Cohesion: 0.50
 Nodes (4): 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-10), MOTION_INTENSITY (Level 1-10), VISUAL_DENSITY (Level 1-10)
@@ -10673,6 +10698,10 @@ Nodes (4): GREEN: Write Minimal Skill, RED-GREEN-REFACTOR for Skills, RED: Write
 Cohesion: 0.50
 Nodes (4): Pattern, Reference, Skill Types, Technique
 
+### Community 2349 - "Community 2349"
+Cohesion: 0.50
+Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
+
 ### Community 2350 - "Community 2350"
 Cohesion: 0.50
 Nodes (4): 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-10), MOTION_INTENSITY (Level 1-10), VISUAL_DENSITY (Level 1-10)
@@ -10700,6 +10729,10 @@ Nodes (4): GREEN: Write Minimal Skill, RED-GREEN-REFACTOR for Skills, RED: Write
 ### Community 2356 - "Community 2356"
 Cohesion: 0.50
 Nodes (4): Pattern, Reference, Skill Types, Technique
+
+### Community 2357 - "Community 2357"
+Cohesion: 0.50
+Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
 
 ### Community 2358 - "Community 2358"
 Cohesion: 0.50
@@ -10743,7 +10776,7 @@ Nodes (3): Additional Gemini CLI tools, Gemini CLI Tool Mapping, No subagent sup
 
 ### Community 2368 - "Community 2368"
 Cohesion: 0.50
-Nodes (4): Build evaluations first, Develop Skills iteratively with Claude, Evaluation and iteration, Observe how Claude navigates Skills
+Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
 
 ### Community 2369 - "Community 2369"
 Cohesion: 0.50
@@ -10897,6 +10930,10 @@ Nodes (4): Pattern, Reference, Skill Types, Technique
 Cohesion: 0.50
 Nodes (3): Additional Gemini CLI tools, Gemini CLI Tool Mapping, No subagent support
 
+### Community 2407 - "Community 2407"
+Cohesion: 0.50
+Nodes (4): Build evaluations first, Develop Skills iteratively with Claude, Evaluation and iteration, Observe how Claude navigates Skills
+
 ### Community 2408 - "Community 2408"
 Cohesion: 0.50
 Nodes (4): Checklist for effective Skills, Code and scripts, Core quality, Testing
@@ -10929,6 +10966,10 @@ Nodes (4): 6.1 System Prompt 要点, 6.2 意图 → Action 映射, 6.3 死循环
 Cohesion: 0.50
 Nodes (3): SkillCategory, SkillExecutionResult, SUPERPOWERS_SKILLS
 
+### Community 2416 - "Community 2416"
+Cohesion: 0.50
+Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
+
 ### Community 2417 - "Community 2417"
 Cohesion: 0.50
 Nodes (4): 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-10), MOTION_INTENSITY (Level 1-10), VISUAL_DENSITY (Level 1-10)
@@ -10960,6 +11001,14 @@ Nodes (4): GREEN: Write Minimal Skill, RED-GREEN-REFACTOR for Skills, RED: Write
 ### Community 2424 - "Community 2424"
 Cohesion: 0.50
 Nodes (4): Pattern, Reference, Skill Types, Technique
+
+### Community 2425 - "Community 2425"
+Cohesion: 0.67
+Nodes (3): Anti-patterns to avoid, Avoid offering too many options, Avoid Windows-style paths
+
+### Community 2427 - "Community 2427"
+Cohesion: 0.67
+Nodes (3): Anti-patterns to avoid, Avoid offering too many options, Avoid Windows-style paths
 
 ### Community 2444 - "Community 2444"
 Cohesion: 0.50
@@ -11037,10 +11086,6 @@ Nodes (4): 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-1
 Cohesion: 0.50
 Nodes (3): Additional Gemini CLI tools, Gemini CLI Tool Mapping, No subagent support
 
-### Community 2464 - "Community 2464"
-Cohesion: 0.50
-Nodes (4): Build evaluations first, Develop Skills iteratively with Claude, Evaluation and iteration, Observe how Claude navigates Skills
-
 ### Community 2465 - "Community 2465"
 Cohesion: 0.50
 Nodes (4): Checklist for effective Skills, Code and scripts, Core quality, Testing
@@ -11098,7 +11143,7 @@ Nodes (3): Sprint 5: 属性增强, US-3.2 元数据模板关联, US-3.3 引用�
   .windsurf/skills/test-driven-development/SKILL.md · relation: semantically_similar_to
 
 ## Knowledge Gaps
-- **18206 isolated node(s):** `start-server.sh script`, `stop-server.sh script`, `find-polluter.sh script`, `fs`, `path` (+18201 more)
+- **18225 isolated node(s):** `start-server.sh script`, `stop-server.sh script`, `find-polluter.sh script`, `fs`, `path` (+18220 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **465 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -11111,11 +11156,11 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: semantically_similar_to) - confidence is low._
 - **What is the exact relationship between `REFACTOR Phase (Skill Testing)` and `REFACTOR Phase (Clean Up)`?**
   _Edge tagged AMBIGUOUS (relation: semantically_similar_to) - confidence is low._
-- **Why does `Anti-Slop Frontend Skill` connect `Frontend Design Systems` to `Code Review Agents`, `Data Source Editor`, `Design Doc Workflow`, `Landing Page Components`?**
+- **Why does `Anti-Slop Frontend Skill` connect `Frontend Design Systems` to `Code Review Agents`, `Business Chain Tree UI`, `Design Doc Workflow`, `Landing Page Components`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
-- **Why does `cn()` connect `UI Component Library` to `Data Source Editor`, `Business Chain Tree UI`, `Meta Dimension Utilities`?**
+- **Why does `cn()` connect `UI Component Library` to `Data Source Editor`, `Meta Dimension Utilities`, `Excel Sheet Configs`, `Business Chain Tree UI`, `Entity Creation Logic`?**
   _High betweenness centrality (0.002) - this node is a cross-community bridge._
-- **Why does `Using Superpowers Skill` connect `Code Review Agents` to `Systematic Debugging`, `Design Doc Workflow`, `Frontend Design Systems`?**
+- **Why does `组织体系与岗位模型规格` connect `Community 654` to `Community 1984`, `Community 1410`, `Community 1702`, `Community 1833`, `Community 793`, `Community 1983`?**
   _High betweenness centrality (0.002) - this node is a cross-community bridge._
 - **What connects `start-server.sh script`, `stop-server.sh script`, `find-polluter.sh script` to the rest of the system?**
-  _18215 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _18234 weakly-connected nodes found - possible documentation gaps or missing edges._

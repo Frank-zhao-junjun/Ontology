@@ -2265,9 +2265,9 @@
     "semantic_hash": ""
   },
   "tests/e2e/ai-draft/element-insert.spec.ts": {
-    "mtime": 1782280230.6251967,
-    "ast_hash": "2c2cd2ae5ab072b43a6b02d2e5b285e6",
-    "semantic_hash": "2c2cd2ae5ab072b43a6b02d2e5b285e6"
+    "mtime": 1782491992.4943955,
+    "ast_hash": "fd395dbb3238d07ef015b5790446a6d2",
+    "semantic_hash": ""
   },
   "tests/e2e/ai-draft/fork-rules.epc.spec.ts": {
     "mtime": 1782280230.6251967,
@@ -3090,9 +3090,9 @@
     "semantic_hash": "69d093edde80c10912733a393f8a234a"
   },
   "tests/unit/ontology-store-extended.spec.ts": {
-    "mtime": 1782479974.0856285,
-    "ast_hash": "6e122b0d44a3f0728d1472a9c421ce47",
-    "semantic_hash": "6e122b0d44a3f0728d1472a9c421ce47"
+    "mtime": 1782491593.969869,
+    "ast_hash": "b9ff8c75ce39cf380cf2ed2690253606",
+    "semantic_hash": ""
   },
   "tests/unit/ontology-store.spec.ts": {
     "mtime": 1780928405.0239956,
@@ -3360,8 +3360,8 @@
     "semantic_hash": ""
   },
   "tests/unit/api-reference-documents-route.spec.ts": {
-    "mtime": 1782491221.6705215,
-    "ast_hash": "e81560ca4547469b329728b8a2e8c2e3",
+    "mtime": 1782491390.2024827,
+    "ast_hash": "811a7bc94c333bc534fac40ec1e518fe",
     "semantic_hash": ""
   },
   "tests/unit/copilot/actions-registry.spec.ts": {
@@ -10427,6 +10427,11 @@
   "tests/unit/reference-documents-upload-pptx.spec.ts": {
     "mtime": 1782490617.3557568,
     "ast_hash": "72ab5c79a523cb6a90baaaa457d9d713",
+    "semantic_hash": ""
+  },
+  "test-coverage-gap-analysis.md": {
+    "mtime": 1782491647.3704605,
+    "ast_hash": "506b0077d8fa2b4432f8f3563f6d4cc7",
     "semantic_hash": ""
   }
 }

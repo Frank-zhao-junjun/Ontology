@@ -158,6 +158,7 @@ describe('ontology-store Data Model Operations', () => {
     it('should throw when adding a child_entity without a parentAggregateId', () => {
       useOntologyStore.getState().setDataModel(emptyDataModel());
       const bad = childEntity('orphan', 'Orphan', '');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (bad as any).parentAggregateId;
       expect(() => useOntologyStore.getState().addEntity(bad)).toThrow('子实体必须指定所属聚合根');
     });
@@ -172,6 +173,7 @@ describe('ontology-store Data Model Operations', () => {
     it('should throw when adding an aggregate_root with parentAggregateId set', () => {
       useOntologyStore.getState().setDataModel(emptyDataModel());
       const root = aggregateRoot('e1', 'BadRoot');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (root as any).parentAggregateId = 'some-other';
       expect(() => useOntologyStore.getState().addEntity(root)).toThrow('聚合根不能指定所属聚合根');
     });
@@ -188,6 +190,7 @@ describe('ontology-store Data Model Operations', () => {
         businessScenarios: [],
       });
       const entity = aggregateRoot('e1', 'NoScenario');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (entity as any).businessScenarioId;
       expect(() => useOntologyStore.getState().addEntity(entity)).toThrow('实体必须归属一个业务场景');
     });

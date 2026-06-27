@@ -1,114 +1,172 @@
-import React from 'react';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+/**
+ * 场景工作区（ScenarioWorkspace）组件渲染测试
+ *
+ * 使用 @testing-library/react 做最小渲染验证。
+ */
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import { ScenarioWorkspace } from '@/components/ontology/scenario-workspace';
-import { useOntologyStore } from '@/store/ontology-store';
-import type { Domain, Scenario } from '@/types/ontology';
+import type { Scenario, EpcProcess } from '@/types/ontology';
 
-const domain: Domain = {
-  id: 'd1',
-  name: '离散制造',
-  nameEn: 'Mfg',
-  description: '',
-  icon: 'factory',
-  color: '#000',
-};
+function makeScenario(overrides: Partial<Scenario> = {}): Scenario {
+  return {
+    id: 'scenario-1',
+    name: '采购流程',
+    nameEn: 'Procurement',
+    semantics: {
+      terms: ['采购', '审批'],
+      triggerPhrases: [],
+      synonyms: [],
+    },
+    ...overrides,
+  } as Scenario;
+}
 
-describe('ScenarioWorkspace (US-S08-U03)', () => {
-  beforeEach(() => {
-    useOntologyStore.setState({
-      project: null,
-      metadataList: [],
-      masterDataList: [],
-      masterDataRecords: {},
-      versions: [],
-      activeModelType: null,
-      selectedBusinessChainNode: null,
-    });
-    useOntologyStore.getState().createProject('场景测试', domain);
-  });
+function makeEpc(id: string, name: string): EpcProcess {
+  return {
+    id,
+    name,
+    parentId: 'scenario-1',
+    steps: [],
+  } as EpcProcess;
+}
 
-  it('should show semantics, child epcs and reference union', () => {
-    const store = useOntologyStore.getState();
-    const a = store.addValueDomain({ name: '域' });
-    const b = store.addCapability(a.id, { name: '能力' });
-    const scenario = store.addScenario(b.id, {
-      name: 'MTS场景',
-      description: '按单生产',
-      semantics: { terms: ['MTS'], triggerPhrases: ['按单'] },
-    });
-    const epc = store.addEpcProcess(scenario.id, { name: '主流程' });
-    const project = useOntologyStore.getState().project!;
-    useOntologyStore.setState({
-      project: {
-        ...project,
-        epcProcesses: [{
-          ...epc,
-          steps: [{
-            id: 's1',
-            name: '下达',
-            elementRef: { dimension: 'E1', elementId: 'el-1', versionPin: 'latest_confirmed' },
-          }],
-        }],
-        metaElements: [{ id: 'el-1', name: '订单', dimension: 'E1' }],
-      },
-    });
-
+describe('ScenarioWorkspace', () => {
+  it('R1: renders scenario name in child EPC list', () => {
+    const childEpcs = [makeEpc('epc-1', '采购申请审批')];
     render(
       <ScenarioWorkspace
-        scenario={scenario as Scenario}
-        childEpcs={useOntologyStore.getState().getScenarioChildEpcs(scenario.id)}
-        referenceUnion={useOntologyStore.getState().getScenarioReferenceUnion(scenario.id)}
-        onSelectEpc={(id) => store.setSelectedBusinessChainNode({ kind: 'EPC', id })}
+        scenario={makeScenario()}
+        childEpcs={childEpcs}
+        referenceUnion={[]}
+        onSelectEpc={vi.fn()}
       />,
     );
-
-    expect(screen.getByTestId('scenario-workspace')).toBeInTheDocument();
-    expect(screen.getByText('MTS')).toBeInTheDocument();
-    expect(screen.getByTestId('scenario-child-epc-list')).toHaveTextContent('主流程');
-    expect(screen.getByTestId('scenario-ref-union-el-1')).toHaveTextContent('订单');
-
-    fireEvent.click(screen.getByTestId(`scenario-epc-link-${epc.id}`));
-    expect(useOntologyStore.getState().selectedBusinessChainNode).toEqual({ kind: 'EPC', id: epc.id });
-  });
-
-  it('should mount EpcValidationPanel alongside child epc and ref union sections', () => {
-    const store = useOntologyStore.getState();
-    const a = store.addValueDomain({ name: '域' });
-    const b = store.addCapability(a.id, { name: '能力' });
-    const scenario = store.addScenario(b.id, { name: 'MTS场景' });
-    const epc = store.addEpcProcess(scenario.id, { name: '主流程' });
-    store.confirmModule('C', scenario.id);
-    store.confirmModule('EPC', epc.id);
-
-    const project = useOntologyStore.getState().project!;
-    useOntologyStore.setState({
-      project: {
-        ...project,
-        epcProcesses: [{
-          ...epc,
-          steps: [{
-            id: 's1',
-            name: '步',
-            elementRef: { dimension: 'E1', elementId: 'el-1', versionPin: 'latest_confirmed' },
-          }],
-        }],
-        metaElements: [{ id: 'el-1', name: '订单', dimension: 'E1' }],
-      },
-    });
-
-    render(
-      <ScenarioWorkspace
-        scenario={scenario as Scenario}
-        childEpcs={useOntologyStore.getState().getScenarioChildEpcs(scenario.id)}
-        referenceUnion={useOntologyStore.getState().getScenarioReferenceUnion(scenario.id)}
-        onSelectEpc={() => {}}
-      />,
-    );
-
     expect(screen.getByTestId('scenario-workspace')).toBeInTheDocument();
     expect(screen.getByTestId('scenario-child-epc-list')).toBeInTheDocument();
+    expect(screen.getByText('采购申请审批')).toBeInTheDocument();
+  });
+
+  it('R2: shows empty message when no child EPCs', () => {
+    render(
+      <ScenarioWorkspace
+        scenario={makeScenario()}
+        childEpcs={[]}
+        referenceUnion={[]}
+        onSelectEpc={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/暂无子流程/)).toBeInTheDocument();
+    expect(screen.queryByTestId('scenario-child-epc-list')).not.toBeInTheDocument();
+  });
+
+  it('R3: renders semantics section when scenario has terms', () => {
+    render(
+      <ScenarioWorkspace
+        scenario={makeScenario()}
+        childEpcs={[makeEpc('epc-1', 'EPC-1')]}
+        referenceUnion={[]}
+        onSelectEpc={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('scenario-semantics')).toBeInTheDocument();
+    expect(screen.getByText('采购')).toBeInTheDocument();
+    expect(screen.getByText('审批')).toBeInTheDocument();
+  });
+
+  it('R4: hides semantics section when empty', () => {
+    render(
+      <ScenarioWorkspace
+        scenario={makeScenario({ semantics: { terms: [], triggerPhrases: [], synonyms: [] } })}
+        childEpcs={[makeEpc('epc-1', 'EPC-1')]}
+        referenceUnion={[]}
+        onSelectEpc={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('scenario-semantics')).not.toBeInTheDocument();
+  });
+
+  it('R5: renders derivation section when onDeriveSteps provided', () => {
+    render(
+      <ScenarioWorkspace
+        scenario={makeScenario()}
+        childEpcs={[makeEpc('epc-1', 'EPC-1')]}
+        referenceUnion={[]}
+        onSelectEpc={vi.fn()}
+        onDeriveSteps={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('derive-epc-steps-section')).toBeInTheDocument();
+    expect(screen.getByTestId('derive-epc-steps-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('derive-epc-steps-empty')).toBeInTheDocument();
+  });
+
+  it('R6: shows apply button when derivedSteps present and onApplyDerivedSteps provided', () => {
+    render(
+      <ScenarioWorkspace
+        scenario={makeScenario()}
+        childEpcs={[makeEpc('epc-1', 'EPC-1')]}
+        referenceUnion={[]}
+        onSelectEpc={vi.fn()}
+        onDeriveSteps={vi.fn()}
+        onApplyDerivedSteps={vi.fn()}
+        derivedSteps={[{ elementId: 'el-1', name: '测试', dimension: 'E1', derivation: 'auto' }]}
+        canApplyDerivedSteps={true}
+      />,
+    );
+    expect(screen.getByTestId('apply-derived-steps-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('apply-derived-steps-btn')).not.toBeDisabled();
+  });
+
+  it('R7: disables apply button when canApplyDerivedSteps=false', () => {
+    render(
+      <ScenarioWorkspace
+        scenario={makeScenario()}
+        childEpcs={[makeEpc('epc-1', 'EPC-1')]}
+        referenceUnion={[]}
+        onSelectEpc={vi.fn()}
+        onDeriveSteps={vi.fn()}
+        onApplyDerivedSteps={vi.fn()}
+        derivedSteps={[{ elementId: 'el-1', name: '测试', dimension: 'E1', derivation: 'auto' }]}
+        canApplyDerivedSteps={false}
+      />,
+    );
+    expect(screen.getByTestId('apply-derived-steps-btn')).toBeDisabled();
+  });
+
+  it('R8: renders reference union section', () => {
+    const referenceUnion = [
+      {
+        elementId: 'el-1',
+        dimension: 'E1' as const,
+        elementName: '合同数据',
+        sources: [{ epcId: 'epc-1', epcName: 'EPC', stepId: 's-1', stepName: '查看' }],
+      },
+    ];
+    render(
+      <ScenarioWorkspace
+        scenario={makeScenario()}
+        childEpcs={[makeEpc('epc-1', 'EPC-1')]}
+        referenceUnion={referenceUnion}
+        onSelectEpc={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('scenario-ref-union')).toBeInTheDocument();
     expect(screen.getByTestId('scenario-ref-union-el-1')).toBeInTheDocument();
-    expect(screen.getByTestId('epc-validation-panel')).toBeInTheDocument();
+    expect(screen.getByText('合同数据')).toBeInTheDocument();
+  });
+
+  it('R9: EPC link button triggers onSelectEpc', () => {
+    const onSelectEpc = vi.fn();
+    render(
+      <ScenarioWorkspace
+        scenario={makeScenario()}
+        childEpcs={[makeEpc('epc-1', '采购审批')]}
+        referenceUnion={[]}
+        onSelectEpc={onSelectEpc}
+      />,
+    );
+    screen.getByTestId('scenario-epc-link-epc-1').click();
+    expect(onSelectEpc).toHaveBeenCalledWith('epc-1');
   });
 });

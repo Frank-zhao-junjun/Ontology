@@ -96,11 +96,21 @@ EPC 通过 **A→B→C→EPC 业务树** 将八维要素（E1–E8）串联为�
 - **业务场景迁移**（US-S12）：旧 `BusinessScenario` → A/B/C 一键迁移
 - **Legacy 审计**（US-S12）：检测并报告旧结构残留
 
-### AI 辅助建模
+### AI 辅助建模（Copilot 统一助手 MVP ✅）
 
-- **AI Draft 填充**（US-S11）：为 EPC 步骤自动生成 Draft 级别的要素建议
-- **参考文档上传**：Word/PDF/Excel/TXT/Markdown 文件解析，AI 自动提取实体候选
-- **LLM 生成集成**：coze-coding-dev-sdk 接口预留
+工作台右侧 **建模 Copilot** 为 AI 建模主入口（对话 + 文件上传），所有写入均为 **draft**，用户在左侧沿用 `draft → confirmed` 确认流程。
+
+| 能力 | 说明 |
+|------|------|
+| **Copilot 面板** | CopilotKit Sidebar，可拖拽宽度，`localStorage: copilot-panel-width` |
+| **14 个 Actions** | 创建 A/B/C/EPC、更新模块 draft、文档推断、要素/EPC 文本生成等（**无 delete\***） |
+| **Runtime** | `GET/POST /api/copilotkit` → `CozeServiceAdapter` → 豆包 `doubao-seed-2-0-pro-260215`（coze-coding-dev-sdk，不依赖外网 CopilotKit API） |
+| **文档推断** | `POST /api/analyze-document-model` — 3 个子 prompt 编排（业务链 / EPC / 要素） |
+| **模块 Draft API** | `POST /api/generate-module-draft`、`POST /api/generate-element-draft` — Copilot Actions 内部调用 |
+| **参考文档** | 上传 Word/PDF/Excel/PPT/TXT/Markdown；Copilot `uploadReferenceDocument` + `analyzeDocumentAndModel` |
+| **Legacy 入口** | 旧 AI 按钮保留 + tooltip「建议使用右侧 Copilot」；`generate-model` / `extract-entities` 已删除 |
+
+权威设计：[`docs/superpowers/specs/2026-06-26-copilot-unified-modeling-design.md`](docs/superpowers/specs/2026-06-26-copilot-unified-modeling-design.md)
 
 ## 平台级能力
 
@@ -113,12 +123,14 @@ EPC 通过 **A→B→C→EPC 业务树** 将八维要素（E1–E8）串联为�
 
 | 层 | 用例数 | 目录 |
 |---|:---:|------|
-| Unit 测试 | 760 | `tests/unit/`（102 文件）+ `src/lib/**` / API route inline |
-| Integration 测试 | 259 | `tests/integration/`（63 文件） |
-| E2E | 30（24 @smoke） | `tests/e2e/`（15 文件） |
-| **合计** | **~1049** | |
+| Unit 测试 | ~1010 | `tests/unit/`（125+ 文件）+ `src/lib/**` / API route inline |
+| Integration 测试 | ~265 | `tests/integration/`（67+ 文件） |
+| E2E | ~32（24 @smoke） | `tests/e2e/`（17+ 文件，含 `tests/e2e/copilot/`） |
+| **合计** | **~1300** | |
 
-`pnpm run ci:check` 全绿（2026-06-26）：lint **0 error**（107 warnings）· ts-check pass · unit **760** · integration **259** · e2e smoke **24**
+`pnpm run ci:check` 全绿（2026-06-27）：lint **0 error** · ts-check pass · unit · integration · e2e smoke · phase4
+
+Copilot 专项：`pnpm exec vitest run tests/unit/copilot tests/integration/copilot tests/e2e/copilot`
 
 ## 与项目2（Ontology Platform）对接
 
@@ -142,7 +154,8 @@ EPC 通过 **A→B→C→EPC 业务树** 将八维要素（E1–E8）串联为�
 - **动画**：GSAP
 - **状态管理**：Zustand + persist
 - **数据服务**：Supabase / PostgreSQL 适配
-- **AI 集成**：coze-coding-dev-sdk
+- **AI 集成**：coze-coding-dev-sdk（豆包 LLM）
+- **Copilot UI**：`@copilotkit/react-core` · `@copilotkit/react-ui` · `@copilotkit/runtime`
 - **文件解析**：xlsx、mammoth、pdf-parse
 - **测试**：Vitest 4、Testing Library、happy-dom
 
@@ -206,7 +219,10 @@ src/
 │   └── api/
 │       ├── excel-import/         # Excel 导入
 │       ├── excel-template/       # Excel 模板下载
-│       ├── generate-model/       # AI 建模建议
+│       ├── copilotkit/           # CopilotKit Runtime（coze 豆包）
+│       ├── analyze-document-model/ # 文档推断（3 子 prompt）
+│       ├── generate-module-draft/  # 模块 draft 生成（A/B/C/EPC）
+│       ├── generate-element-draft/ # 要素 draft 生成（E1–E8）
 │       ├── reference-documents/  # 参考文档上传与解析
 │       ├── hr-sync/              # HR 同步 (trigger/config/history)
 │       ├── masterdata/init/      # 主数据初始化
@@ -214,8 +230,10 @@ src/
 │       └── projects/             # 项目持久化
 ├── components/
 │   ├── landing/                  # 产品介绍页组件
-│   └── ontology/                 # 建模工作台组件 (20+ 组件)
+│   └── ontology/                 # 建模工作台组件
+│       └── copilot/              # Copilot 面板 + Actions
 ├── lib/
+│   ├── copilot/                  # Copilot Actions、文档编排、coze adapter
 │   ├── business-chain/           # US-S04: A/B/C 业务链树
 │   ├── element-library/          # US-S07: 要素库 + 未引用查询
 │   ├── element-selector/         # US-S06: EPC 要素选择器
@@ -289,13 +307,16 @@ GET    /api/masterdata/init
 GET    /api/excel-template
 POST   /api/excel-import
 
-# AI 辅助
-POST   /api/generate-model
+# AI / Copilot
+GET    /api/copilotkit              # CopilotKit Runtime（coze 豆包）
+POST   /api/copilotkit
+POST   /api/analyze-document-model  # 整文档推断（chain + EPC + elements）
+POST   /api/generate-module-draft   # A/B/C/EPC 模块 draft
+POST   /api/generate-element-draft  # E1–E8 要素 draft
 
 # 参考文档
 POST   /api/reference-documents/upload
 DELETE /api/reference-documents/:docId
-POST   /api/reference-documents/extract-entities
 
 # HR 同步
 POST   /api/hr-sync/trigger
@@ -326,6 +347,8 @@ POST   /api/hr-sync/resolve-conflict
 - `docs/ontology-simplification/PROGRESS.md` — 简化重构进度追踪
 
 ### 功能规格
+- `docs/superpowers/specs/2026-06-26-copilot-unified-modeling-design.md` — **Copilot 统一 AI 建模助手（权威 spec）**
+- `docs/superpowers/plans/2026-06-26-copilot-unified-modeling.md` — Copilot 实施计划与 TC 索引
 - `docs/Organization-Position-Spec.md` — 组织体系与岗位模型 v2.0
 - `docs/Reference-Doc-Upload-Spec.md` — 参考文档上传辅助 AI 建模
 
