@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Network, Library, AlertTriangle, Gauge, ShieldCheck, Database, BookOpen, Download, Box, GitBranch, ScrollText, Bell, Package, RefreshCw, Bot } from 'lucide-react';
+import { Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Network, Library, AlertTriangle, Gauge, ShieldCheck, Database, Sparkles, Download, Box, GitBranch, ScrollText, Bell, Package, RefreshCw, Bot, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -23,7 +23,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useRouter } from 'next/navigation';
-import { ManualGenerator } from './manual-generator';
 import { MetadataManager } from './metadata-manager';
 import { MasterDataManager } from './masterdata-manager';
 import { PublishDialog } from './publish-dialog';
@@ -72,7 +71,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
     elementId: string;
     dimension: MetaDimension;
   } | null>(null);
-  const [showManual, setShowManual] = useState(false);
+  const [copilotVisible, setCopilotVisible] = useState(true);
   const [showMetadata, setShowMetadata] = useState(false);
   const [showMasterData, setShowMasterData] = useState(false);
   const [showEditProjectDialog, setShowEditProjectDialog] = useState(false);
@@ -192,10 +191,6 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
     { id: 'agent', label: 'Agent', icon: Bot },
   ];
 
-  if (showManual) {
-    return <ManualGenerator onBack={() => setShowManual(false)} />;
-  }
-
   if (showMetadata) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
@@ -284,13 +279,19 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button size="sm" onClick={() => setShowManual(true)}>
-                      <BookOpen className="w-4 h-4 mr-1.5" />
-                      生成建模手册
+                    <Button
+                      size="sm"
+                      variant={copilotVisible ? 'default' : 'outline'}
+                      onClick={() => setCopilotVisible((v) => !v)}
+                      data-testid="header-ai-copilot-toggle"
+                    >
+                      <Sparkles className="w-4 h-4 mr-1.5" />
+                      AI建模
+                      {copilotVisible ? <PanelRightClose className="w-3.5 h-3.5 ml-1" /> : <PanelRightOpen className="w-3.5 h-3.5 ml-1" />}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>建议使用右侧 Copilot（新），支持对话和文档上传</p>
+                    <p>AI 智能建模助手：对话式建模、上传文档自动提取实体、生成草稿</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -482,9 +483,11 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
             )}
           </div>
             </div>
-            <ModelingCopilotPanel projectName={project.name}>
-              <ModelingCopilotActions />
-            </ModelingCopilotPanel>
+            {copilotVisible && (
+              <ModelingCopilotPanel projectName={project.name}>
+                <ModelingCopilotActions />
+              </ModelingCopilotPanel>
+            )}
           </div>
         </CopilotKit>
       </main>

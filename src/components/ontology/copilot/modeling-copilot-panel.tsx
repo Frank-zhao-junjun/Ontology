@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { CopilotSidebar } from '@copilotkit/react-ui';
 import '@copilotkit/react-ui/styles.css';
+import { Sparkles } from 'lucide-react';
 import { COPILOT_SYSTEM_PROMPT } from '@/components/ontology/copilot/copilot-system-prompt';
 
 const STORAGE_KEY = 'copilot-panel-width';
@@ -82,15 +83,18 @@ export function ModelingCopilotPanel({
         data-testid="copilot-panel-resizer"
       />
       <div className="flex h-full w-full flex-col overflow-hidden">
-        <header className="shrink-0 border-b px-3 py-2 text-sm font-medium">
-          建模 Copilot · {projectName}
+        <header className="flex shrink-0 items-center justify-between border-b px-3 py-2">
+          <div className="flex items-center gap-1.5 text-sm font-medium">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            AI建模 · {projectName}
+          </div>
         </header>
         <div className="min-h-0 flex-1 overflow-hidden">
           {children}
           <CopilotSidebar instructions={COPILOT_SYSTEM_PROMPT} />
         </div>
-        <footer className="shrink-0 border-t px-3 py-2 text-xs text-muted-foreground">
-          所有写入均为草稿，请在左侧确认
+        <footer className="shrink-0 border-t px-3 py-1.5 text-xs text-muted-foreground">
+          支持对话建模 & 上传文档自动提取 · 所有写入均为草稿
         </footer>
       </div>
     </div>
