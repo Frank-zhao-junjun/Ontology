@@ -4,6 +4,9 @@ import { COPILOT_SYSTEM_PROMPT } from '@/components/ontology/copilot/copilot-sys
 
 export const runtime = 'nodejs';
 
+const MAX_DOCUMENT_CHARS = 10000;
+const CHAT_MODEL = process.env.CHAT_MODEL || 'doubao-seed-2-0-pro-260215';
+
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
@@ -26,8 +29,8 @@ function buildSystemPrompt(documentText?: string, projectContext?: string): stri
   }
 
   if (documentText && documentText.trim()) {
-    const truncated = documentText.length > 10000
-      ? documentText.slice(0, 10000) + '\n... (文档已截断，仅展示前 10000 字符)'
+    const truncated = documentText.length > MAX_DOCUMENT_CHARS
+      ? documentText.slice(0, MAX_DOCUMENT_CHARS) + '\n... (文档已截断，仅展示前 10000 字符)'
       : documentText;
     prompt += `\n\n--- 用户上传的文档内容 ---\n${truncated}\n\n请分析以上文档内容，提取关键实体、业务流程和规则，并为用户生成建模建议。如果文档内容足够清晰，请直接建议创建对应的 A-价值域、B-能力、C-场景或 EPC 流程。`;
   }
@@ -70,7 +73,7 @@ export async function POST(request: NextRequest) {
       async start(controller) {
         try {
           const llmStream = client.stream(sdkMessages, {
-            model: 'doubao-seed-2-0-pro-260215',
+            model: CHAT_MODEL,
             temperature: 0.6,
           });
 

@@ -448,6 +448,20 @@ pnpm run ci:check
 
 ## graphify
 
+
+## 技能优先搜索路径
+
+> 技能文件优先在以下路径查找：
+> 
+> **🔝 优先搜索：`D:\AI\00 - SKILL\`**
+> - 索引文件：`D:\AI\00 - SKILL\skill-index.md`（**87 个技能** — 73 个独立 + 14 个 Superpowers 内置）
+> - 分类涵盖：前端/UI、测试、开发方法论、项目管理、搜索检索、视频媒体、工具集成、文档生成、元技能等
+>
+> **📦 补充搜索：`C:\Users\admin\.codex\skills\`**
+> - 系统内置技能（imagegen, openai-docs, plugin-creator, skill-creator, skill-installer, kimi-webbridge 等）
+>
+> 在任何项目中，当需要调用技能时，先到 `D:\AI\00 - SKILL\` 查找匹配。
+
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
 
 When the user types `/graphify`, invoke the `skill` tool with `skill: "graphify"` before doing anything else.

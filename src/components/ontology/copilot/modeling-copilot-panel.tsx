@@ -139,6 +139,8 @@ export function ModelingCopilotPanel({
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const addReferenceDocument = useOntologyStore((s) => s.addReferenceDocument);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, String(width));
@@ -196,7 +198,7 @@ export function ModelingCopilotPanel({
       setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
 
       try {
-        const allMessages = [...messages, userMsg].map((m) => ({
+        const allMessages = [...messagesRef.current, userMsg].map((m) => ({
           role: m.role,
           content: m.content,
         }));
