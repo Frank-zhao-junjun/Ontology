@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { CopilotSidebar } from '@copilotkit/react-ui';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { CopilotChat } from '@copilotkit/react-ui';
 import '@copilotkit/react-ui/styles.css';
 import { Sparkles } from 'lucide-react';
 import { COPILOT_SYSTEM_PROMPT } from '@/components/ontology/copilot/copilot-system-prompt';
@@ -27,13 +27,11 @@ function readStoredWidth(defaultWidth: number): number {
 interface ModelingCopilotPanelProps {
   projectName: string;
   defaultWidth?: number;
-  children?: ReactNode;
 }
 
 export function ModelingCopilotPanel({
   projectName,
   defaultWidth = DEFAULT_WIDTH,
-  children,
 }: ModelingCopilotPanelProps) {
   const [width, setWidth] = useState(() => readStoredWidth(defaultWidth));
   const dragging = useRef(false);
@@ -90,8 +88,24 @@ export function ModelingCopilotPanel({
           </div>
         </header>
         <div className="min-h-0 flex-1 overflow-hidden">
-          {children}
-          <CopilotSidebar instructions={COPILOT_SYSTEM_PROMPT} />
+          <CopilotChat
+            instructions={COPILOT_SYSTEM_PROMPT}
+            className="h-full"
+            suggestions={[
+              {
+                title: '创建价值域',
+                message: '帮我创建一个物料管理的价值域',
+              },
+              {
+                title: '上传文档建模',
+                message: '上传文档并自动提取实体',
+              },
+              {
+                title: '项目摘要',
+                message: '获取当前项目摘要',
+              },
+            ]}
+          />
         </div>
         <footer className="shrink-0 border-t px-3 py-1.5 text-xs text-muted-foreground">
           支持对话建模 & 上传文档自动提取 · 所有写入均为草稿

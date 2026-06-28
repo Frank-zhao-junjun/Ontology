@@ -483,10 +483,9 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
             )}
           </div>
             </div>
+            <ModelingCopilotActions />
             {copilotVisible && (
-              <ModelingCopilotPanel projectName={project.name}>
-                <ModelingCopilotActions />
-              </ModelingCopilotPanel>
+              <ModelingCopilotPanel projectName={project.name} />
             )}
           </div>
         </CopilotKit>
