@@ -1,13 +1,22 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CopilotChat } from '@copilotkit/react-ui';
-import { useCopilotChatHeadless_c as useCopilotChat } from '@copilotkit/react-core';
-import '@copilotkit/react-ui/styles.css';
-import { Sparkles, Paperclip, Loader2, X, FileText, AlertCircle } from 'lucide-react';
-import { COPILOT_SYSTEM_PROMPT } from '@/components/ontology/copilot/copilot-system-prompt';
+import {
+  Sparkles,
+  Paperclip,
+  Loader2,
+  X,
+  FileText,
+  AlertCircle,
+  Send,
+  Bot,
+  User,
+} from 'lucide-react';
 import { useOntologyStore } from '@/store/ontology-store';
 import type { ReferenceDocument } from '@/types/ontology';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const STORAGE_KEY = 'copilot-panel-width';
 const DEFAULT_WIDTH = 380;
@@ -35,6 +44,11 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 interface UploadedFileInfo {
   fileName: string;
   fileSize: number;
@@ -42,6 +56,7 @@ interface UploadedFileInfo {
   textLength: number;
   status: 'uploading' | 'success' | 'error';
   error?: string;
+  extractedText?: string;
   document?: ReferenceDocument;
 }
 
@@ -50,6 +65,67 @@ interface ModelingCopilotPanelProps {
   defaultWidth?: number;
 }
 
+/** Build a compact project context string for the AI */
+function buildProjectContext(): string {
+  const store = useOntologyStore.getState();
+  const project = store.project;
+  const valueDomains = project?.valueDomains ?? [];
+  const capabilities = project?.capabilities ?? [];
+  const scenarios = project?.scenarios ?? [];
+  const epcProcesses = project?.epcProcesses ?? [];
+  const entities = project?.dataModel?.entities ?? [];
+
+  const lines: string[] = [];
+  lines.push(`项目名称: ${project?.name ?? '未命名'}`);
+  lines.push(`领域: ${project?.domain?.name ?? '未指定'}`);
+
+  if (valueDomains.length > 0) {
+    lines.push(`\n已有 A-价值域 (${valueDomains.length}):`);
+    for (const v of valueDomains) {
+      lines.push(`  - ${v.name}${v.nameEn ? ` (${v.nameEn})` : ''}`);
+    }
+  }
+
+  if (capabilities.length > 0) {
+    lines.push(`\n已有 B-能力 (${capabilities.length}):`);
+    for (const c of capabilities) {
+      lines.push(`  - ${c.name}${c.nameEn ? ` (${c.nameEn})` : ''}`);
+    }
+  }
+
+  if (scenarios.length > 0) {
+    lines.push(`\n已有 C-场景 (${scenarios.length}):`);
+    for (const s of scenarios) {
+      lines.push(`  - ${s.name}`);
+    }
+  }
+
+  if (epcProcesses.length > 0) {
+    lines.push(`\n已有 EPC 流程 (${epcProcesses.length}):`);
+    for (const p of epcProcesses) {
+      lines.push(`  - ${p.name}`);
+    }
+  }
+
+  if (entities.length > 0) {
+    lines.push(`\n已有实体 (${entities.length}):`);
+    for (const e of entities.slice(0, 20)) {
+      lines.push(`  - ${e.name}${e.nameEn ? ` (${e.nameEn})` : ''}`);
+    }
+    if (entities.length > 20) {
+      lines.push(`  ... 还有 ${entities.length - 20} 个`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+const SUGGESTIONS = [
+  { label: '创建价值域', message: '帮我创建一个物料管理的价值域，包含基本信息和库存管理能力' },
+  { label: '生成要素', message: '从以下描述生成 E1-E8 要素：物料编码、名称、规格、单位、单价' },
+  { label: '项目摘要', message: '请总结当前项目的建模情况，给出下一步建议' },
+];
+
 export function ModelingCopilotPanel({
   projectName,
   defaultWidth = DEFAULT_WIDTH,
@@ -57,13 +133,24 @@ export function ModelingCopilotPanel({
   const [width, setWidth] = useState(() => readStoredWidth(defaultWidth));
   const dragging = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [uploadedFile, setUploadedFile] = useState<UploadedFileInfo | null>(null);
-  const { sendMessage } = useCopilotChat();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
   const addReferenceDocument = useOntologyStore((s) => s.addReferenceDocument);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, String(width));
   }, [width]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    const scrollEl = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (scrollEl) {
+      scrollEl.scrollTop = scrollEl.scrollHeight;
+    }
+  }, [messages]);
 
   const onMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -89,6 +176,124 @@ export function ModelingCopilotPanel({
       document.addEventListener('mouseup', onMouseUp);
     },
     [width],
+  );
+
+  /**
+   * Send a message to the streaming chat API and render the response
+   */
+  const sendMessage = useCallback(
+    async (userText: string, documentText?: string) => {
+      if (!userText.trim() || isStreaming) return;
+
+      // Add user message
+      const userMsg: ChatMessage = { role: 'user', content: userText };
+      setMessages((prev) => [...prev, userMsg]);
+      setInput('');
+      setIsStreaming(true);
+
+      // Add empty assistant message for streaming
+      const assistantId = Date.now();
+      setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+
+      try {
+        const allMessages = [...messages, userMsg].map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
+
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: allMessages,
+            documentText,
+            projectContext: buildProjectContext(),
+          }),
+        });
+
+        if (!response.ok || !response.body) {
+          throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const jsonStr = line.slice(6).trim();
+              if (!jsonStr) continue;
+
+              try {
+                const data = JSON.parse(jsonStr);
+                if (data.content) {
+                  accumulated += data.content;
+                  setMessages((prev) => {
+                    const next = [...prev];
+                    const lastIdx = next.length - 1;
+                    if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
+                      next[lastIdx] = { ...next[lastIdx], content: accumulated };
+                    }
+                    return next;
+                  });
+                }
+                if (data.error) {
+                  accumulated += `\n\n**错误:** ${data.error}`;
+                  setMessages((prev) => {
+                    const next = [...prev];
+                    const lastIdx = next.length - 1;
+                    if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
+                      next[lastIdx] = { ...next[lastIdx], content: accumulated };
+                    }
+                    return next;
+                  });
+                }
+              } catch {
+                // Ignore parse errors for partial chunks
+              }
+            }
+          }
+        }
+
+        // If no content was received
+        if (!accumulated) {
+          setMessages((prev) => {
+            const next = [...prev];
+            const lastIdx = next.length - 1;
+            if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
+              next[lastIdx] = {
+                ...next[lastIdx],
+                content: '抱歉，我暂时无法回复。请稍后重试。',
+              };
+            }
+            return next;
+          });
+        }
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : '未知错误';
+        setMessages((prev) => {
+          const next = [...prev];
+          const lastIdx = next.length - 1;
+          if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
+            next[lastIdx] = {
+              ...next[lastIdx],
+              content: `**请求失败:** ${errMsg}\n\n请检查网络连接后重试。`,
+            };
+          }
+          return next;
+        });
+      } finally {
+        setIsStreaming(false);
+      }
+    },
+    [messages, isStreaming],
   );
 
   const handleFileSelect = useCallback(
@@ -141,15 +346,15 @@ export function ModelingCopilotPanel({
           fileType: doc.fileType,
           textLength: doc.textLength,
           status: 'success',
+          extractedText: doc.extractedText,
           document: doc,
         });
 
-        // Auto-trigger AI analysis
-        await sendMessage({
-          id: `upload-${Date.now()}`,
-          role: 'user',
-          content: `我上传了文档「${doc.fileName}」（${doc.textLength} 字），请分析文档内容并自动提取实体、生成业务链和 EPC 步骤草稿。`,
-        });
+        // Auto-trigger AI analysis with the extracted text
+        await sendMessage(
+          `我上传了文档「${doc.fileName}」（${doc.textLength} 字），请分析文档内容并自动提取实体、生成业务链和 EPC 步骤草稿。`,
+          doc.extractedText,
+        );
       } catch (err) {
         setUploadedFile((prev) => ({
           ...(prev ?? {
@@ -172,7 +377,6 @@ export function ModelingCopilotPanel({
       if (file) {
         handleFileSelect(file);
       }
-      // Reset input so same file can be re-selected
       e.target.value = '';
     },
     [handleFileSelect],
@@ -198,6 +402,30 @@ export function ModelingCopilotPanel({
   const dismissUploadedFile = useCallback(() => {
     setUploadedFile(null);
   }, []);
+
+  const onInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setInput(e.target.value);
+    },
+    [],
+  );
+
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage(input);
+      }
+    },
+    [sendMessage, input],
+  );
+
+  const onSuggestionClick = useCallback(
+    (message: string) => {
+      sendMessage(message);
+    },
+    [sendMessage],
+  );
 
   return (
     <div
@@ -225,7 +453,7 @@ export function ModelingCopilotPanel({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploadedFile?.status === 'uploading'}
+            disabled={uploadedFile?.status === 'uploading' || isStreaming}
             className="flex items-center gap-1 rounded border border-input bg-background px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
             title="上传文档（docx/pdf/xlsx/pptx/txt/md/csv）"
           >
@@ -284,32 +512,105 @@ export function ModelingCopilotPanel({
           </div>
         )}
 
-        {/* Chat area */}
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <CopilotChat
-            instructions={COPILOT_SYSTEM_PROMPT}
-            className="h-full"
-            suggestions={[
-              {
-                title: '创建价值域',
-                message: '帮我创建一个物料管理的价值域',
-              },
-              {
-                title: '生成要素',
-                message: '从以下描述生成 E1-E8 要素：物料编码、名称、规格、单位',
-              },
-              {
-                title: '项目摘要',
-                message: '获取当前项目摘要',
-              },
-            ]}
-          />
+        {/* Chat messages */}
+        <div ref={scrollAreaRef} className="min-h-0 flex-1">
+          <ScrollArea className="h-full">
+            <div className="flex flex-col gap-3 p-3">
+              {messages.length === 0 && (
+                <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+                  <Bot className="h-10 w-10 text-muted-foreground/50" />
+                  <div className="text-sm text-muted-foreground">
+                    AI建模助手已就绪
+                    <br />
+                    支持对话建模 &amp; 上传文档自动提取
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-2 pt-2">
+                    {SUGGESTIONS.map((s) => (
+                      <button
+                        key={s.label}
+                        type="button"
+                        onClick={() => onSuggestionClick(s.message)}
+                        className="rounded-full border bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {messages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+                >
+                  <div
+                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                      msg.role === 'user'
+                        ? 'bg-primary/10 text-primary'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {msg.role === 'user' ? (
+                      <User className="h-3.5 w-3.5" />
+                    ) : (
+                      <Bot className="h-3.5 w-3.5" />
+                    )}
+                  </div>
+                  <div
+                    className={`max-w-[80%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm ${
+                      msg.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    }`}
+                  >
+                    {msg.content || (isStreaming && msg.role === 'assistant' && idx === messages.length - 1 ? '...' : '')}
+                  </div>
+                </div>
+              ))}
+              {isStreaming && messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && messages[messages.length - 1]?.content === '' && (
+                <div className="flex gap-2">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <Bot className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="rounded-lg bg-muted px-3 py-2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </div>
 
-        {/* Footer */}
-        <footer className="shrink-0 border-t px-3 py-1.5 text-xs text-muted-foreground">
-          支持对话建模 & 上传文档自动提取 · 所有写入均为草稿
-        </footer>
+        {/* Input area */}
+        <div className="shrink-0 border-t p-3">
+          <div className="flex items-end gap-2">
+            <Textarea
+              value={input}
+              onChange={onInputChange}
+              onKeyDown={onKeyDown}
+              placeholder="输入消息，Enter 发送，Shift+Enter 换行..."
+              className="min-h-[40px] max-h-[120px] resize-none text-sm"
+              rows={1}
+              disabled={isStreaming}
+            />
+            <Button
+              type="button"
+              size="icon"
+              onClick={() => sendMessage(input)}
+              disabled={!input.trim() || isStreaming}
+              className="shrink-0"
+            >
+              {isStreaming ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          <p className="mt-1.5 text-[10px] text-muted-foreground">
+            支持对话建模 &amp; 上传文档自动提取 · AI 回复仅供参考
+          </p>
+        </div>
       </div>
     </div>
   );

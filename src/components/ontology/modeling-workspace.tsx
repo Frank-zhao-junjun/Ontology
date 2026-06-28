@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { CopilotKit } from '@copilotkit/react-core';
 import { useOntologyStore } from '@/store/ontology-store';
 import { useProjectSync } from '@/hooks/use-project-sync';
 import { Button } from '@/components/ui/button';
@@ -38,7 +37,6 @@ import { ExcelImportExportDialog } from './excel-import-export-dialog';
 import { HRSyncManager } from './hr-sync-manager';
 import { AgentSkillsManager } from './agent-skills-manager';
 import { ModelingCopilotPanel } from './copilot/modeling-copilot-panel';
-import { ModelingCopilotActions } from './copilot/modeling-copilot-actions';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { updateProject, deleteProject } from '@/services/project-service';
 import { cn } from '@/lib/utils';
@@ -332,7 +330,6 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
 
       {/* ========== MAIN CONTENT ========== */}
       <main className="flex-1 flex overflow-hidden min-h-0">
-        <CopilotKit runtimeUrl="/api/copilotkit">
           <div className="flex flex-1 min-w-0 overflow-hidden">
             <div className="flex flex-1 flex-col overflow-hidden">
           {/* Tab Bar */}
@@ -483,12 +480,10 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
             )}
           </div>
             </div>
-            <ModelingCopilotActions />
             {copilotVisible && (
               <ModelingCopilotPanel projectName={project.name} />
             )}
           </div>
-        </CopilotKit>
       </main>
 
       {/* ========== STATUS FOOTER ========== */}
