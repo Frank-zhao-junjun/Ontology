@@ -3,7 +3,7 @@ import type { ExcelTemplateSheet } from '@/types/ontology';
 
 const TEMPLATE_SHEETS: ExcelTemplateSheet[] = [
   {
-    name: '实体',
+    name: 'E1-实体',
     nameEn: 'entities',
     headers: [
       { label: '实体名称(必填)', key: 'name', required: true, type: 'string', description: '实体的中文名称' },
@@ -18,7 +18,7 @@ const TEMPLATE_SHEETS: ExcelTemplateSheet[] = [
     ],
   },
   {
-    name: '属性',
+    name: 'E1-属性',
     nameEn: 'attributes',
     headers: [
       { label: '实体英文名称(必填)', key: 'entityNameEn', required: true, type: 'string', description: '归属实体的英文标识' },
@@ -41,7 +41,7 @@ const TEMPLATE_SHEETS: ExcelTemplateSheet[] = [
     ],
   },
   {
-    name: '关系',
+    name: 'E1-关系',
     nameEn: 'relations',
     headers: [
       { label: '源实体英文名称(必填)', key: 'sourceEntityNameEn', required: true, type: 'string', description: '关系源实体的英文标识' },
@@ -57,7 +57,7 @@ const TEMPLATE_SHEETS: ExcelTemplateSheet[] = [
     ],
   },
   {
-    name: '状态机',
+    name: 'E2-状态机',
     nameEn: 'stateMachines',
     headers: [
       { label: '实体英文名称(必填)', key: 'entityNameEn', required: true, type: 'string', description: '归属实体英文标识' },
@@ -72,7 +72,7 @@ const TEMPLATE_SHEETS: ExcelTemplateSheet[] = [
     ],
   },
   {
-    name: '规则',
+    name: 'E3-规则',
     nameEn: 'rules',
     headers: [
       { label: '实体英文名称(必填)', key: 'entityNameEn', required: true, type: 'string', description: '归属实体英文标识' },
@@ -89,7 +89,7 @@ const TEMPLATE_SHEETS: ExcelTemplateSheet[] = [
     ],
   },
   {
-    name: '事件',
+    name: 'E4-事件',
     nameEn: 'events',
     headers: [
       { label: '实体英文名称(必填)', key: 'entityNameEn', required: true, type: 'string', description: '归属聚合根英文标识' },
@@ -104,7 +104,7 @@ const TEMPLATE_SHEETS: ExcelTemplateSheet[] = [
     ],
   },
   {
-    name: '部门',
+    name: 'E5-部门',
     nameEn: 'departments',
     headers: [
       { label: '部门名称(必填)', key: 'name', required: true, type: 'string', description: '部门中文名称' },
@@ -119,7 +119,7 @@ const TEMPLATE_SHEETS: ExcelTemplateSheet[] = [
     ],
   },
   {
-    name: '岗位',
+    name: 'E5-岗位',
     nameEn: 'positions',
     headers: [
       { label: '岗位名称(必填)', key: 'name', required: true, type: 'string', description: '岗位中文名称' },
@@ -140,7 +140,7 @@ const TEMPLATE_SHEETS: ExcelTemplateSheet[] = [
     ],
   },
   {
-    name: '指标',
+    name: 'E6-指标',
     nameEn: 'metrics',
     headers: [
       { label: '指标名称(必填)', key: 'name', required: true, type: 'string', description: '指标中文名称' },
@@ -155,7 +155,7 @@ const TEMPLATE_SHEETS: ExcelTemplateSheet[] = [
     ],
   },
   {
-    name: '边界约束',
+    name: 'E7-边界约束',
     nameEn: 'boundaries',
     headers: [
       { label: '约束名称(必填)', key: 'name', required: true, type: 'string', description: '边界约束中文名称' },
@@ -168,7 +168,7 @@ const TEMPLATE_SHEETS: ExcelTemplateSheet[] = [
     ],
   },
   {
-    name: '数据源',
+    name: 'E8-数据源',
     nameEn: 'dataSources',
     headers: [
       { label: '数据源名称(必填)', key: 'name', required: true, type: 'string', description: '数据源中文名称' },

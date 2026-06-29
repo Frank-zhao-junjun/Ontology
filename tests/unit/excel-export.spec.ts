@@ -69,7 +69,7 @@ describe('excel-export', () => {
         moduleVersionRecords: records,
       });
       const wb = read(buf, { type: 'array' });
-      const sheet = wb.Sheets['A'];
+      const sheet = wb.Sheets['A-业务价值域'];
       const rows = utils.sheet_to_json(sheet);
       // Should export v2 (latest confirmed)
       expect(rows).toHaveLength(1);
@@ -91,7 +91,7 @@ describe('excel-export', () => {
         versionMap: { A: 'v1' },
       });
       const wb = read(buf, { type: 'array' });
-      const sheet = wb.Sheets['A'];
+      const sheet = wb.Sheets['A-业务价值域'];
       const rows = utils.sheet_to_json(sheet);
       expect((rows[0] as Record<string, unknown>)['名称']).toBe('V1 Name');
     });
@@ -111,7 +111,7 @@ describe('excel-export', () => {
         moduleVersionRecords: records,
       });
       const wb = read(buf, { type: 'array' });
-      const sheet = wb.Sheets['A'];
+      const sheet = wb.Sheets['A-业务价值域'];
       const rows = utils.sheet_to_json(sheet);
       expect(rows).toHaveLength(0); // draft excluded
     });
@@ -127,7 +127,7 @@ describe('excel-export', () => {
         metaElements: sampleMetaElements,
         moduleVersionRecords: sampleRecords,
       });
-      const sheet = wb.Sheets['B'];
+      const sheet = wb.Sheets['B-业务能力'];
       // !dataValidation is a SheetJS internal property, checked before write()
       const dv = (sheet as Record<string, unknown>)['!dataValidation'];
       expect(dv).toBeDefined();
@@ -175,7 +175,7 @@ describe('excel-export', () => {
         moduleVersionRecords: records,
       });
       const wb = read(buf, { type: 'array' });
-      const sheet = wb.Sheets['EPC'];
+      const sheet = wb.Sheets['EPC-流程编排'];
       const rows = utils.sheet_to_json(sheet) as Record<string, unknown>[];
       expect(rows).toHaveLength(1);
       // steps should be a JSON string

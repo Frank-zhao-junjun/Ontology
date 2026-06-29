@@ -258,14 +258,14 @@ export async function POST(request: NextRequest) {
           status: metadata.status || '',
         },
       ], METADATA_HEADERS),
-      'Metadata',
+      'Metadata-元数据',
     );
 
     // E1 Semantic - Object Types
     const objectTypes = (spec?.semantic?.objectTypes || []).map((item) =>
       flattenObjectType(item as unknown as Record<string, unknown>),
     );
-    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(objectTypes), OBJECT_TYPE_HEADERS), 'E1-Entities');
+    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(objectTypes), OBJECT_TYPE_HEADERS), 'E1-实体要素');
 
     // Flatten all properties into E1-Properties sheet
     const propertiesRows: Record<string, unknown>[] = [];
@@ -279,7 +279,7 @@ export async function POST(request: NextRequest) {
         } as unknown as Record<string, unknown>);
       });
     });
-    XLSX.utils.book_append_sheet(wb, buildSheet(propertiesRows, PROPERTIES_HEADERS), 'E1-Properties');
+    XLSX.utils.book_append_sheet(wb, buildSheet(propertiesRows, PROPERTIES_HEADERS), 'E1-属性');
 
     // Flatten all relations into E1-Relations sheet
     const relationsRows: Record<string, unknown>[] = [];
@@ -292,60 +292,60 @@ export async function POST(request: NextRequest) {
         } as unknown as Record<string, unknown>);
       });
     });
-    XLSX.utils.book_append_sheet(wb, buildSheet(relationsRows, RELATIONS_HEADERS), 'E1-Relations');
+    XLSX.utils.book_append_sheet(wb, buildSheet(relationsRows, RELATIONS_HEADERS), 'E1-关系');
 
     // E2 State machines
     XLSX.utils.book_append_sheet(
       wb,
       buildSheet(toRows(spec?.semantic?.stateMachines as unknown as Record<string, unknown>[]), STATE_MACHINE_HEADERS),
-      'E2-StateMachines',
+      'E2-状态机',
     );
 
     // E2 Actions
     const actions = (spec?.behavior?.actions || []).map((item) =>
       flattenAction(item as unknown as Record<string, unknown>),
     );
-    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(actions), ACTION_HEADERS), 'E2-Actions');
+    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(actions), ACTION_HEADERS), 'E2-行为要素');
 
     // E3 Rules
     const rules = (spec?.behavior?.rules || []).map((item) => flattenRule(item as unknown as Record<string, unknown>));
-    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(rules), RULE_HEADERS), 'E3-Rules');
+    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(rules), RULE_HEADERS), 'E3-规则要素');
 
     // E4 Domain Events
     const events = (spec?.events?.domainEvents || []).map((item) =>
       flattenEvent(item as unknown as Record<string, unknown>),
     );
-    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(events), EVENT_HEADERS), 'E4-Events');
+    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(events), EVENT_HEADERS), 'E4-事件要素');
 
     // E5 Governance roles
     XLSX.utils.book_append_sheet(
       wb,
       buildSheet(toRows(spec?.governance?.roles as unknown as Record<string, unknown>[]), ROLE_HEADERS),
-      'E5-Roles',
+      'E5-角色要素',
     );
 
     // E6 Metrics
     const metrics = (spec?.behavior?.metrics || []).map((item) =>
       flattenMetric(item as unknown as Record<string, unknown>),
     );
-    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(metrics), METRIC_HEADERS), 'E6-Metrics');
+    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(metrics), METRIC_HEADERS), 'E6-指标要素');
 
     // E7 Transaction boundaries / constraints
     XLSX.utils.book_append_sheet(
       wb,
       buildSheet(toRows(spec?.behavior?.transactionBoundaries as unknown as Record<string, unknown>[]), BOUNDARY_HEADERS),
-      'E7-Boundaries',
+      'E7-边界约束',
     );
 
     // E8 Data sources
     const dataSources = (spec?.dataSources || []).map((item) => flattenDataSource(item));
-    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(dataSources), DATA_SOURCE_HEADERS), 'E8-DataSources');
+    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(dataSources), DATA_SOURCE_HEADERS), 'E8-数据源');
 
     // Process orchestrations
     XLSX.utils.book_append_sheet(
       wb,
       buildSheet(toRows(spec?.process?.orchestrations as unknown as Record<string, unknown>[]), ORCHESTRATION_HEADERS),
-      'Process-Orchestrations',
+      'Process-流程编排',
     );
 
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });

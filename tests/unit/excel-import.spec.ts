@@ -82,7 +82,7 @@ describe('excel-import', () => {
       // Re-read and modify...
       const wb = read(buf, { type: 'array' });
       // Add a bad row manually to A sheet
-      const aSheet = wb.Sheets['A'];
+      const aSheet = wb.Sheets['A-业务价值域'];
       utils.sheet_add_aoa(aSheet, [['', 'BadRow', '', '']], { origin: 'A2' });
 
       // Actually, let's test via the import pipeline with a file that has data

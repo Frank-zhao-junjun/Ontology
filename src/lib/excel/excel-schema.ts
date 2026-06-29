@@ -1,5 +1,17 @@
 import type { ModuleKind } from '@/types/ontology';
 
+/** E1-E8 中文标签映射 */
+const ELEMENT_KIND_LABELS: Record<string, string> = {
+  E1: '实体要素',
+  E2: '行为要素',
+  E3: '规则要素',
+  E4: '事件要素',
+  E5: '角色要素',
+  E6: '指标要素',
+  E7: '边界约束',
+  E8: '数据源',
+};
+
 /** 列定义 */
 export interface ExcelColumnDef {
   key: string;
@@ -72,25 +84,25 @@ const SCENARIO_ID_COL: ExcelColumnDef = { key: 'scenarioId', header: '归属场�
 
 export const EXCEL_SHEET_CONFIGS: ExcelSheetConfig[] = [
   {
-    moduleKind: 'A', sheetName: 'A',
+    moduleKind: 'A', sheetName: 'A-业务价值域',
     columns: [ID_COL, NAME_COL, NAME_EN_COL, DESC_COL, SEMANTICS_COL],
   },
   {
-    moduleKind: 'B', sheetName: 'B',
+    moduleKind: 'B', sheetName: 'B-业务能力',
     columns: [ID_COL, NAME_COL, NAME_EN_COL, DESC_COL, SEMANTICS_COL, PARENT_ID_COL],
   },
   {
-    moduleKind: 'C', sheetName: 'C',
+    moduleKind: 'C', sheetName: 'C-业务场景',
     columns: [ID_COL, NAME_COL, NAME_EN_COL, DESC_COL, SEMANTICS_COL, PARENT_ID_COL],
   },
   {
-    moduleKind: 'EPC', sheetName: 'EPC',
+    moduleKind: 'EPC', sheetName: 'EPC-流程编排',
     columns: [ID_COL, NAME_COL, NAME_EN_COL, DESC_COL, SEMANTICS_COL, PARENT_ID_COL, SCENARIO_ID_COL, STEPS_COL],
   },
   ...(['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8'] as ModuleKind[]).map(
     (kind): ExcelSheetConfig => ({
       moduleKind: kind,
-      sheetName: kind,
+      sheetName: `${kind}-${ELEMENT_KIND_LABELS[kind]}`,
       columns: [ID_COL, NAME_COL, NAME_EN_COL, DIMENSION_COL, VISIBILITY_COL, DESC_COL],
     }),
   ),

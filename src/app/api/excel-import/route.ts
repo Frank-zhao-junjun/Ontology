@@ -3,8 +3,21 @@ import type { ExcelImportResult, ExcelImportError, ExcelImportValidation, Busine
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-const EXPECTED_SHEETS = ['实体', '属性', '关系', '状态机', '规则', '事件'];
-const OPTIONAL_SHEETS = ['部门', '岗位', '指标', '边界约束', '数据源'];
+const EXPECTED_SHEETS = ['E1-实体', '实体'];
+const OPTIONAL_SHEETS = ['E1-属性', 'E1-关系', 'E2-状态机', 'E3-规则', 'E4-事件', 'E5-部门', 'E5-岗位', 'E6-指标', 'E7-边界约束', 'E8-数据源', '属性', '关系', '状态机', '规则', '事件', '部门', '岗位', '指标', '边界约束', '数据源'];
+
+/** 将 Sheet 名称归一化为简短名（去字母前缀），兼容新旧两种命名 */
+function normalizeSheetName(name: string): string {
+  const match = name.match(/^[A-Z]+\d*-?(.+)$/);
+  if (match) return match[1];
+  return name;
+}
+
+/** 核心必选 Sheet 的简短名集合 */
+const REQUIRED_SHORT_NAMES = ['实体'];
+/** 全部已知 Sheet 的简短名集合 */
+const ALL_SHORT_NAMES = ['实体', '属性', '关系', '状态机', '规则', '事件', '部门', '岗位', '指标', '边界约束', '数据源'];
+
 const SHEET_HEADER_MAP: Record<string, Record<number, { key: string; required: boolean; type: 'string' | 'number' | 'boolean' | 'enum'; enumValues?: string[] }>> = {
   '实体': {
     0: { key: 'name', required: true, type: 'string' },
@@ -115,9 +128,10 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const wb = XLSX.read(buffer, { type: 'buffer' });
 
-    // Sheet 结构校验
+    // Sheet 结构校验（兼容新旧两种 Sheet 命名）
     const sheetNames = wb.SheetNames.filter(n => n !== '填写说明');
-    const missingSheets = EXPECTED_SHEETS.filter(s => !sheetNames.includes(s));
+    const normalizedNames = sheetNames.map(normalizeSheetName);
+    const missingSheets = REQUIRED_SHORT_NAMES.filter(s => !normalizedNames.includes(s));
     if (missingSheets.length > 0) {
       return NextResponse.json({
         success: false,
@@ -134,7 +148,7 @@ export async function POST(request: NextRequest) {
     const entityNameEns = new Set<string>();
 
     // 第一遍: 收集实体名
-    const entitySheet = wb.Sheets['实体'];
+    const entitySheet = wb.Sheets['E1-实体'] || wb.Sheets['实体'];
     if (entitySheet) {
       const entityData = XLSX.utils.sheet_to_json<Record<string, string>>(entitySheet, { defval: '' });
       for (const row of entityData) {
@@ -147,7 +161,7 @@ export async function POST(request: NextRequest) {
     const sheetDataList: { name: string; headers: string[]; rows: Record<string, string>[] }[] = [];
     // Collect department codes for cross-sheet validation
     const departmentCodes = new Set<string>();
-    const departmentSheet = wb.Sheets['部门'];
+    const departmentSheet = wb.Sheets['E5-部门'] || wb.Sheets['部门'];
     if (departmentSheet) {
       const deptRows = XLSX.utils.sheet_to_json<Record<string, string>>(departmentSheet, { defval: '' });
       for (const row of deptRows) {
@@ -159,7 +173,7 @@ export async function POST(request: NextRequest) {
     }
 
     const positionCodes = new Set<string>();
-    const positionSheet = wb.Sheets['岗位'];
+    const positionSheet = wb.Sheets['E5-岗位'] || wb.Sheets['岗位'];
     if (positionSheet) {
       const posRows = XLSX.utils.sheet_to_json<Record<string, string>>(positionSheet, { defval: '' });
       for (const row of posRows) {
@@ -170,12 +184,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    for (const sheetName of [...EXPECTED_SHEETS, ...OPTIONAL_SHEETS]) {
-      const ws = wb.Sheets[sheetName];
+    for (const rawSheetName of sheetNames) {
+      const shortName = normalizeSheetName(rawSheetName);
+      if (!ALL_SHORT_NAMES.includes(shortName)) continue;
+
+      const ws = wb.Sheets[rawSheetName];
       if (!ws) continue;
 
       const rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: '' });
-      const colMap = SHEET_HEADER_MAP[sheetName] || {};
+      const colMap = SHEET_HEADER_MAP[shortName] || {};
       const allRows = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1 });
       const headers = allRows[0] as string[];
 
@@ -198,7 +215,7 @@ export async function POST(request: NextRequest) {
 
           if (spec.required && !value) {
             allErrors.push({
-              sheet: sheetName,
+              sheet: shortName,
               row: i + 2,
               column: colLabel,
               value: '',
@@ -213,7 +230,7 @@ export async function POST(request: NextRequest) {
 
           if (spec.type === 'enum' && spec.enumValues && !spec.enumValues.includes(value)) {
             allErrors.push({
-              sheet: sheetName,
+              sheet: shortName,
               row: i + 2,
               column: colLabel,
               value,
@@ -225,7 +242,7 @@ export async function POST(request: NextRequest) {
 
           if (spec.type === 'boolean' && !['true', 'false', ''].includes(value.toLowerCase())) {
             allErrors.push({
-              sheet: sheetName,
+              sheet: shortName,
               row: i + 2,
               column: colLabel,
               value,
@@ -237,14 +254,14 @@ export async function POST(request: NextRequest) {
         }
 
         // 跨Sheet引用校验: 非实体Sheet中引用的 entityNameEn 必须在实体Sheet中存在
-        if (EXPECTED_SHEETS.includes(sheetName) && sheetName !== '实体') {
+        if (shortName !== '实体' && REQUIRED_SHORT_NAMES.includes('实体')) {
           const entityNameEnCol = Object.entries(colMap).find(([, s]) => s.key === 'entityNameEn')?.[0];
           if (entityNameEnCol) {
             const colLabel = headers[Number(entityNameEnCol)];
             const refName = (row[colLabel] || '').toString().trim();
             if (refName && !entityNameEns.has(refName)) {
               allErrors.push({
-                sheet: sheetName,
+                sheet: shortName,
                 row: i + 2,
                 column: colLabel,
                 value: refName,
@@ -257,11 +274,11 @@ export async function POST(request: NextRequest) {
         }
 
         // V-XL-O05: 上级部门引用存在
-        if (sheetName === '部门') {
+        if (shortName === '部门') {
           const parentCode = (row['上级部门编码'] || '').trim();
           if (parentCode && !departmentCodes.has(parentCode)) {
             allErrors.push({
-              sheet: sheetName,
+              sheet: shortName,
               row: i + 2,
               column: '上级部门编码',
               value: parentCode,
@@ -273,11 +290,11 @@ export async function POST(request: NextRequest) {
         }
 
         // V-XL-O13: 岗位→部门引用
-        if (sheetName === '岗位') {
+        if (shortName === '岗位') {
           const deptCode = (row['所属部门编码(必填)'] || '').trim();
           if (deptCode && !departmentCodes.has(deptCode)) {
             allErrors.push({
-              sheet: sheetName,
+              sheet: shortName,
               row: i + 2,
               column: '所属部门编码(必填)',
               value: deptCode,
@@ -290,7 +307,7 @@ export async function POST(request: NextRequest) {
           const parentPosCode = (row['上级岗位编码'] || '').trim();
           if (parentPosCode && !positionCodes.has(parentPosCode)) {
             allErrors.push({
-              sheet: sheetName,
+              sheet: shortName,
               row: i + 2,
               column: '上级岗位编码',
               value: parentPosCode,
@@ -304,7 +321,7 @@ export async function POST(request: NextRequest) {
         if (!hasError) validRows.push(row);
       }
 
-      sheetDataList.push({ name: sheetName, headers, rows: validRows });
+      sheetDataList.push({ name: shortName, headers, rows: validRows });
     }
 
     const validation: ExcelImportValidation = {
