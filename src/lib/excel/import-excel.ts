@@ -73,26 +73,40 @@ export async function parseExcelImport(
     const rows = utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
     if (rows.length === 0) continue;
 
+    // 构建中文表头 → 英文 key 的映射（兼容中文表头导出）
+    const headerToKey = new Map<string, string>();
+    for (const col of config.columns) {
+      headerToKey.set(col.header, col.key);
+      headerToKey.set(col.key, col.key); // 同时兼容英文 key
+    }
+
     for (let i = 0; i < rows.length; i++) {
       const rawRow = rows[i];
       const rowIndex = i + 2; // Excel 行号（跳过表头）
 
+      // 将中文表头键名归一化为英文 key
+      const normalizedRow: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(rawRow)) {
+        const mappedKey = headerToKey.get(k) ?? k;
+        normalizedRow[mappedKey] = v;
+      }
+
       // 1. 字段级校验
-      const fieldWarnings = validateModuleRow(rawRow, config, rowIndex);
+      const fieldWarnings = validateModuleRow(normalizedRow, config, rowIndex);
       warnings.push(...fieldWarnings);
 
-      const moduleId = String(rawRow.id ?? '').trim();
+      const moduleId = String(normalizedRow.id ?? '').trim();
       if (!moduleId) continue; // skip rows without id (already warned)
 
       const row: ExcelModuleRow = {
         moduleKind: config.moduleKind as ModuleKind,
         moduleId,
-        data: { ...rawRow },
+        data: { ...normalizedRow },
       };
       allRows.push(row);
 
       // 2. 父节点完整性检查
-      const parentId = String(rawRow.parentId ?? '').trim();
+      const parentId = String(normalizedRow.parentId ?? '').trim();
       if (parentId) {
         const kind = config.moduleKind;
         const parentExists = checkParentExists(kind, parentId, existingVDIds, existingCapIds, existingScIds);
@@ -124,7 +138,7 @@ export async function parseExcelImport(
 
       // 3. EPC 要素引用检查
       if (config.moduleKind === 'EPC') {
-        const stepsRaw = rawRow.steps;
+        const stepsRaw = normalizedRow.steps;
         if (stepsRaw && typeof stepsRaw === 'string' && stepsRaw.trim()) {
           try {
             const steps = JSON.parse(stepsRaw) as EpcStep[];

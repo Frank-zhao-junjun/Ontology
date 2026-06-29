@@ -10,6 +10,7 @@ const xlsxState = vi.hoisted(() => ({
   writeCallCount: 0,
   lastWriteOpts: null as Record<string, unknown> | null,
   jsonToSheetCallCount: 0,
+  aoaToSheetCallCount: 0,
 }));
 
 vi.mock('xlsx', () => ({
@@ -30,6 +31,10 @@ vi.mock('xlsx', () => ({
       xlsxState.jsonToSheetCallCount++;
       return {};
     }),
+    aoa_to_sheet: vi.fn(() => {
+      xlsxState.aoaToSheetCallCount++;
+      return {};
+    }),
   },
 }));
 
@@ -41,6 +46,7 @@ describe('XLSX From Manifest Route (POST /api/export/xlsx-from-manifest)', () =>
     xlsxState.appendSheetCallCount = 0;
     xlsxState.writeCallCount = 0;
     xlsxState.jsonToSheetCallCount = 0;
+    xlsxState.aoaToSheetCallCount = 0;
     xlsxState.lastWriteOpts = null;
   });
 

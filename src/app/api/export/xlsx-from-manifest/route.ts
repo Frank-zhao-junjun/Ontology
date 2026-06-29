@@ -6,6 +6,34 @@ function toRows<T>(items: T[] | undefined): Record<string, unknown>[] {
   return (items || []).map((item) => (item ? (item as unknown as Record<string, unknown>) : {}));
 }
 
+/**
+ * Build a worksheet from rows + a Chinese header mapping.
+ * The first row of the sheet will be the Chinese headers.
+ */
+function buildSheet(
+  rows: Record<string, unknown>[],
+  headerMap: Record<string, string>,
+): XLSX.WorkSheet {
+  if (rows.length === 0) {
+    // Empty sheet — still write headers
+    const headers = Object.values(headerMap);
+    return XLSX.utils.aoa_to_sheet([headers]);
+  }
+
+  // Determine column order from the first row's keys, filtered by headerMap
+  const allKeys = Object.keys(rows[0]);
+  const keys = allKeys.filter((k) => headerMap[k] !== undefined);
+  // Also include any headerMap keys not in data (for consistency)
+  for (const hk of Object.keys(headerMap)) {
+    if (!keys.includes(hk)) keys.push(hk);
+  }
+
+  const headerRow = keys.map((k) => headerMap[k] || k);
+  const dataRows = rows.map((row) => keys.map((k) => row[k] ?? ''));
+
+  return XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
+}
+
 function flattenObjectType(obj: Record<string, unknown>): Record<string, unknown> {
   const { properties, relations, ...rest } = obj;
   return {
@@ -65,6 +93,147 @@ function flattenDataSource(ds: Record<string, unknown>): Record<string, unknown>
   };
 }
 
+// ── 中文表头映射 ──
+
+const METADATA_HEADERS: Record<string, string> = {
+  id: '标识',
+  version: '版本',
+  name: '名称',
+  displayName: '显示名称',
+  description: '描述',
+  boundedContext: '限界上下文',
+  domainTags: '领域标签',
+  compiledAt: '编译时间',
+  compiledBy: '编译者',
+  source: '来源',
+  status: '状态',
+};
+
+const OBJECT_TYPE_HEADERS: Record<string, string> = {
+  id: '标识',
+  name: '名称',
+  nameEn: '英文名',
+  kind: '类型',
+  aggregateRootId: '聚合根ID',
+  properties: '属性(JSON)',
+  relations: '关系(JSON)',
+};
+
+const PROPERTIES_HEADERS: Record<string, string> = {
+  entityId: '实体ID',
+  entityName: '实体名称',
+  entityNameEn: '实体英文名',
+  id: '标识',
+  name: '名称',
+  nameEn: '英文名',
+  dataType: '数据类型',
+  required: '必填',
+  reference: '引用(JSON)',
+  valueObjectRef: '值对象引用',
+  sensitive: '敏感字段',
+};
+
+const RELATIONS_HEADERS: Record<string, string> = {
+  entityId: '实体ID',
+  entityName: '实体名称',
+  id: '标识',
+  sourceObjectTypeId: '源实体ID',
+  targetObjectTypeId: '目标实体ID',
+};
+
+const STATE_MACHINE_HEADERS: Record<string, string> = {
+  id: '标识',
+  name: '名称',
+  objectTypeId: '实体ID',
+  states: '状态列表(JSON)',
+};
+
+const ACTION_HEADERS: Record<string, string> = {
+  id: '标识',
+  name: '名称',
+  nameEn: '英文名',
+  aggregateRootId: '聚合根ID',
+  preRuleIds: '前置规则',
+  publishesEventIds: '发布事件',
+  aliases: '别名',
+  triggerPhrases: '触发短语',
+};
+
+const RULE_HEADERS: Record<string, string> = {
+  id: '标识',
+  name: '名称',
+  type: '规则类型',
+  version: '版本',
+  status: '状态',
+  grayscale: '灰度(JSON)',
+  effectiveFrom: '生效开始',
+  effectiveUntil: '生效结束',
+  expression: '表达式(JSON)',
+  errorMessage: '错误消息',
+  enabled: '启用',
+};
+
+const EVENT_HEADERS: Record<string, string> = {
+  id: '标识',
+  name: '名称',
+  nameEn: '英文名',
+  aggregateRootId: '聚合根ID',
+  triggerActionId: '触发动作ID',
+  payloadSchema: '载荷结构(JSON)',
+  semantics: '语义(JSON)',
+};
+
+const ROLE_HEADERS: Record<string, string> = {
+  id: '标识',
+  name: '名称',
+  permissions: '权限(JSON)',
+};
+
+const METRIC_HEADERS: Record<string, string> = {
+  id: '标识',
+  name: '名称',
+  nameEn: '英文名',
+  formula: '公式',
+  unit: '单位',
+  boundActionId: '绑定动作ID',
+  measurementType: '测量方式',
+  targetValue: '目标值',
+  dataSourceRef: '数据源引用',
+  dimensions: '维度(JSON)',
+};
+
+const BOUNDARY_HEADERS: Record<string, string> = {
+  id: '标识',
+  name: '名称',
+  nameEn: '英文名',
+  actionIds: '涉及动作',
+  aggregateRootIds: '涉及聚合根',
+  isolation: '隔离级别',
+  compensationActionId: '补偿动作ID',
+  description: '描述',
+};
+
+const DATA_SOURCE_HEADERS: Record<string, string> = {
+  id: '标识',
+  name: '名称',
+  nameEn: '英文名',
+  type: '类型',
+  boundObjectTypeId: '绑定对象ID',
+  baseUrl: '基础URL',
+  entitySet: '实体集',
+  authSecretRef: '认证密钥引用',
+  schema: '结构(JSON)',
+  config: '配置(JSON)',
+};
+
+const ORCHESTRATION_HEADERS: Record<string, string> = {
+  id: '标识',
+  name: '名称',
+  entryPoint: '入口点',
+  steps: '步骤(JSON)',
+  description: '描述',
+};
+
 export async function POST(request: NextRequest) {
   try {
     const manifest: OntologyManifest = await request.json();
@@ -75,7 +244,7 @@ export async function POST(request: NextRequest) {
     // Metadata sheet
     XLSX.utils.book_append_sheet(
       wb,
-      XLSX.utils.json_to_sheet([
+      buildSheet([
         {
           id: metadata.id,
           version: metadata.version,
@@ -89,7 +258,7 @@ export async function POST(request: NextRequest) {
           source: metadata.source || '',
           status: metadata.status || '',
         },
-      ]),
+      ], METADATA_HEADERS),
       'Metadata',
     );
 
@@ -97,7 +266,7 @@ export async function POST(request: NextRequest) {
     const objectTypes = (spec?.semantic?.objectTypes || []).map((item) =>
       flattenObjectType(item as unknown as Record<string, unknown>),
     );
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(toRows(objectTypes)), 'E1-Entities');
+    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(objectTypes), OBJECT_TYPE_HEADERS), 'E1-Entities');
 
     // Flatten all properties into E1-Properties sheet
     const propertiesRows: Record<string, unknown>[] = [];
@@ -111,7 +280,7 @@ export async function POST(request: NextRequest) {
         } as unknown as Record<string, unknown>);
       });
     });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(propertiesRows), 'E1-Properties');
+    XLSX.utils.book_append_sheet(wb, buildSheet(propertiesRows, PROPERTIES_HEADERS), 'E1-Properties');
 
     // Flatten all relations into E1-Relations sheet
     const relationsRows: Record<string, unknown>[] = [];
@@ -124,12 +293,12 @@ export async function POST(request: NextRequest) {
         } as unknown as Record<string, unknown>);
       });
     });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(relationsRows), 'E1-Relations');
+    XLSX.utils.book_append_sheet(wb, buildSheet(relationsRows, RELATIONS_HEADERS), 'E1-Relations');
 
     // E2 State machines
     XLSX.utils.book_append_sheet(
       wb,
-      XLSX.utils.json_to_sheet(toRows(spec?.semantic?.stateMachines as unknown as Record<string, unknown>[])),
+      buildSheet(toRows(spec?.semantic?.stateMachines as unknown as Record<string, unknown>[]), STATE_MACHINE_HEADERS),
       'E2-StateMachines',
     );
 
@@ -137,23 +306,22 @@ export async function POST(request: NextRequest) {
     const actions = (spec?.behavior?.actions || []).map((item) =>
       flattenAction(item as unknown as Record<string, unknown>),
     );
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(toRows(actions)), 'E2-Actions');
+    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(actions), ACTION_HEADERS), 'E2-Actions');
 
     // E3 Rules
     const rules = (spec?.behavior?.rules || []).map((item) => flattenRule(item as unknown as Record<string, unknown>));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(toRows(rules)), 'E3-Rules');
+    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(rules), RULE_HEADERS), 'E3-Rules');
 
     // E4 Domain Events
     const events = (spec?.events?.domainEvents || []).map((item) =>
       flattenEvent(item as unknown as Record<string, unknown>),
     );
-    XLSX.utils.json_to_sheet(toRows(events));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(toRows(events)), 'E4-Events');
+    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(events), EVENT_HEADERS), 'E4-Events');
 
     // E5 Governance roles
     XLSX.utils.book_append_sheet(
       wb,
-      XLSX.utils.json_to_sheet(toRows(spec?.governance?.roles as unknown as Record<string, unknown>[])),
+      buildSheet(toRows(spec?.governance?.roles as unknown as Record<string, unknown>[]), ROLE_HEADERS),
       'E5-Roles',
     );
 
@@ -161,23 +329,23 @@ export async function POST(request: NextRequest) {
     const metrics = (spec?.behavior?.metrics || []).map((item) =>
       flattenMetric(item as unknown as Record<string, unknown>),
     );
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(toRows(metrics)), 'E6-Metrics');
+    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(metrics), METRIC_HEADERS), 'E6-Metrics');
 
     // E7 Transaction boundaries / constraints
     XLSX.utils.book_append_sheet(
       wb,
-      XLSX.utils.json_to_sheet(toRows(spec?.behavior?.transactionBoundaries as unknown as Record<string, unknown>[])),
+      buildSheet(toRows(spec?.behavior?.transactionBoundaries as unknown as Record<string, unknown>[]), BOUNDARY_HEADERS),
       'E7-Boundaries',
     );
 
     // E8 Data sources
     const dataSources = (spec?.dataSources || []).map((item) => flattenDataSource(item));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(toRows(dataSources)), 'E8-DataSources');
+    XLSX.utils.book_append_sheet(wb, buildSheet(toRows(dataSources), DATA_SOURCE_HEADERS), 'E8-DataSources');
 
     // Process orchestrations
     XLSX.utils.book_append_sheet(
       wb,
-      XLSX.utils.json_to_sheet(toRows(spec?.process?.orchestrations as unknown as Record<string, unknown>[])),
+      buildSheet(toRows(spec?.process?.orchestrations as unknown as Record<string, unknown>[]), ORCHESTRATION_HEADERS),
       'Process-Orchestrations',
     );
 

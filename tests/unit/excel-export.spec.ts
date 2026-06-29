@@ -73,7 +73,7 @@ describe('excel-export', () => {
       const rows = utils.sheet_to_json(sheet);
       // Should export v2 (latest confirmed)
       expect(rows).toHaveLength(1);
-      expect((rows[0] as Record<string, unknown>).name).toBe('V2 Name');
+      expect((rows[0] as Record<string, unknown>)['名称']).toBe('V2 Name');
     });
 
     it('should export specified version when versionMap is provided', () => {
@@ -93,7 +93,7 @@ describe('excel-export', () => {
       const wb = read(buf, { type: 'array' });
       const sheet = wb.Sheets['A'];
       const rows = utils.sheet_to_json(sheet);
-      expect((rows[0] as Record<string, unknown>).name).toBe('V1 Name');
+      expect((rows[0] as Record<string, unknown>)['名称']).toBe('V1 Name');
     });
   });
 
@@ -179,7 +179,7 @@ describe('excel-export', () => {
       const rows = utils.sheet_to_json(sheet) as Record<string, unknown>[];
       expect(rows).toHaveLength(1);
       // steps should be a JSON string
-      const stepsVal = rows[0].steps as string;
+      const stepsVal = rows[0]['步骤(JSON)'] as string;
       expect(() => JSON.parse(stepsVal)).not.toThrow();
       const parsed = JSON.parse(stepsVal);
       expect(Array.isArray(parsed)).toBe(true);

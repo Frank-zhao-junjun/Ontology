@@ -137,15 +137,10 @@ export function buildExcelWorkbook(options: ExportExcelOptions): ReturnType<type
     byKind.set(m.kind, list);
   }
 
-  // 先生成引用表
-  const refRows = refEntries.map((e) => ({
-    id: e.id,
-    name: e.name,
-    dimension: e.dimension,
-  }));
-  const refSheet = utils.json_to_sheet(refRows, {
-    header: HIDDEN_REF_SHEET_CONFIG.columns.map((c) => c.key),
-  });
+  // 先生成引用表（使用中文表头）
+  const refHeaderRow = HIDDEN_REF_SHEET_CONFIG.columns.map((c) => c.header);
+  const refDataRows = refEntries.map((e) => [e.id, e.name, e.dimension]);
+  const refSheet = utils.aoa_to_sheet([refHeaderRow, ...refDataRows]);
   utils.book_append_sheet(wb, refSheet, HIDDEN_REF_SHEET_CONFIG.sheetName);
 
   // 隐藏引用表
@@ -158,25 +153,25 @@ export function buildExcelWorkbook(options: ExportExcelOptions): ReturnType<type
     ? `_要素引用表!$A$2:$A$${refEntries.length + 1}`
     : '_要素引用表!$A$2:$A$2';
 
-  // 生成各模块 Sheet
+  // 生成各模块 Sheet（使用中文表头）
   for (const config of EXCEL_SHEET_CONFIGS) {
     const kindModules = byKind.get(config.moduleKind as ModuleKind) || [];
     const colKeys = config.columns.map((c) => c.key);
 
-    const rows = kindModules.map((m) => {
-      const row: Record<string, unknown> = {};
-      for (const col of config.columns) {
+    // 表头行使用中文 header
+    const headerRow = config.columns.map((c) => c.header);
+    // 数据行
+    const dataRows = kindModules.map((m) => {
+      return config.columns.map((col) => {
         const val = m.snapshot[col.key];
         if (col.type === 'json' && val !== undefined && val !== null) {
-          row[col.key] = typeof val === 'string' ? val : JSON.stringify(val);
-        } else {
-          row[col.key] = val ?? '';
+          return typeof val === 'string' ? val : JSON.stringify(val);
         }
-      }
-      return row;
+        return val ?? '';
+      });
     });
 
-    const ws = utils.json_to_sheet(rows, { header: colKeys });
+    const ws = utils.aoa_to_sheet([headerRow, ...dataRows]);
     const refCols = getRefColumns(config);
     const refColCount = refEntries.length;
 
@@ -190,7 +185,7 @@ export function buildExcelWorkbook(options: ExportExcelOptions): ReturnType<type
 
         const colLetter = numberToColLetter(colIdx);
         // 对从第 2 行到第 N 行的每个单元格设置 validation
-        const endRow = rows.length + 1; // +1 for header
+        const endRow = dataRows.length + 1; // +1 for header
 
         for (let r = 2; r <= Math.max(endRow, 2); r++) {
           const cellRef = `${colLetter}${r}`;
