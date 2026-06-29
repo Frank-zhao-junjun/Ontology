@@ -260,7 +260,7 @@ export function BusinessChainDetail({ onNavigateToElement }: BusinessChainDetail
         />
       )}
       {selected.kind === 'EPC' && !archivedPreview && (
-        <div className="max-w-2xl border-t pt-6">
+        <div className="border-t pt-6">
           <EpcStepsEditor
             key={selected.id}
             epc={node as EpcProcess}
@@ -270,6 +270,22 @@ export function BusinessChainDetail({ onNavigateToElement }: BusinessChainDetail
           />
         </div>
       )}
+      {selected.kind === 'EPC' && archivedPreview && (() => {
+        const archivedEpc = archivedPreview.snapshot as EpcProcess;
+        const archivedSteps = archivedEpc?.steps ?? [];
+        return (
+          <div className="border-t pt-6">
+            <EpcStepsEditor
+              key={`archive-${archivedPreview.id}`}
+              epc={{ ...node, steps: archivedSteps } as EpcProcess}
+              metaElements={project.metaElements ?? []}
+              onSave={() => {}}
+              generateId={generateId}
+              readOnly
+            />
+          </div>
+        );
+      })()}
       <ModuleReferenceList incoming={incomingRefs} outgoing={outgoingRefs} />
       <VersionHistoryPanel
         open={historyOpen}
