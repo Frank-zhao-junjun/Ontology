@@ -11,6 +11,9 @@ import {
   Send,
   Bot,
   User,
+  CheckCircle2,
+  XCircle,
+  Network,
 } from 'lucide-react';
 import { useOntologyStore } from '@/store/ontology-store';
 import type { ReferenceDocument } from '@/types/ontology';
@@ -44,9 +47,20 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+// ---------- ACTION block parsing & execution ----------
+
+interface ParsedAction {
+  id: string;
+  action: string;
+  label: string;
+  status: 'pending' | 'success' | 'error';
+  detail?: string;
+}
+
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  actions?: ParsedAction[];
 }
 
 interface UploadedFileInfo {
@@ -65,7 +79,167 @@ interface ModelingCopilotPanelProps {
   defaultWidth?: number;
 }
 
-/** Build a compact project context string for the AI */
+/** Extract <<<ACTION>>>...<<<END_ACTION>>> blocks from text, return cleaned text + parsed actions */
+function extractActionBlocks(text: string): { cleanText: string; rawActions: Record<string, unknown>[] } {
+  const regex = /<<<ACTION>>>\s*([\s\S]*?)\s*<<<END_ACTION>>>/g;
+  const actions: Record<string, unknown>[] = [];
+  let cleanText = text;
+
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    const jsonStr = match[1].trim();
+    try {
+      const parsed = JSON.parse(jsonStr);
+      if (parsed && typeof parsed === 'object' && typeof parsed.action === 'string') {
+        actions.push(parsed);
+      }
+    } catch {
+      // Ignore malformed JSON
+    }
+  }
+
+  // Remove action blocks from display text
+  cleanText = text.replace(regex, '').replace(/\n{3,}/g, '\n\n').trim();
+
+  return { cleanText, rawActions: actions };
+}
+
+/** Execute a single parsed action against the store, return result */
+function executeAction(data: Record<string, unknown>): ParsedAction {
+  const action = data.action as string;
+  const store = useOntologyStore.getState();
+  const project = store.project;
+  const actionId = `act-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  if (!project) {
+    return {
+      id: actionId,
+      action,
+      label: getActionLabel(action, data),
+      status: 'error',
+      detail: '没有活动项目，请先创建项目',
+    };
+  }
+
+  try {
+    switch (action) {
+      case 'create_value_domain': {
+        const name = data.name as string;
+        const nameEn = (data.nameEn as string) || '';
+        const description = (data.description as string) || '';
+        if (!name) throw new Error('name 字段必填');
+        const vd = store.addValueDomain({ name, nameEn, description });
+        return { id: actionId, action, label: `A-价值域: ${name}`, status: 'success', detail: '已创建' };
+      }
+
+      case 'create_capability': {
+        const parentName = data.parentName as string;
+        const name = data.name as string;
+        const nameEn = (data.nameEn as string) || '';
+        const description = (data.description as string) || '';
+        const parent = (project.valueDomains ?? []).find((v) => v.name === parentName);
+        if (!parent) throw new Error(`找不到父级价值域: ${parentName}`);
+        store.addCapability(parent.id, { name, nameEn, description });
+        return { id: actionId, action, label: `B-能力: ${name}`, status: 'success', detail: `挂载到「${parentName}」` };
+      }
+
+      case 'create_scenario': {
+        const parentName = data.parentName as string;
+        const name = data.name as string;
+        const nameEn = (data.nameEn as string) || '';
+        const description = (data.description as string) || '';
+        const parent = (project.capabilities ?? []).find((c) => c.name === parentName);
+        if (!parent) throw new Error(`找不到父级能力: ${parentName}`);
+        store.addScenario(parent.id, { name, nameEn, description });
+        return { id: actionId, action, label: `C-场景: ${name}`, status: 'success', detail: `挂载到「${parentName}」` };
+      }
+
+      case 'create_epc_process': {
+        const parentName = data.parentName as string;
+        const name = data.name as string;
+        const nameEn = (data.nameEn as string) || '';
+        const description = (data.description as string) || '';
+        const parent = (project.scenarios ?? []).find((s) => s.name === parentName);
+        if (!parent) throw new Error(`找不到父级场景: ${parentName}`);
+        store.addEpcProcess(parent.id, { name, nameEn, description });
+        return { id: actionId, action, label: `EPC: ${name}`, status: 'success', detail: `挂载到「${parentName}」` };
+      }
+
+      case 'create_chain': {
+        const chain = data.chain as Array<{ type: string; name: string; nameEn?: string; description?: string }>;
+        if (!Array.isArray(chain) || chain.length === 0) throw new Error('chain 数组为空');
+
+        let valueDomainId: string | null = null;
+        let capabilityId: string | null = null;
+        let scenarioId: string | null = null;
+        const created: string[] = [];
+
+        // Re-read project after each creation to get fresh state
+        for (const item of chain) {
+          const currentProject = useOntologyStore.getState().project;
+          if (!currentProject) throw new Error('项目状态丢失');
+
+          if (item.type === 'value_domain') {
+            const vd = store.addValueDomain({ name: item.name, nameEn: item.nameEn ?? '', description: item.description ?? '' });
+            valueDomainId = vd.id;
+            created.push(`A-价值域: ${item.name}`);
+          } else if (item.type === 'capability' && valueDomainId) {
+            const cap = store.addCapability(valueDomainId, { name: item.name, nameEn: item.nameEn ?? '', description: item.description ?? '' });
+            capabilityId = cap.id;
+            created.push(`B-能力: ${item.name}`);
+          } else if (item.type === 'scenario' && capabilityId) {
+            const sc = store.addScenario(capabilityId, { name: item.name, nameEn: item.nameEn ?? '', description: item.description ?? '' });
+            scenarioId = sc.id;
+            created.push(`C-场景: ${item.name}`);
+          } else if (item.type === 'epc' && scenarioId) {
+            store.addEpcProcess(scenarioId, { name: item.name, nameEn: item.nameEn ?? '', description: item.description ?? '' });
+            created.push(`EPC: ${item.name}`);
+          }
+        }
+
+        return {
+          id: actionId,
+          action,
+          label: `业务链 (${created.length} 个节点)`,
+          status: 'success',
+          detail: created.join(' / '),
+        };
+      }
+
+      default:
+        return {
+          id: actionId,
+          action,
+          label: `未知动作: ${action}`,
+          status: 'error',
+          detail: '不支持的动作类型',
+        };
+    }
+  } catch (err) {
+    return {
+      id: actionId,
+      action,
+      label: getActionLabel(action, data),
+      status: 'error',
+      detail: err instanceof Error ? err.message : '执行失败',
+    };
+  }
+}
+
+function getActionLabel(action: string, data: Record<string, unknown>): string {
+  const name = (data.name as string) || '';
+  switch (action) {
+    case 'create_value_domain': return `A-价值域: ${name}`;
+    case 'create_capability': return `B-能力: ${name}`;
+    case 'create_scenario': return `C-场景: ${name}`;
+    case 'create_epc_process': return `EPC: ${name}`;
+    case 'create_chain': return `业务链`;
+    default: return action;
+  }
+}
+
+// ---------- Project context ----------
+
 function buildProjectContext(): string {
   const store = useOntologyStore.getState();
   const project = store.project;
@@ -73,7 +247,6 @@ function buildProjectContext(): string {
   const capabilities = project?.capabilities ?? [];
   const scenarios = project?.scenarios ?? [];
   const epcProcesses = project?.epcProcesses ?? [];
-  const entities = project?.dataModel?.entities ?? [];
 
   const lines: string[] = [];
   lines.push(`项目名称: ${project?.name ?? '未命名'}`);
@@ -107,22 +280,12 @@ function buildProjectContext(): string {
     }
   }
 
-  if (entities.length > 0) {
-    lines.push(`\n已有实体 (${entities.length}):`);
-    for (const e of entities.slice(0, 20)) {
-      lines.push(`  - ${e.name}${e.nameEn ? ` (${e.nameEn})` : ''}`);
-    }
-    if (entities.length > 20) {
-      lines.push(`  ... 还有 ${entities.length - 20} 个`);
-    }
-  }
-
   return lines.join('\n');
 }
 
 const SUGGESTIONS = [
   { label: '创建价值域', message: '帮我创建一个物料管理的价值域，包含基本信息和库存管理能力' },
-  { label: '生成要素', message: '从以下描述生成 E1-E8 要素：物料编码、名称、规格、单位、单价' },
+  { label: '生成业务链', message: '帮我创建一个完整业务链：采购管理价值域 -> 供应商管理能力 -> 供应商准入场景 -> 供应商准入流程' },
   { label: '项目摘要', message: '请总结当前项目的建模情况，给出下一步建议' },
 ];
 
@@ -181,7 +344,8 @@ export function ModelingCopilotPanel({
   );
 
   /**
-   * Send a message to the streaming chat API and render the response
+   * Send a message to the streaming chat API and render the response.
+   * After streaming completes, parse ACTION blocks and execute them.
    */
   const sendMessage = useCallback(
     async (userText: string, documentText?: string) => {
@@ -194,14 +358,15 @@ export function ModelingCopilotPanel({
       setIsStreaming(true);
 
       // Add empty assistant message for streaming
-      const assistantId = Date.now();
       setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
 
       try {
-        const allMessages = [...messagesRef.current, userMsg].map((m) => ({
-          role: m.role,
-          content: m.content,
-        }));
+        const allMessages = [...messagesRef.current, userMsg]
+          .filter((m) => m.role === 'user' || m.content)
+          .map((m) => ({
+            role: m.role,
+            content: m.content,
+          }));
 
         const response = await fetch('/api/chat', {
           method: 'POST',
@@ -237,6 +402,7 @@ export function ModelingCopilotPanel({
                 const data = JSON.parse(jsonStr);
                 if (data.content) {
                   accumulated += data.content;
+                  // Show raw text during streaming (including ACTION markers)
                   setMessages((prev) => {
                     const next = [...prev];
                     const lastIdx = next.length - 1;
@@ -264,8 +430,42 @@ export function ModelingCopilotPanel({
           }
         }
 
-        // If no content was received
-        if (!accumulated) {
+        // --- Post-stream: parse and execute ACTION blocks ---
+        if (accumulated) {
+          const { cleanText, rawActions } = extractActionBlocks(accumulated);
+
+          if (rawActions.length > 0) {
+            // Execute actions and collect results
+            const executedActions: ParsedAction[] = rawActions.map((raw) => executeAction(raw));
+
+            setMessages((prev) => {
+              const next = [...prev];
+              const lastIdx = next.length - 1;
+              if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
+                next[lastIdx] = {
+                  ...next[lastIdx],
+                  content: cleanText || '(已完成建模操作)',
+                  actions: executedActions,
+                };
+              }
+              return next;
+            });
+          } else if (!accumulated) {
+            // No content at all
+            setMessages((prev) => {
+              const next = [...prev];
+              const lastIdx = next.length - 1;
+              if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
+                next[lastIdx] = {
+                  ...next[lastIdx],
+                  content: '抱歉，我暂时无法回复。请稍后重试。',
+                };
+              }
+              return next;
+            });
+          }
+          // If no actions, the raw accumulated text stays as-is (already set during streaming)
+        } else {
           setMessages((prev) => {
             const next = [...prev];
             const lastIdx = next.length - 1;
@@ -295,7 +495,7 @@ export function ModelingCopilotPanel({
         setIsStreaming(false);
       }
     },
-    [messages, isStreaming],
+    [isStreaming],
   );
 
   const handleFileSelect = useCallback(
@@ -540,45 +740,88 @@ export function ModelingCopilotPanel({
                   </div>
                 </div>
               )}
-              {messages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
-                >
+              {messages.map((msg, idx) => {
+                const isLastAssistant = idx === messages.length - 1 && msg.role === 'assistant';
+                const isStreamingThis = isStreaming && isLastAssistant;
+                // During streaming, hide ACTION markers from display
+                const displayContent = isStreamingThis
+                  ? msg.content.replace(/<<<ACTION>>>/g, '').replace(/<<<END_ACTION>>>/g, '')
+                  : msg.content;
+
+                return (
                   <div
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                      msg.role === 'user'
-                        ? 'bg-primary/10 text-primary'
-                        : 'bg-muted text-muted-foreground'
-                    }`}
+                    key={idx}
+                    className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                   >
-                    {msg.role === 'user' ? (
-                      <User className="h-3.5 w-3.5" />
-                    ) : (
-                      <Bot className="h-3.5 w-3.5" />
-                    )}
+                    <div
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                        msg.role === 'user'
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {msg.role === 'user' ? (
+                        <User className="h-3.5 w-3.5" />
+                      ) : (
+                        <Bot className="h-3.5 w-3.5" />
+                      )}
+                    </div>
+                    <div className={`max-w-[80%] ${msg.role === 'user' ? '' : 'min-w-0 flex-1'}`}>
+                      {displayContent && (
+                        <div
+                          className={`whitespace-pre-wrap rounded-lg px-3 py-2 text-sm ${
+                            msg.role === 'user'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted'
+                          }`}
+                        >
+                          {displayContent || (isStreamingThis ? '...' : '')}
+                        </div>
+                      )}
+                      {/* Action cards */}
+                      {msg.actions && msg.actions.length > 0 && (
+                        <div className="mt-1.5 flex flex-col gap-1.5">
+                          {msg.actions.map((act) => (
+                            <div
+                              key={act.id}
+                              className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 text-xs ${
+                                act.status === 'success'
+                                  ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30'
+                                  : act.status === 'error'
+                                    ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'
+                                    : 'border-border bg-background'
+                              }`}
+                            >
+                              {act.status === 'success' ? (
+                                <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-600" />
+                              ) : act.status === 'error' ? (
+                                <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+                              ) : (
+                                <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1 font-medium">
+                                  <Network className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                  <span className="truncate">{act.label}</span>
+                                </div>
+                                {act.detail && (
+                                  <p className="mt-0.5 text-muted-foreground">{act.detail}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Loading indicator when streaming with no content yet */}
+                      {isStreamingThis && !displayContent && !msg.actions && (
+                        <div className="rounded-lg bg-muted px-3 py-2">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div
-                    className={`max-w-[80%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm ${
-                      msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
-                    }`}
-                  >
-                    {msg.content || (isStreaming && msg.role === 'assistant' && idx === messages.length - 1 ? '...' : '')}
-                  </div>
-                </div>
-              ))}
-              {isStreaming && messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && messages[messages.length - 1]?.content === '' && (
-                <div className="flex gap-2">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                    <Bot className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="rounded-lg bg-muted px-3 py-2">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                  </div>
-                </div>
-              )}
+                );
+              })}
             </div>
           </ScrollArea>
         </div>

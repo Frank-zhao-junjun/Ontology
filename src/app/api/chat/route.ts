@@ -32,7 +32,7 @@ function buildSystemPrompt(documentText?: string, projectContext?: string): stri
     const truncated = documentText.length > MAX_DOCUMENT_CHARS
       ? documentText.slice(0, MAX_DOCUMENT_CHARS) + '\n... (文档已截断，仅展示前 10000 字符)'
       : documentText;
-    prompt += `\n\n--- 用户上传的文档内容 ---\n${truncated}\n\n请分析以上文档内容，提取关键实体、业务流程和规则，并为用户生成建模建议。如果文档内容足够清晰，请直接建议创建对应的 A-价值域、B-能力、C-场景或 EPC 流程。`;
+    prompt += `\n\n--- 用户上传的文档内容 ---\n${truncated}\n\n请分析以上文档内容，提取关键业务价值域、能力和场景。先用文字总结文档核心内容，然后使用 <<<ACTION>>> 动作块创建业务链。优先使用 create_chain 一次性创建完整链路（A->B->C->EPC）。`;
   }
 
   return prompt;
