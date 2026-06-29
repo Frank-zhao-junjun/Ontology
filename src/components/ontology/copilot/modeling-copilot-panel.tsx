@@ -630,7 +630,7 @@ export function ModelingCopilotPanel({
   return (
     <div
       data-testid="modeling-copilot-panel"
-      className="relative flex shrink-0 border-l bg-card"
+      className="relative flex h-full shrink-0 overflow-hidden border-l bg-card"
       style={{ width }}
       onDrop={onDrop}
       onDragOver={onDragOver}

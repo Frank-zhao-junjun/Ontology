@@ -210,7 +210,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col" data-testid="modeling-workspace">
+    <div className="h-screen bg-background flex flex-col overflow-hidden" data-testid="modeling-workspace">
       {/* ========== HEADER ========== */}
       <header className="border-b bg-card shrink-0">
         <div className="px-5 py-3">
