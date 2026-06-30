@@ -1,6 +1,6 @@
 # Ontology 项目开发进度
 
-> 最后更新：2026-06-18
+> 最后更新：2026-06-30
 > 当前版本：v2.1（简化重构 + EPC v3.1 升级中）
 
 ---
@@ -123,6 +123,15 @@
 ---
 
 ## 近期完成记录
+
+### 2026-06-30
+
+| 工作项 | 说明 |
+|--------|------|
+| QA 基线复核 | `pnpm run ci:check` 全绿（unit 1239 / integration 298 / e2e smoke 24 / phase4 32） |
+| 阻塞修复 | 修复 `src/test/integration/api.test.ts` 的 Vitest v4 类型签名兼容问题，解除 `ts-check` 失败 |
+| 风险修复 | 修复 `element-library` 的 effect 依赖缺失，避免 focus 信号使用旧闭包 |
+| 冲刺规划 | 新增 `docs/plans/2026-06-30-next-sprint-plan.md`（NS-01~NS-05） |
 
 ### 2026-06-18
 
