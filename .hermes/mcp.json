@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "ontology-mcp": {
+      "command": "pnpm",
+      "args": [
+        "--dir",
+        "D:\\AI\\Ontology",
+        "exec",
+        "tsx",
+        "packages/ontology-mcp/src/index.ts"
+      ],
+      "env": {},
+      "description": "Ontology 本体建模 MCP Server — 8 Tools + 4 Resources + 2 Prompts"
+    }
+  }
+}

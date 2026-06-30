@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "ontology-mcp": {
+      "command": "pnpm",
+      "args": [
+        "--dir",
+        "D:\\AI\\Ontology",
+        "exec",
+        "tsx",
+        "packages/ontology-mcp/src/index.ts"
+      ],
+      "env": {}
+    }
+  }
+}

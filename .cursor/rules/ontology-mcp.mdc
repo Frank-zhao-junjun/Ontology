@@ -1,0 +1,72 @@
+---
+description: Ontology 建模 MCP 服务 — Runtime 配置指南
+globs: [".mcp.json", ".cursor/mcp.json", ".hermes/mcp.json"]
+---
+# Ontology MCP Server
+
+项目内嵌 MCP Server (`packages/ontology-mcp/`)，遵循 MCP 标准协议（stdio transport）。同一套配置跨 Runtime 通用。
+
+## Runtime 配置
+
+| Runtime | 配置文件 | 状态 |
+|---------|---------|:----:|
+| Cursor | `.cursor/mcp.json` | ✅ |
+| Claude Code | `.mcp.json` (root) | ✅ |
+| Hermes | `.hermes/mcp.json` | ✅ |
+
+统一配置格式（三个 Runtime 兼容）：
+
+```json
+{
+  "mcpServers": {
+    "ontology-mcp": {
+      "command": "pnpm",
+      "args": ["--dir", "D:\\AI\\Ontology", "exec", "tsx", "packages/ontology-mcp/src/index.ts"],
+      "env": {}
+    }
+  }
+}
+```
+
+## 可用工具 (8 Tools)
+
+| 工具 | 分类 | 说明 |
+|------|------|------|
+| `ontology_project_create` | 项目管理 | 创建新项目，需 name + domainId + domainName |
+| `ontology_project_load` | 项目管理 | 从 JSON 文件加载项目 |
+| `ontology_project_status` | 项目管理 | 获取当前项目状态摘要 |
+| `ontology_business_chain_add` | 业务链 | 添加 A(价值域)/B(能力)/C(场景)/EPC(流程) 节点 |
+| `ontology_business_chain_update` | 业务链 | 更新节点属性 |
+| `ontology_business_chain_delete` | 业务链 | 删除节点（有子节点时禁止） |
+| `ontology_manifest_compile` | 分析 | 编译项目为 OntologyManifest 交换契约 |
+| `ontology_lint_epc` | 分析 | 执行 EPC 流程 Lint 检查 |
+| `ontology_coverage_report` | 分析 | 计算 EPC 覆盖率报告 |
+
+## 可用资源 (4 Resources)
+
+| URI | 说明 |
+|-----|------|
+| `ontology://project/structure` | 当前项目 A→B→C→EPC 结构 |
+| `ontology://project/manifest` | 当前项目 Manifest 契约 |
+| `ontology://project/element-library` | E1-E8 要素库检索 |
+| `ontology://project/coverage` | 覆盖率报告 |
+
+## 可用提示词 (2 Prompts)
+
+| Prompt | 说明 |
+|--------|------|
+| `model-from-doc` | 从业务文档生成建模建议 |
+| `epc-from-text` | 从自然语言生成 EPC 步骤 |
+
+## 使用示例
+
+1. 创建项目 → 添加价值域 A → 添加能力 B → 添加场景 C → 添加 EPC 流程
+2. 查询覆盖率 → 添加要素 → 编译 Manifest → 导出
+
+## 验证命令
+
+```bash
+pnpm ts-check                                      # 类型检查
+pnpm --dir D:\AI\Ontology exec tsx packages/ontology-mcp/src/index.ts  # 启动
+cd packages/ontology-mcp && pnpm build             # 构建
+```

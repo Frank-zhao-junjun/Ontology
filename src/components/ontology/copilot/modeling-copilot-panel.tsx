@@ -236,7 +236,7 @@ export function ModelingCopilotPanel({
 
           if (rawActions.length > 0) {
             // Execute actions and collect results
-            const executedActions: ParsedAction[] = rawActions.map((raw) => executeAction(raw));
+            const executedActions: ParsedAction[] = rawActions.map((a) => executeAction(a as unknown as Record<string, unknown>));
 
             setMessages((prev) => {
               const next = [...prev];
