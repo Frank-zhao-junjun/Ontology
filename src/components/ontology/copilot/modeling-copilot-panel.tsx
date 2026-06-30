@@ -20,6 +20,12 @@ import type { ReferenceDocument } from '@/types/ontology';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  extractActionBlocks,
+  executeAction,
+  buildProjectContext,
+  type ParsedAction,
+} from '@/lib/copilot/chat-actions';
 
 const STORAGE_KEY = 'copilot-panel-width';
 const DEFAULT_WIDTH = 380;
@@ -47,16 +53,6 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-// ---------- ACTION block parsing & execution ----------
-
-interface ParsedAction {
-  id: string;
-  action: string;
-  label: string;
-  status: 'pending' | 'success' | 'error';
-  detail?: string;
-}
-
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -77,208 +73,6 @@ interface UploadedFileInfo {
 interface ModelingCopilotPanelProps {
   projectName: string;
   defaultWidth?: number;
-}
-
-/** Extract <<<ACTION>>>...<<<END_ACTION>>> blocks from text, return cleaned text + parsed actions */
-function extractActionBlocks(text: string): { cleanText: string; rawActions: Record<string, unknown>[] } {
-  const actionBlockRegex = /<<<ACTION>>>\s*([\s\S]*?)\s*<<<END_ACTION>>>/g;
-  const actions: Record<string, unknown>[] = [];
-
-  let match: RegExpExecArray | null;
-  while ((match = actionBlockRegex.exec(text)) !== null) {
-    const jsonStr = match[1].trim();
-    try {
-      const parsed = JSON.parse(jsonStr);
-      if (parsed && typeof parsed === 'object' && typeof parsed.action === 'string') {
-        actions.push(parsed);
-      }
-    } catch {
-      console.warn('[Copilot] Failed to parse ACTION block JSON:', jsonStr.slice(0, 120));
-    }
-  }
-
-  // Remove action blocks from display text
-  const cleanText = text.replace(actionBlockRegex, '').replace(/\n{3,}/g, '\n\n').trim();
-
-  return { cleanText, rawActions: actions };
-}
-
-/** Execute a single parsed action against the store, return result */
-function executeAction(data: Record<string, unknown>): ParsedAction {
-  const action = data.action as string;
-  const store = useOntologyStore.getState();
-  const project = store.project;
-  const actionId = `act-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-  if (!project) {
-    return {
-      id: actionId,
-      action,
-      label: getActionLabel(action, data),
-      status: 'error',
-      detail: '没有活动项目，请先创建项目',
-    };
-  }
-
-  try {
-    switch (action) {
-      case 'create_value_domain': {
-        const name = data.name as string;
-        const nameEn = (data.nameEn as string) || '';
-        const description = (data.description as string) || '';
-        if (!name) throw new Error('name 字段必填');
-        const vd = store.addValueDomain({ name, nameEn, description });
-        return { id: actionId, action, label: `A-价值域: ${name}`, status: 'success', detail: '已创建' };
-      }
-
-      case 'create_capability': {
-        const parentName = data.parentName as string;
-        const name = data.name as string;
-        const nameEn = (data.nameEn as string) || '';
-        const description = (data.description as string) || '';
-        const parent = (project.valueDomains ?? []).find((v) => v.name === parentName);
-        if (!parent) throw new Error(`找不到父级价值域: ${parentName}`);
-        store.addCapability(parent.id, { name, nameEn, description });
-        return { id: actionId, action, label: `B-能力: ${name}`, status: 'success', detail: `挂载到「${parentName}」` };
-      }
-
-      case 'create_scenario': {
-        const parentName = data.parentName as string;
-        const name = data.name as string;
-        const nameEn = (data.nameEn as string) || '';
-        const description = (data.description as string) || '';
-        const parent = (project.capabilities ?? []).find((c) => c.name === parentName);
-        if (!parent) throw new Error(`找不到父级能力: ${parentName}`);
-        store.addScenario(parent.id, { name, nameEn, description });
-        return { id: actionId, action, label: `C-场景: ${name}`, status: 'success', detail: `挂载到「${parentName}」` };
-      }
-
-      case 'create_epc_process': {
-        const parentName = data.parentName as string;
-        const name = data.name as string;
-        const nameEn = (data.nameEn as string) || '';
-        const description = (data.description as string) || '';
-        const parent = (project.scenarios ?? []).find((s) => s.name === parentName);
-        if (!parent) throw new Error(`找不到父级场景: ${parentName}`);
-        store.addEpcProcess(parent.id, { name, nameEn, description });
-        return { id: actionId, action, label: `EPC: ${name}`, status: 'success', detail: `挂载到「${parentName}」` };
-      }
-
-      case 'create_chain': {
-        const chain = data.chain as Array<{ type: string; name: string; nameEn?: string; description?: string }>;
-        if (!Array.isArray(chain) || chain.length === 0) throw new Error('chain 数组为空');
-
-        let valueDomainId: string | null = null;
-        let capabilityId: string | null = null;
-        let scenarioId: string | null = null;
-        const created: string[] = [];
-
-        // Re-read project after each creation to verify state integrity
-        for (const item of chain) {
-          if (!useOntologyStore.getState().project) throw new Error('项目状态丢失');
-
-          if (item.type === 'value_domain') {
-            const vd = store.addValueDomain({ name: item.name, nameEn: item.nameEn ?? '', description: item.description ?? '' });
-            valueDomainId = vd.id;
-            created.push(`A-价值域: ${item.name}`);
-          } else if (item.type === 'capability' && valueDomainId) {
-            const cap = store.addCapability(valueDomainId, { name: item.name, nameEn: item.nameEn ?? '', description: item.description ?? '' });
-            capabilityId = cap.id;
-            created.push(`B-能力: ${item.name}`);
-          } else if (item.type === 'scenario' && capabilityId) {
-            const sc = store.addScenario(capabilityId, { name: item.name, nameEn: item.nameEn ?? '', description: item.description ?? '' });
-            scenarioId = sc.id;
-            created.push(`C-场景: ${item.name}`);
-          } else if (item.type === 'epc' && scenarioId) {
-            store.addEpcProcess(scenarioId, { name: item.name, nameEn: item.nameEn ?? '', description: item.description ?? '' });
-            created.push(`EPC: ${item.name}`);
-          }
-        }
-
-        return {
-          id: actionId,
-          action,
-          label: `业务链 (${created.length} 个节点)`,
-          status: 'success',
-          detail: created.join(' / '),
-        };
-      }
-
-      default:
-        return {
-          id: actionId,
-          action,
-          label: `未知动作: ${action}`,
-          status: 'error',
-          detail: '不支持的动作类型',
-        };
-    }
-  } catch (err) {
-    return {
-      id: actionId,
-      action,
-      label: getActionLabel(action, data),
-      status: 'error',
-      detail: err instanceof Error ? err.message : '执行失败',
-    };
-  }
-}
-
-function getActionLabel(action: string, data: Record<string, unknown>): string {
-  const name = (data.name as string) || '';
-  switch (action) {
-    case 'create_value_domain': return `A-价值域: ${name}`;
-    case 'create_capability': return `B-能力: ${name}`;
-    case 'create_scenario': return `C-场景: ${name}`;
-    case 'create_epc_process': return `EPC: ${name}`;
-    case 'create_chain': return `业务链`;
-    default: return action;
-  }
-}
-
-// ---------- Project context ----------
-
-function buildProjectContext(): string {
-  const store = useOntologyStore.getState();
-  const project = store.project;
-  const valueDomains = project?.valueDomains ?? [];
-  const capabilities = project?.capabilities ?? [];
-  const scenarios = project?.scenarios ?? [];
-  const epcProcesses = project?.epcProcesses ?? [];
-
-  const lines: string[] = [];
-  lines.push(`项目名称: ${project?.name ?? '未命名'}`);
-  lines.push(`领域: ${project?.domain?.name ?? '未指定'}`);
-
-  if (valueDomains.length > 0) {
-    lines.push(`\n已有 A-价值域 (${valueDomains.length}):`);
-    for (const v of valueDomains) {
-      lines.push(`  - ${v.name}${v.nameEn ? ` (${v.nameEn})` : ''}`);
-    }
-  }
-
-  if (capabilities.length > 0) {
-    lines.push(`\n已有 B-能力 (${capabilities.length}):`);
-    for (const c of capabilities) {
-      lines.push(`  - ${c.name}${c.nameEn ? ` (${c.nameEn})` : ''}`);
-    }
-  }
-
-  if (scenarios.length > 0) {
-    lines.push(`\n已有 C-场景 (${scenarios.length}):`);
-    for (const s of scenarios) {
-      lines.push(`  - ${s.name}`);
-    }
-  }
-
-  if (epcProcesses.length > 0) {
-    lines.push(`\n已有 EPC 流程 (${epcProcesses.length}):`);
-    for (const p of epcProcesses) {
-      lines.push(`  - ${p.name}`);
-    }
-  }
-
-  return lines.join('\n');
 }
 
 const SUGGESTIONS = [
@@ -383,49 +177,57 @@ export function ModelingCopilotPanel({
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let accumulated = '';
+        // Buffer holds any trailing partial line that has not yet ended with
+        // a newline, so SSE `data:` frames split across network chunks are not
+        // dropped.
+        let buffer = '';
+
+        const updateLastAssistant = (content: string) => {
+          setMessages((prev) => {
+            const next = [...prev];
+            const lastIdx = next.length - 1;
+            if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
+              next[lastIdx] = { ...next[lastIdx], content };
+            }
+            return next;
+          });
+        };
+
+        const processLine = (line: string) => {
+          if (!line.startsWith('data: ')) return;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr) return;
+          try {
+            const data = JSON.parse(jsonStr);
+            if (data.content) {
+              accumulated += data.content;
+              // Show raw text during streaming (including ACTION markers)
+              updateLastAssistant(accumulated);
+            }
+            if (data.error) {
+              accumulated += `\n\n**错误:** ${data.error}`;
+              updateLastAssistant(accumulated);
+            }
+          } catch {
+            // Ignore parse errors for malformed frames
+          }
+        };
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          // Keep the last element as the (possibly incomplete) trailing line.
+          buffer = lines.pop() ?? '';
+          for (const line of lines) processLine(line);
+        }
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const jsonStr = line.slice(6).trim();
-              if (!jsonStr) continue;
-
-              try {
-                const data = JSON.parse(jsonStr);
-                if (data.content) {
-                  accumulated += data.content;
-                  // Show raw text during streaming (including ACTION markers)
-                  setMessages((prev) => {
-                    const next = [...prev];
-                    const lastIdx = next.length - 1;
-                    if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
-                      next[lastIdx] = { ...next[lastIdx], content: accumulated };
-                    }
-                    return next;
-                  });
-                }
-                if (data.error) {
-                  accumulated += `\n\n**错误:** ${data.error}`;
-                  setMessages((prev) => {
-                    const next = [...prev];
-                    const lastIdx = next.length - 1;
-                    if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
-                      next[lastIdx] = { ...next[lastIdx], content: accumulated };
-                    }
-                    return next;
-                  });
-                }
-              } catch {
-                // Ignore parse errors for partial chunks
-              }
-            }
-          }
+        // Flush any remaining buffered line after the stream ends.
+        buffer += decoder.decode();
+        if (buffer) {
+          for (const line of buffer.split('\n')) processLine(line);
         }
 
         // --- Post-stream: parse and execute ACTION blocks ---

@@ -124,6 +124,19 @@
 
 ## 近期完成记录
 
+### 2026-06-30 — Sprint S20: AI 对话建模测试与健壮性补强
+
+> CopilotKit → 内嵌 Chat 迁移后的代码评审 + QA + 测试补强。
+
+| 工作项 | 说明 |
+|--------|------|
+| QA 门禁修复 | `src/test/integration/api.test.ts` 在 vitest v4 下 `Parameters<typeof it>[1]` 解析为 options 重载导致 `ts-check` 红灯，已改为 `(ctx: TestContext) => void \| Promise<void>`，恢复 `ci:check` 全绿 |
+| 可测试性重构 | 将 `extractActionBlocks` / `executeAction` / `getActionLabel` / `buildProjectContext` 从 `modeling-copilot-panel.tsx` 抽取到 `src/lib/copilot/chat-actions.ts`（迁移后这些逻辑曾零覆盖） |
+| SSE 健壮性 | Chat 面板流式解析改为跨网络分片缓冲，避免 `data:` 帧被拆分时丢字 |
+| create_chain 容错 | 顺序无效节点显式上报「已跳过」，全部失败时返回 error 而非空 success |
+| 新增测试 | `tests/unit/copilot/chat-actions.spec.ts`（17）+ `tests/unit/copilot/chat-route.spec.ts`（6）= **23 用例** |
+| 验证 | `pnpm run ci:check` 全绿：lint 0 error · ts-check pass · unit **1262** · integration 298 · e2e smoke 24 · phase4 32 |
+
 ### 2026-06-18
 
 | 工作项 | 说明 |
