@@ -4,6 +4,7 @@
  * 当 DEV_SERVER 不可用时自动跳过所有测试
  */
 import { describe, it, expect, beforeAll } from 'vitest';
+import type { TestContext } from 'vitest';
 
 const BASE = process.env.DEPLOY_RUN_PORT
   ? `http://localhost:${process.env.DEPLOY_RUN_PORT}`
@@ -20,8 +21,10 @@ beforeAll(async () => {
   }
 });
 
-const skipIfNoServer = (name: string, fn: Parameters<typeof it>[1]) => {
-  it(name, async (ctx) => {
+type IntegrationCase = (ctx: TestContext) => Promise<void> | void;
+
+const skipIfNoServer = (name: string, fn: IntegrationCase) => {
+  it(name, async (ctx: TestContext) => {
     if (!serverAvailable) {
       ctx.skip();
       return;

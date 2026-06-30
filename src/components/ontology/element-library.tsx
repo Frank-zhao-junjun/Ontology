@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useOntologyStore } from '@/store/ontology-store';
@@ -59,12 +59,15 @@ export function ElementLibrary({
   const [onlyUnreferenced, setOnlyUnreferenced] = useState(false);
   const [internalDimension, setInternalDimension] = useState<MetaDimension>('E1');
   const activeDimension = controlledDimension ?? internalDimension;
-  const setActiveDimension = (dimension: MetaDimension) => {
-    if (controlledDimension === undefined) {
-      setInternalDimension(dimension);
-    }
-    onDimensionChange?.(dimension);
-  };
+  const setActiveDimension = useCallback(
+    (dimension: MetaDimension) => {
+      if (controlledDimension === undefined) {
+        setInternalDimension(dimension);
+      }
+      onDimensionChange?.(dimension);
+    },
+    [controlledDimension, onDimensionChange],
+  );
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // AI 解析文档对话框状态
@@ -97,7 +100,7 @@ export function ElementLibrary({
     setOnlyUnreferenced(false);
     setExpandedId(focusTarget.elementId);
     onFocusConsumed?.();
-  }, [focusTarget, onFocusConsumed]);
+  }, [focusTarget, onFocusConsumed, setActiveDimension]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // ── AI 解析文档 ─────────────────────────────────────────────────
