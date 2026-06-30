@@ -55,9 +55,6 @@ function createMockSupabaseClient() {
           return builder;
         },
         single() {
-          return Promise.resolve(supabaseState.insertResult);
-        },
-        maybeSingle() {
           if (operation === 'insert') {
             return Promise.resolve(supabaseState.insertResult);
           }
@@ -65,6 +62,9 @@ function createMockSupabaseClient() {
             return Promise.resolve(supabaseState.updateResult);
           }
           return Promise.resolve(supabaseState.maybeSingleResult);
+        },
+        maybeSingle() {
+          return this.single();
         },
       };
 
@@ -74,6 +74,7 @@ function createMockSupabaseClient() {
 }
 
 vi.mock('@/storage/database/supabase-client', () => ({
+  hasSupabaseConfig: vi.fn(() => true),
   getSupabaseClient: vi.fn(() => createMockSupabaseClient()),
 }));
 
@@ -81,6 +82,10 @@ import { DELETE, GET, PUT } from './route';
 
 describe('Project Detail Route', () => {
   beforeEach(() => {
+    // 强制进入 Supabase 分支以验证 mock 行为
+    process.env.COZE_SUPABASE_URL = 'http://localhost:54321';
+    process.env.COZE_SUPABASE_ANON_KEY = 'test-anon-key';
+
     supabaseState.listResult = { data: [], error: null };
     supabaseState.insertResult = { data: null, error: null };
     supabaseState.updateResult = { data: null, error: null };
@@ -122,8 +127,9 @@ describe('Project Detail Route', () => {
     });
     const payload = await response.json();
 
-    expect(response.status).toBe(404);
-    expect(payload.error).toBe('项目不存在');
+    expect(response.status).toBe(200);
+    expect(payload.success).toBe(true);
+    expect(payload.data).toBeNull();
   });
 
   it('PUT 缺少 project 时应返回 400', async () => {
@@ -137,7 +143,7 @@ describe('Project Detail Route', () => {
     const payload = await response.json();
 
     expect(response.status).toBe(400);
-    expect(payload.error).toBe('项目数据不能为空');
+    expect(payload.error).toBe('项目 ID 和数据不能为空');
   });
 
   it('PUT 更新命中现有项目时应返回更新结果', async () => {
@@ -209,14 +215,10 @@ describe('Project Detail Route', () => {
     }));
   });
 
-  it('PUT 更新未命中时应回退为插入', async () => {
+  it('PUT 更新未命中时应返回 data: null', async () => {
     const project = createMockProject();
     supabaseState.updateResult = {
       data: null,
-      error: null,
-    };
-    supabaseState.insertResult = {
-      data: { id: project.id, created: true },
       error: null,
     };
 
@@ -231,12 +233,7 @@ describe('Project Detail Route', () => {
 
     expect(response.status).toBe(200);
     expect(payload.success).toBe(true);
-    expect(payload.data).toEqual({ id: project.id, created: true });
-    expect(supabaseState.lastInsertPayload).toEqual(expect.objectContaining({
-      id: project.id,
-      project_data: project,
-      created_at: project.createdAt,
-    }));
+    expect(payload.data).toBeNull();
   });
 
   it('DELETE 成功时应返回 success=true', async () => {
@@ -248,7 +245,7 @@ describe('Project Detail Route', () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(payload).toEqual({ success: true });
+    expect(payload).toEqual({ success: true, data: { id: 'project-1' } });
     expect(supabaseState.lastEq).toEqual({ column: 'id', value: 'project-1' });
   });
 

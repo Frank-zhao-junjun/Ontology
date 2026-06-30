@@ -4,7 +4,8 @@
  */
 export async function convertPptxToMarkdown(buffer: Buffer): Promise<string> {
   try {
-    const markitdown = await import('@anthropic-ai/markitdown').catch(() => null);
+    // 使用 new Function 绕过构建/测试时对可选依赖的静态解析
+    const markitdown = await new Function('return import("@anthropic-ai/markitdown")')().catch(() => null);
     if (!markitdown) {
       throw new Error(
         'PPTX 解析需要 MarkItDown（@anthropic-ai/markitdown），当前环境未安装。请安装依赖或使用 docx/pdf/txt 格式。',

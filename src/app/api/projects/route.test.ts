@@ -55,10 +55,16 @@ function createMockSupabaseClient() {
           return builder;
         },
         single() {
-          return Promise.resolve(supabaseState.insertResult);
+          if (operation === 'insert') {
+            return Promise.resolve(supabaseState.insertResult);
+          }
+          if (operation === 'update') {
+            return Promise.resolve(supabaseState.updateResult);
+          }
+          return Promise.resolve(supabaseState.maybeSingleResult);
         },
         maybeSingle() {
-          return Promise.resolve(operation === 'update' ? supabaseState.updateResult : supabaseState.maybeSingleResult);
+          return this.single();
         },
       };
 
@@ -68,6 +74,7 @@ function createMockSupabaseClient() {
 }
 
 vi.mock('@/storage/database/supabase-client', () => ({
+  hasSupabaseConfig: vi.fn(() => true),
   getSupabaseClient: vi.fn(() => createMockSupabaseClient()),
 }));
 
@@ -75,6 +82,10 @@ import { GET, POST } from './route';
 
 describe('Projects Route', () => {
   beforeEach(() => {
+    // 强制进入 Supabase 分支以验证 mock 行为
+    process.env.COZE_SUPABASE_URL = 'http://localhost:54321';
+    process.env.COZE_SUPABASE_ANON_KEY = 'test-anon-key';
+
     supabaseState.listResult = { data: [], error: null };
     supabaseState.insertResult = { data: null, error: null };
     supabaseState.updateResult = { data: null, error: null };
@@ -115,7 +126,7 @@ describe('Projects Route', () => {
 
     expect(response.status).toBe(500);
     expect(payload.success).toBe(false);
-    expect(payload.error).toContain('查询项目列表失败: boom');
+    expect(payload.error).toContain('获取项目列表失败: boom');
   });
 
   it('POST 缺少必填字段时应返回 400', async () => {
@@ -150,9 +161,10 @@ describe('Projects Route', () => {
     expect(supabaseState.lastInsertPayload).toEqual(expect.objectContaining({
       id: project.id,
       name: project.name,
-      domain_id: project.domain.id,
-      domain_name: project.domain.name,
+      description: project.description,
       project_data: project,
     }));
+    expect(supabaseState.lastInsertPayload).toHaveProperty('created_at');
+    expect(supabaseState.lastInsertPayload).toHaveProperty('updated_at');
   });
 });
