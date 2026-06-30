@@ -167,6 +167,7 @@ export function EpcStepsEditor({
                           value={step.name}
                           onChange={(e) => updateStep(step.id, { name: e.target.value })}
                           className="h-8"
+                          aria-label="步骤名称"
                           placeholder="步骤名称"
                         />
                       )}

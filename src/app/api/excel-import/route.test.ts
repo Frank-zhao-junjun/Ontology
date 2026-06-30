@@ -258,9 +258,8 @@ describe('Excel Import Route (POST /api/excel-import)', () => {
   describe('sheet validation', () => {
     it('缺少必需 Sheet 时应返回 400', async () => {
       xlsxState.workbook = createMockWorkbook([
-        { name: '实体', data: [] },
         { name: '属性', data: [] },
-        // Missing: 关系, 状态机, 规则, 事件
+        // Missing: 实体 (the only required sheet)
       ]);
 
       const request = makeUploadRequest();
