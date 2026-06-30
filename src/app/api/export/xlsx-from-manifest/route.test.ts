@@ -225,6 +225,9 @@ describe('XLSX From Manifest Route (POST /api/export/xlsx-from-manifest)', () =>
     // E2-Actions, E3-Rules, E4-Events, E5-Roles, E6-Metrics, E7-Boundaries,
     // E8-DataSources, Process-Orchestrations
     expect(xlsxState.appendSheetCallCount).toBe(13);
+    // All sheets should use aoa_to_sheet (Chinese headers), not json_to_sheet
+    expect(xlsxState.aoaToSheetCallCount).toBe(13);
+    expect(xlsxState.jsonToSheetCallCount).toBe(0);
   });
 
   it('空的 manifest（无 spec 字段）也应正常工作', async () => {

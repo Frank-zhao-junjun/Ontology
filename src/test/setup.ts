@@ -16,8 +16,10 @@ const localStorageMock = {
 };
 global.localStorage = localStorageMock as unknown as Storage;
 
-// Mock fetch
-global.fetch = vi.fn();
+// NOTE: Do NOT mock global.fetch — MSW already intercepts fetch at the network
+// level. Mocking fetch breaks MSW and prevents integration tests from making real
+// HTTP requests to a running dev server. Components that need fetch stubbed
+// should use MSW handlers (src/test/mocks/handlers.ts) instead.
 
 // Mock ResizeObserver for antd/cmdk components (must be a class for `new`)
 class ResizeObserverMock {

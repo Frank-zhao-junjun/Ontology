@@ -9,27 +9,26 @@ function toRows<T>(items: T[] | undefined): Record<string, unknown>[] {
 /**
  * Build a worksheet from rows + a Chinese header mapping.
  * The first row of the sheet will be the Chinese headers.
+ *
+ * Column order is determined by the insertion order of `headerMap` keys
+ * (ES2015+ guarantees insertion-order iteration for string-keyed plain objects).
+ * This ensures the Excel columns always appear in the same order as the header
+ * definition, regardless of row data shape or engine internals.
  */
 function buildSheet(
   rows: Record<string, unknown>[],
   headerMap: Record<string, string>,
 ): XLSX.WorkSheet {
+  // Canonical column order from headerMap definition
+  const orderedKeys = Object.keys(headerMap);
+
   if (rows.length === 0) {
-    // Empty sheet — still write headers
-    const headers = Object.values(headerMap);
+    const headers = orderedKeys.map((k) => headerMap[k]);
     return XLSX.utils.aoa_to_sheet([headers]);
   }
 
-  // Determine column order from the first row's keys, filtered by headerMap
-  const allKeys = Object.keys(rows[0]);
-  const keys = allKeys.filter((k) => headerMap[k] !== undefined);
-  // Also include any headerMap keys not in data (for consistency)
-  for (const hk of Object.keys(headerMap)) {
-    if (!keys.includes(hk)) keys.push(hk);
-  }
-
-  const headerRow = keys.map((k) => headerMap[k] || k);
-  const dataRows = rows.map((row) => keys.map((k) => row[k] ?? ''));
+  const headerRow = orderedKeys.map((k) => headerMap[k]);
+  const dataRows = rows.map((row) => orderedKeys.map((k) => row[k] ?? ''));
 
   return XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
 }

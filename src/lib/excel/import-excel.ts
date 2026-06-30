@@ -88,6 +88,9 @@ export async function parseExcelImport(
       const normalizedRow: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(rawRow)) {
         const mappedKey = headerToKey.get(k) ?? k;
+        if (!headerToKey.has(k)) {
+          console.warn(`[ExcelImport] Sheet "${config.sheetName}" row ${rowIndex}: unmapped header "${String(k)}", passing through as-is`);
+        }
         normalizedRow[mappedKey] = v;
       }
 

@@ -265,9 +265,9 @@ describe('ModelingWorkspace — Integration', () => {
     expect(screen.getByText('事件')).toBeInTheDocument();
   });
 
-  it('shows generate manual button', () => {
+  it('shows export dropdown in header', () => {
     render(<ModelingWorkspace project={createTestProject()} />);
-    expect(screen.getByText('生成建模手册')).toBeInTheDocument();
+    expect(screen.getByTestId('header-export-dropdown')).toBeInTheDocument();
   });
 
   it('has theme toggle in header', () => {

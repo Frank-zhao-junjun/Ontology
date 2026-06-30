@@ -81,12 +81,11 @@ interface ModelingCopilotPanelProps {
 
 /** Extract <<<ACTION>>>...<<<END_ACTION>>> blocks from text, return cleaned text + parsed actions */
 function extractActionBlocks(text: string): { cleanText: string; rawActions: Record<string, unknown>[] } {
-  const regex = /<<<ACTION>>>\s*([\s\S]*?)\s*<<<END_ACTION>>>/g;
+  const actionBlockRegex = /<<<ACTION>>>\s*([\s\S]*?)\s*<<<END_ACTION>>>/g;
   const actions: Record<string, unknown>[] = [];
-  let cleanText = text;
 
   let match: RegExpExecArray | null;
-  while ((match = regex.exec(text)) !== null) {
+  while ((match = actionBlockRegex.exec(text)) !== null) {
     const jsonStr = match[1].trim();
     try {
       const parsed = JSON.parse(jsonStr);
@@ -94,12 +93,12 @@ function extractActionBlocks(text: string): { cleanText: string; rawActions: Rec
         actions.push(parsed);
       }
     } catch {
-      // Ignore malformed JSON
+      console.warn('[Copilot] Failed to parse ACTION block JSON:', jsonStr.slice(0, 120));
     }
   }
 
   // Remove action blocks from display text
-  cleanText = text.replace(regex, '').replace(/\n{3,}/g, '\n\n').trim();
+  const cleanText = text.replace(actionBlockRegex, '').replace(/\n{3,}/g, '\n\n').trim();
 
   return { cleanText, rawActions: actions };
 }
@@ -174,10 +173,9 @@ function executeAction(data: Record<string, unknown>): ParsedAction {
         let scenarioId: string | null = null;
         const created: string[] = [];
 
-        // Re-read project after each creation to get fresh state
+        // Re-read project after each creation to verify state integrity
         for (const item of chain) {
-          const currentProject = useOntologyStore.getState().project;
-          if (!currentProject) throw new Error('项目状态丢失');
+          if (!useOntologyStore.getState().project) throw new Error('项目状态丢失');
 
           if (item.type === 'value_domain') {
             const vd = store.addValueDomain({ name: item.name, nameEn: item.nameEn ?? '', description: item.description ?? '' });
