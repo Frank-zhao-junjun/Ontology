@@ -75,9 +75,10 @@
 ```
 ontology-model-skill/
 ├── skill.json              # Skill 清单与元数据
+├── SKILL.md                # Skill 能力说明（面向 Agent/开发者）
+├── README.md               # 使用说明（面向最终用户）
 ├── ontology.json           # 完整或部分本体模型数据
 ├── intents.json            # 自然语言意图映射
-├── README.md               # 使用说明
 └── examples/
     ├── query-examples.md   # 查询类示例
     └── reasoning-examples.md  # 推理类示例
@@ -103,6 +104,7 @@ ontology-model-skill/
     "version": "1.0"
   },
   "files": {
+    "skill": "SKILL.md",
     "ontology": "ontology.json",
     "intents": "intents.json",
     "readme": "README.md"
@@ -186,9 +188,50 @@ ontology-model-skill/
 }
 ```
 
-### 4.4 README.md
+### 4.4 SKILL.md
 
-包含：
+面向 Agent 框架/开发者的核心说明文件，描述该 Skill 能做什么、如何调用、能力边界。典型结构：
+
+```markdown
+# 离散制造本体模型 Skill
+
+## 能力概述
+该 Skill 包含离散制造领域的核心本体模型，Agent 可基于它进行：
+- 实体属性查询
+- 实体关系推理
+- 业务规则解释
+- 状态机分析
+- 事件影响分析
+
+## 适用场景
+- 回答关于物料、BOM、工艺路线、生产订单的结构化问题
+- 辅助业务人员理解领域模型
+- 作为 RAG 知识库补充
+
+## 加载方式
+### Coze
+将 ontology.json 作为知识库导入，intents.json 作为意图示例。
+
+### 自定义 Agent
+读取 skill.json 和 ontology.json，根据 intents.json 的 triggerPhrases 匹配用户查询。
+
+## 文件说明
+- skill.json — Skill 元数据
+- ontology.json — 本体模型数据
+- intents.json — 自然语言意图映射
+
+## 能力边界
+- 仅回答模型中已定义的实体、属性、关系、规则
+- 不涉及模型外的业务判断
+- 不执行写操作
+
+## 示例查询
+见 examples/query-examples.md
+```
+
+### 4.5 README.md
+
+面向最终用户的说明文件，包含：
 - Skill 简介
 - 适用场景
 - 快速开始（如何加载到常见 Agent 框架）
@@ -196,7 +239,7 @@ ontology-model-skill/
 - 示例查询
 - 限制与免责声明
 
-### 4.5 examples/
+### 4.6 examples/
 
 - `query-examples.md`：10-20 个查询类示例
 - `reasoning-examples.md`：5-10 个推理类示例
@@ -330,7 +373,7 @@ interface OntologyProject {
 2. 实现项目状态校验
 3. 实现 scope 过滤逻辑
 4. 使用 JSZip 生成 ZIP
-5. 写入 skill.json / ontology.json / intents.json / README.md / examples/
+5. 写入 skill.json / SKILL.md / README.md / ontology.json / intents.json / examples/ 
 6. 单元/接口测试
 
 ### Phase 2：UI 集成（预计 1 轮迭代）
