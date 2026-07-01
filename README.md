@@ -201,63 +201,155 @@ pnpm dev
 
 > 端口通过 `DEPLOY_RUN_PORT` 环境变量读取，默认 5000。
 
-### CLI 工具
-
-```bash
-pnpm ontology help          # 帮助信息
-pnpm ontology projects      # 列出所有项目
-pnpm ontology project <id>  # 查看项目详情
-pnpm ontology metadata      # 获取元数据列表
-pnpm ontology template      # 下载 Excel 模板
-pnpm ontology skills        # 列出 Agent 技能
-pnpm ontology sync          # HR 同步状态
-```
-
-### MCP Server
-
-**HTTP 模式（部署后，互联网可达）**：
-
-MCP Server 部署后通过 `/api/mcp` 端点提供 HTTP transport，任何 MCP 客户端只需配置 URL 即可接入：
-
-```json
-{
-  "mcpServers": {
-    "ontology": {
-      "url": "https://Ontology1.coze.site/api/mcp"
-    }
-  }
-}
-```
-
-**HTTP 模式（互联网可接入，部署后默认）**：
-
-部署后 MCP 端点为 `https://Ontology1.coze.site/api/mcp`，任何 MCP 客户端均可通过 URL 接入：
-
-```json
-// Cursor / Claude Desktop / 任意 MCP Client 配置
-{
-  "mcpServers": {
-    "ontology": {
-      "url": "https://Ontology1.coze.site/api/mcp"
-    }
-  }
-}
-```
-
-**Stdio 模式（本地开发）**：
-
-```bash
-pnpm tsx packages/ontology-mcp/src/index.ts   # 启动 MCP Server（Stdio transport）
-```
-
-两种模式均提供 8 个工具（list_projects, get_project, create_project, export_project, add_value_domain, add_capability, add_scenario, add_epc_process）、4 个只读资源、2 个提示词模板。HTTP 模式通过 `ONTOLOGY_API_BASE` 环境变量调用服务端 `/api/mcp/projects` 持久化数据。
-
 生产构建：
 
 ```bash
 pnpm build
 pnpm start
 ```
+
+## Agent 接入方式
+
+部署后域名：`https://Ontology1.coze.site`
+
+提供 3 种方式供 Agent 接入，均连接同一套服务端数据。
+
+### 方式 1：MCP Server（推荐）
+
+适合 Claude Desktop、Cursor、Windsurf 等 MCP 客户端。Agent 自动发现并调用建模工具。
+
+**配置**（在 MCP 客户端的配置文件中添加）：
+
+```json
+{
+  "mcpServers": {
+    "ontology": {
+      "url": "https://Ontology1.coze.site/api/mcp"
+    }
+  }
+}
+```
+
+**可用能力**：
+- 8 个工具：`list_projects` / `get_project` / `create_project` / `export_project` / `add_value_domain` / `add_capability` / `add_scenario` / `add_epc_process`
+- 4 个只读资源：项目列表 / 项目详情 / 业务链分析 / 建模手册
+- 2 个提示词模板：建模向导 / 业务链设计
+
+**本地开发（Stdio 模式）**：
+
+```bash
+# 启动 Stdio MCP Server（本地开发用）
+pnpm tsx packages/ontology-mcp/src/index.ts
+```
+
+```json
+// 本地 Stdio 配置
+{
+  "mcpServers": {
+    "ontology": {
+      "command": "npx",
+      "args": ["tsx", "packages/ontology-mcp/src/index.ts"],
+      "env": {
+        "ONTOLOGY_API_BASE": "http://localhost:5000"
+      }
+    }
+  }
+}
+```
+
+### 方式 2：CLI 命令行
+
+适合能执行 shell 命令的 Agent（如 Claude Code）或人工操作。零外部依赖，纯 Node.js。
+
+**使用**：
+
+```bash
+# 列出所有项目
+pnpm ontology projects
+
+# 查看项目详情
+pnpm ontology project <projectId>
+
+# 列出标准元数据（59 条）
+pnpm ontology metadata
+
+# AI 生成五大模型建议
+pnpm ontology generate 物料 Material
+
+# 下载 Excel 导入模板
+pnpm ontology template
+
+# 列出 Agent 技能
+pnpm ontology skills
+
+# 触发 HR 同步
+pnpm ontology sync feishu
+
+# 帮助信息
+pnpm ontology help
+```
+
+**连接地址**：默认连接 `https://Ontology1.coze.site`，可通过环境变量覆盖：
+
+```bash
+ONTOLOGY_API_BASE=http://localhost:5000 pnpm ontology projects
+```
+
+### 方式 3：Agent Skill API（REST）
+
+适合任何能发 HTTP 请求的 Agent。统一 REST 入口，12 种操作。
+
+**列出可用操作**：
+
+```bash
+curl https://Ontology1.coze.site/api/agent/skills/execute
+```
+
+**执行操作**：
+
+```bash
+# 列出所有项目
+curl -X POST https://Ontology1.coze.site/api/agent/skills/execute \
+  -H "Content-Type: application/json" \
+  -d '{"operation":"list_projects","params":{}}'
+
+# 获取元数据列表
+curl -X POST https://Ontology1.coze.site/api/agent/skills/execute \
+  -H "Content-Type: application/json" \
+  -d '{"operation":"list_metadata","params":{}}'
+
+# AI 对话（SSE 流式）
+curl -X POST https://Ontology1.coze.site/api/agent/skills/execute \
+  -H "Content-Type: application/json" \
+  -d '{"operation":"ai_chat","params":{"messages":[{"role":"user","content":"创建一个生产管理价值域"}]}}'
+
+# 下载 Excel 模板
+curl -X POST https://Ontology1.coze.site/api/agent/skills/execute \
+  -H "Content-Type: application/json" \
+  -d '{"operation":"excel_template","params":{}}'
+
+# 导出项目 Manifest
+curl -X POST https://Ontology1.coze.site/api/agent/skills/execute \
+  -H "Content-Type: application/json" \
+  -d '{"operation":"export_manifest","params":{"manifest":{}}}'
+```
+
+**全部 12 种操作**：
+
+| 操作 | 说明 | 参数 |
+|------|------|------|
+| `list_projects` | 列出所有项目 | — |
+| `get_project` | 获取项目详情 | `projectId` |
+| `list_metadata` | 获取元数据列表 | — |
+| `ai_generate` | AI 生成模型建议 | `entity`, `domain`, `project`, `existingModels`, `metadataList` |
+| `ai_chat` | AI 对话（SSE 流式） | `messages` |
+| `create_model` | AI 创建建模要素 | `description`, `domain`, `projectInfo` |
+| `excel_template` | 获取 Excel 模板 | — |
+| `export_manifest` | 导出 Manifest 为 Excel | `manifest` |
+| `list_skills` | 列出 Agent 技能 | `type`（可选） |
+| `execute_skill` | 执行 Agent 技能 | `skillType`, `action` |
+| `hr_sync_status` | HR 同步状态 | — |
+| `hr_sync_trigger` | 触发 HR 同步 | `source` |
 
 ## 常用脚本
 
