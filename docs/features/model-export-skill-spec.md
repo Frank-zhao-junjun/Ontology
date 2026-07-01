@@ -321,6 +321,124 @@ POST /api/export/skill
 
 ---
 
+## 6.5 Agent 通过 MCP / CLI / Skill API 导出模型
+
+除了 UI 导出，Agent 通过 MCP、CLI、Skill API 接入建模能力后，也应能产出 5 种格式之一的本体模型制品。5 种格式统一为：`json` | `yaml` | `excel` | `md` | `skill`。
+
+### 6.5.1 CLI
+
+扩展 `ontology export` 命令：
+
+```bash
+# 导出 JSON（当前已实现）
+ontology export <projectId> [outputPath]
+
+# 显式指定格式
+ontology export <projectId> [outputPath] --format=json
+ontology export <projectId> [outputPath] --format=yaml
+ontology export <projectId> [outputPath] --format=excel
+ontology export <projectId> [outputPath] --format=md
+ontology export <projectId> [outputPath] --format=skill
+
+# Skill 格式可追加 scope
+ontology export <projectId> ./my-skill.zip --format=skill --scope=data
+```
+
+**行为说明**：
+- `json` / `yaml` / `md`：调用现有导出逻辑，写入文本文件
+- `excel`：调用 `/api/export/xlsx-from-manifest`，写入 `.xlsx`
+- `skill`：调用 `/api/export/skill`，写入 ZIP
+- 未指定 `--format` 时默认 `json`，保持向后兼容
+- 导出 `skill` 时项目状态必须为 `confirmed`
+
+### 6.5.2 MCP Server
+
+扩展 `export_project` 工具：
+
+```json
+{
+  "name": "export_project",
+  "arguments": {
+    "projectId": "proj-xxx",
+    "format": "skill",
+    "scope": "all",
+    "includeExamples": true,
+    "includeSemanticLayer": true
+  }
+}
+```
+
+**参数说明**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| projectId | string | 是 | 项目 ID |
+| format | string | 否 | 导出格式：`json`/`yaml`/`excel`/`md`/`skill`，默认 `json` |
+| scope | string | 否 | `skill` 格式专用，导出范围，默认 `all` |
+| includeExamples | boolean | 否 | `skill` 格式专用，默认 `true` |
+| includeSemanticLayer | boolean | 否 | `skill` 格式专用，默认 `true` |
+
+**返回示例（skill 格式）**：
+
+```json
+{
+  "success": true,
+  "format": "skill",
+  "downloadUrl": "https://Ontology1.coze.site/api/export/skill?projectId=proj-xxx&scope=all&token=xxx",
+  "filename": "ontology-model-skill-生产管理-v1.0.0.zip",
+  "sizeBytes": 15360
+}
+```
+
+**返回示例（json/yaml/md 格式）**：
+
+```json
+{
+  "success": true,
+  "format": "json",
+  "content": "{...}",
+  "filename": "ontology-proj-xxx.json"
+}
+```
+
+**设计原则**：
+- 大文件（excel/skill）返回下载 URL，避免塞爆 MCP 消息体
+- 小文件（json/yaml/md）直接返回内容，便于 Agent 立即使用
+- 项目状态不是 `confirmed` 时返回错误，明确提示 Agent 先确认模型
+
+### 6.5.3 Skill API
+
+扩展 `export_manifest` 操作：
+
+```json
+{
+  "operation": "export_manifest",
+  "params": {
+    "projectId": "proj-xxx",
+    "format": "skill",
+    "scope": "all"
+  }
+}
+```
+
+**行为说明**：
+- 与 MCP `export_project` 工具对齐
+- `json`/`yaml`/`md`：返回 `content` 字段
+- `excel`/`skill`：返回 `downloadUrl` 字段
+- 错误码统一：未确认返回 `MODEL_NOT_CONFIRMED`
+
+### 6.5.4 统一格式对照
+
+| 格式 | UI 导出 | CLI | MCP | Skill API | 输出形式 |
+|------|---------|-----|-----|-----------|----------|
+| JSON | 已支持 | 已支持，默认 | 扩展后支持 | 扩展后支持 | 文本内容 |
+| YAML | 已支持 | 扩展后支持 | 扩展后支持 | 扩展后支持 | 文本内容 |
+| Excel | 已支持 | 扩展后支持 | 扩展后支持 | 扩展后支持 | 下载 URL |
+| Markdown | 已支持 | 扩展后支持 | 扩展后支持 | 扩展后支持 | 文本内容 |
+| Skill ZIP | 新增 | 扩展后支持 | 扩展后支持 | 扩展后支持 | 下载 URL |
+
+---
+
 ## 7. 数据模型映射
 
 ### 7.1 状态字段
@@ -382,9 +500,15 @@ interface OntologyProject {
 3. 调用 POST /api/export/skill 并触发下载
 4. 未确认状态置灰并提示
 
-### Phase 3：文档更新（预计 0.5 轮迭代）
+### Phase 3：Agent 导出能力扩展（预计 1 轮迭代）
+1. CLI `export` 命令支持 `--format` 参数
+2. MCP `export_project` 工具支持 `format` 参数
+3. Skill API `export_manifest` 操作支持 `format` 参数
+4. 统一 5 种格式响应规范
+
+### Phase 4：文档更新（预计 0.5 轮迭代）
 1. 更新 README.md 导出说明
-2. 更新 AGENTS.md API 列表
+2. 更新 AGENTS.md API 列表和 CLI/MCP 工具定义
 3. 补充测试用例文档
 
 ---
@@ -419,6 +543,7 @@ interface OntologyProject {
 ### 11.2 依赖
 1. 需要确认 UI 中"确认"状态的具体实现位置
 2. 需要确认导出功能当前所在的组件
+3. 需要确认 Agent 导出能力是否和 UI 导出能力在同一版本交付
 
 ---
 
@@ -429,3 +554,4 @@ interface OntologyProject {
 3. Skill 包命名规则是否接受 `ontology-model-skill-{projectName}-v{version}.zip`？
 4. 是否需要支持导出时自定义 Skill 名称和描述？
 5. examples/ 内容希望自动生成还是使用固定模板？
+6. Agent 导出 5 种格式是否和 UI Skill 导出一起实现？还是分阶段？
