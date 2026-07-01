@@ -1,14 +1,7 @@
 {
   "mcpServers": {
     "ontology-mcp": {
-      "command": "npx",
-      "args": [
-        "tsx",
-        "packages/ontology-mcp/src/index.ts"
-      ],
-      "env": {
-        "ONTOLOGY_API_BASE": "http://localhost:5000"
-      }
+      "url": "http://localhost:5000/api/mcp"
     }
   }
 }

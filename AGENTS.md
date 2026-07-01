@@ -204,13 +204,18 @@ packages/
 - **能力**：完整的图形化建模界面，含 AI Copilot 对话面板、EPC 步骤表格、业务链树
 
 #### 14.2 MCP Server
-- **入口**：`packages/ontology-mcp/src/index.ts`（Stdio transport）
-- **配置**：`.mcp.json` — 指向项目相对路径
-- **启动**：`pnpm tsx packages/ontology-mcp/src/index.ts`
-- **工具**：项目工具（list/get/create/export）+ 业务链工具（价值域/能力/场景/EPC）+ 分析工具
-- **资源**：项目数据只读资源
-- **提示词**：建模 Copilot 提示词模板
+- **HTTP 端点**：`POST /api/mcp`（Streamable HTTP transport，互联网可达）
+- **本地入口**：`packages/ontology-mcp/src/index.ts`（Stdio transport，本地开发）
+- **服务工厂**：`src/lib/mcp/server.ts`（createMcpServer，tools + resources + prompts）
+- **配置**：`.mcp.json` — HTTP URL 模式（部署后直接配 URL）
+- **启动（本地）**：`pnpm tsx packages/ontology-mcp/src/index.ts`
+- **工具**：8 个（list_projects, get_project, create_project, export_project, add_value_domain, add_capability, add_scenario, add_epc_process）
+- **资源**：4 个只读项目资源
+- **提示词**：2 个建模 Copilot 提示词模板
 - **依赖**：`@modelcontextprotocol/sdk`
+- **数据层**：通过 `ONTOLOGY_API_BASE` 环境变量调用 `/api/mcp/projects` 端点持久化
+- **会话管理**：每个会话独立 Server 实例，通过 `Mcp-Session-Id` 头维护
+- **CORS**：`access-control-allow-origin: *`，支持互联网跨域接入
 
 #### 14.3 CLI
 - **入口**：`src/cli/index.ts`（`pnpm ontology <command>`）

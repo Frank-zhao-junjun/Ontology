@@ -215,9 +215,42 @@ pnpm ontology sync          # HR 同步状态
 
 ### MCP Server
 
+**HTTP 模式（部署后，互联网可达）**：
+
+MCP Server 部署后通过 `/api/mcp` 端点提供 HTTP transport，任何 MCP 客户端只需配置 URL 即可接入：
+
+```json
+{
+  "mcpServers": {
+    "ontology": {
+      "url": "https://你的域名.coze.site/api/mcp"
+    }
+  }
+}
+```
+
+**HTTP 模式（互联网可接入，部署后默认）**：
+
+部署后 MCP 端点为 `https://你的域名.coze.site/api/mcp`，任何 MCP 客户端均可通过 URL 接入：
+
+```json
+// Cursor / Claude Desktop / 任意 MCP Client 配置
+{
+  "mcpServers": {
+    "ontology": {
+      "url": "https://你的域名.coze.site/api/mcp"
+    }
+  }
+}
+```
+
+**Stdio 模式（本地开发）**：
+
 ```bash
 pnpm tsx packages/ontology-mcp/src/index.ts   # 启动 MCP Server（Stdio transport）
 ```
+
+两种模式均提供 8 个工具（list_projects, get_project, create_project, export_project, add_value_domain, add_capability, add_scenario, add_epc_process）、4 个只读资源、2 个提示词模板。HTTP 模式通过 `ONTOLOGY_API_BASE` 环境变量调用服务端 `/api/mcp/projects` 持久化数据。
 
 生产构建：
 
@@ -310,11 +343,17 @@ src/
 packages/
 └── ontology-mcp/                 # MCP Server 包
     └── src/
-        ├── index.ts              # MCP Server 入口（Stdio transport）
+        ├── index.ts              # MCP Server 入口（Stdio + HTTP 双 transport）
         ├── tools/                # MCP 工具定义
         ├── resources/            # MCP 资源
         ├── prompts/              # MCP 提示词
-        └── store/                # MCP 项目存储
+        └── store/                # MCP 项目存储（HTTP 模式，调用 /api/mcp/projects）
+# Next.js HTTP transport 实现：
+# src/lib/mcp/server.ts          — createMcpServer() 工厂
+# src/lib/mcp/tools.ts           — 8 个工具实现
+# src/lib/mcp/resources.ts       — 4 个只读资源
+# src/lib/mcp/prompts.ts         — 2 个提示词模板
+# src/app/api/mcp/route.ts       — HTTP 端点（GET/POST/DELETE/OPTIONS）
 
 tests/
 ├── unit/

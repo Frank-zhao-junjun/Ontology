@@ -27,7 +27,7 @@ const services = [
     description: '标准MCP协议服务端，支持Claude Desktop、Cursor等AI客户端直接调用本体建模工具的全部能力。',
     action: { label: '查看配置', href: '#mcp-config' },
     color: '#2563eb',
-    features: ['12个建模工具', 'Stdio传输', 'AI客户端直连', '自然语言建模'],
+    features: ['8个建模工具', 'HTTP传输', 'AI客户端直连', '自然语言建模'],
   },
   {
     id: 'cli',
@@ -153,23 +153,22 @@ const ServiceEntry = () => {
             MCP Server 配置
           </h3>
           <p className="text-sm text-[#171717]/60 mb-4">
-            将以下配置添加到你的 MCP 客户端（Claude Desktop / Cursor）配置文件中：
+            将以下配置添加到你的 MCP 客户端（Claude Desktop / Cursor）配置文件中，部署后替换为你的域名：
           </p>
           <div className="bg-[#1a1a1a] rounded-[6px] p-4 overflow-x-auto">
             <pre className="text-xs text-[#e7e5e4] font-mono leading-relaxed">{`{
   "mcpServers": {
     "ontology-mcp": {
-      "command": "pnpm",
-      "args": ["tsx", "packages/ontology-mcp/src/index.ts"],
-      "env": {
-        "ONTOLOGY_API_BASE": "http://localhost:5000"
-      }
+      "url": "https://你的域名.coze.site/api/mcp"
     }
   }
 }`}</pre>
           </div>
           <p className="text-xs text-[#b7b7b7] mt-2">
-            可用工具：list_projects, get_project, list_metadata, ai_generate_model, ai_chat, create_model, excel_template, export_manifest, list_skills, execute_skill, hr_sync_status, hr_sync_trigger
+            也支持本地 Stdio 模式：pnpm tsx packages/ontology-mcp/src/index.ts
+          </p>
+          <p className="text-xs text-[#b7b7b7] mt-2">
+            可用工具：list_projects, get_project, create_project, export_project, add_value_domain, add_capability, add_scenario, add_epc_process
           </p>
         </div>
 
