@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   XCircle,
   Network,
-  Users,
 } from 'lucide-react';
 import { useOntologyStore } from '@/store/ontology-store';
 import type { ReferenceDocument } from '@/types/ontology';
@@ -58,14 +57,6 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   actions?: ParsedAction[];
-  moaPhase?: 'proposing' | 'aggregating' | null;
-}
-
-interface MoaAgentStatus {
-  id: number;
-  name: string;
-  role: string;
-  status: 'pending' | 'running' | 'done' | 'error';
 }
 
 interface UploadedFileInfo {
@@ -102,8 +93,6 @@ export function ModelingCopilotPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [moaEnabled, setMoaEnabled] = useState(false);
-  const [moaAgents, setMoaAgents] = useState<MoaAgentStatus[]>([]);
   const addReferenceDocument = useOntologyStore((s) => s.addReferenceDocument);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
@@ -161,12 +150,7 @@ export function ModelingCopilotPanel({
       setIsStreaming(true);
 
       // Add empty assistant message for streaming
-      setMessages((prev) => [...prev, { role: 'assistant', content: '', moaPhase: moaEnabled ? 'proposing' : null }]);
-
-      // Reset MoA agent statuses
-      if (moaEnabled) {
-        setMoaAgents([]);
-      }
+      setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
 
       try {
         const allMessages = [...messagesRef.current, userMsg]
@@ -176,8 +160,7 @@ export function ModelingCopilotPanel({
             content: m.content,
           }));
 
-        const endpoint = moaEnabled ? '/api/chat-moa' : '/api/chat';
-        const response = await fetch(endpoint, {
+        const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -214,34 +197,7 @@ export function ModelingCopilotPanel({
           try {
             const data = JSON.parse(jsonStr);
 
-            // ── MoA propose phase events ──
-            if (data.phase === 'propose_start' && data.agents) {
-              setMoaAgents(
-                data.agents.map((a: { id: number; name: string; role: string }) => ({
-                  id: a.id,
-                  name: a.name,
-                  role: a.role,
-                  status: 'pending' as const,
-                })),
-              );
-              return;
-            }
-            if (data.phase === 'propose') {
-              setMoaAgents((prev) =>
-                prev.map((a) =>
-                  a.id === data.agentId
-                    ? { ...a, status: data.status === 'start' ? 'running' : data.status === 'error' ? 'error' : 'done' }
-                    : a,
-                ),
-              );
-              return;
-            }
-            if (data.phase === 'aggregate_start') {
-              updateLastAssistant('', { moaPhase: 'aggregating' });
-              return;
-            }
-
-            // ── Content streaming (both regular and MoA aggregate) ──
+            // ── Content streaming ──
             if (data.content) {
               accumulated += data.content;
               updateLastAssistant(accumulated);
@@ -288,7 +244,6 @@ export function ModelingCopilotPanel({
                   ...next[lastIdx],
                   content: cleanText || '(已完成建模操作)',
                   actions: executedActions,
-                  moaPhase: null,
                 };
               }
               return next;
@@ -302,14 +257,13 @@ export function ModelingCopilotPanel({
                 next[lastIdx] = {
                   ...next[lastIdx],
                   content: '抱歉，我暂时无法回复。请稍后重试。',
-                  moaPhase: null,
                 };
               }
               return next;
             });
           } else {
-            // Content but no actions — clear moaPhase
-            updateLastAssistant(accumulated, { moaPhase: null });
+            // Content but no actions
+            updateLastAssistant(accumulated);
           }
         } else {
           setMessages((prev) => {
@@ -339,10 +293,9 @@ export function ModelingCopilotPanel({
         });
       } finally {
         setIsStreaming(false);
-        setMoaAgents([]);
       }
     },
-    [isStreaming, moaEnabled],
+    [isStreaming],
   );
 
   const handleFileSelect = useCallback(
@@ -502,20 +455,6 @@ export function ModelingCopilotPanel({
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => setMoaEnabled((v) => !v)}
-              disabled={isStreaming}
-              className={`flex items-center gap-1 rounded border px-2 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                moaEnabled
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-              }`}
-              title="MoA 模式：3 个专家 Agent 并行提案 + 1 个聚合 Agent 综合"
-            >
-              <Users className="h-3 w-3" />
-              MoA
-            </button>
-            <button
-              type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadedFile?.status === 'uploading' || isStreaming}
               className="flex items-center gap-1 rounded border border-input bg-background px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
@@ -573,43 +512,6 @@ export function ModelingCopilotPanel({
               >
                 <X className="h-3 w-3" />
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* MoA agent status panel */}
-        {moaEnabled && moaAgents.length > 0 && (
-          <div className="shrink-0 border-b bg-muted/20 px-3 py-2">
-            <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-              <Users className="h-3 w-3" />
-              MoA 提案阶段 · 3 Agent 并行
-            </div>
-            <div className="flex flex-col gap-1">
-              {moaAgents.map((agent) => (
-                <div key={agent.id} className="flex items-center gap-2 text-xs">
-                  {agent.status === 'pending' && (
-                    <div className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground/30" />
-                  )}
-                  {agent.status === 'running' && (
-                    <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary" />
-                  )}
-                  {agent.status === 'done' && (
-                    <CheckCircle2 className="h-3 w-3 shrink-0 text-green-600" />
-                  )}
-                  {agent.status === 'error' && (
-                    <XCircle className="h-3 w-3 shrink-0 text-destructive" />
-                  )}
-                  <span className={agent.status === 'done' ? 'text-foreground' : 'text-muted-foreground'}>
-                    {agent.name}
-                  </span>
-                  <span className="text-muted-foreground/60">
-                    {agent.status === 'pending' && '等待中'}
-                    {agent.status === 'running' && '思考中...'}
-                    {agent.status === 'done' && '已完成'}
-                    {agent.status === 'error' && '失败'}
-                  </span>
-                </div>
-              ))}
             </div>
           </div>
         )}
@@ -715,19 +617,7 @@ export function ModelingCopilotPanel({
                       {/* Loading indicator when streaming with no content yet */}
                       {isStreamingThis && !displayContent && !msg.actions && (
                         <div className="rounded-lg bg-muted px-3 py-2">
-                          {msg.moaPhase === 'proposing' ? (
-                            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <Users className="h-3.5 w-3.5" />
-                              MoA 提案中，3 位专家正在并行分析...
-                            </span>
-                          ) : msg.moaPhase === 'aggregating' ? (
-                            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              MoA 聚合中，正在综合三方提案...
-                            </span>
-                          ) : (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                          )}
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
                         </div>
                       )}
                     </div>
@@ -765,9 +655,7 @@ export function ModelingCopilotPanel({
             </Button>
           </div>
           <p className="mt-1.5 text-[10px] text-muted-foreground">
-            {moaEnabled
-              ? 'MoA 模式已启用 · 3 专家并行提案 + 聚合综合 · AI 回复仅供参考'
-              : '支持对话建模 & 上传文档自动提取 · AI 回复仅供参考'}
+            支持对话建模 &amp; 上传文档自动提取 · AI 回复仅供参考
           </p>
         </div>
       </div>
