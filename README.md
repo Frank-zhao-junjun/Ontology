@@ -9,10 +9,16 @@ A (ValueDomain) ─→ B (Capability) ─→ C (Scenario) ─→ EPC (EpcProcess
                                                           └── steps[].elementRef → E1–E8
 ```
 
-当前仓库同时包含产品介绍页和实际建模工作台：
+当前仓库同时包含产品介绍页和实际建模工作台，并提供 **4 种服务接入方式**：
 
-- `/`：产品介绍、架构说明和功能展示。
-- `/tool`：本体建模工作台。
+| 接入方式 | 入口 | 适用场景 |
+|----------|------|----------|
+| **Web UI** | `/tool` | 图形化建模工作台，含 AI Copilot 对话面板 |
+| **MCP Server** | `pnpm tsx packages/ontology-mcp/src/index.ts` | AI Agent 通过 MCP 协议调用建模工具 |
+| **CLI** | `pnpm ontology <command>` | 命令行批量操作，零外部依赖 |
+| **Agent Skill API** | `POST /api/agent/skills/execute` | REST API 统一入口，12 种操作 |
+
+首页 `/` 提供产品介绍、架构说明和 4 类服务入口卡片。
 
 ## 核心架构
 
@@ -96,21 +102,20 @@ EPC 通过 **A→B→C→EPC 业务树** 将八维要素（E1–E8）串联为�
 - **业务场景迁移**（US-S12）：旧 `BusinessScenario` → A/B/C 一键迁移
 - **Legacy 审计**（US-S12）：检测并报告旧结构残留
 
-### AI 辅助建模（Copilot 统一助手 MVP ✅）
+### AI 辅助建模（Copilot ✅）
 
 工作台右侧 **建模 Copilot** 为 AI 建模主入口（对话 + 文件上传），所有写入均为 **draft**，用户在左侧沿用 `draft → confirmed` 确认流程。
 
 | 能力 | 说明 |
 |------|------|
-| **Copilot 面板** | CopilotKit Sidebar，可拖拽宽度，`localStorage: copilot-panel-width` |
-| **14 个 Actions** | 创建 A/B/C/EPC、更新模块 draft、文档推断、要素/EPC 文本生成等（**无 delete\***） |
-| **Runtime** | `GET/POST /api/copilotkit` → `CozeServiceAdapter` → 豆包 `doubao-seed-2-0-pro-260215`（coze-coding-dev-sdk，不依赖外网 CopilotKit API） |
-| **文档推断** | `POST /api/analyze-document-model` — 3 个子 prompt 编排（业务链 / EPC / 要素） |
-| **模块 Draft API** | `POST /api/generate-module-draft`、`POST /api/generate-element-draft` — Copilot Actions 内部调用 |
-| **参考文档** | 上传 Word/PDF/Excel/PPT/TXT/Markdown；Copilot `uploadReferenceDocument` + `analyzeDocumentAndModel` |
-| **Legacy 入口** | 旧 AI 按钮保留 + tooltip「建议使用右侧 Copilot」；`generate-model` / `extract-entities` 已删除 |
-
-权威设计：[`docs/superpowers/specs/2026-06-26-copilot-unified-modeling-design.md`](docs/superpowers/specs/2026-06-26-copilot-unified-modeling-design.md)
+| **Copilot 面板** | `modeling-copilot-panel.tsx`，`h-screen overflow-hidden` 边界限定，溢出滚动 |
+| **AI 模型** | 豆包 Seed 2.0 Pro（`doubao-seed-2-0-pro-260215`），可通过 `CHAT_MODEL` 环境变量覆盖 |
+| **流式输出** | SSE 协议，前端 `fetch` + `getReader()` 打字机式渲染 |
+| **ACTION 机制** | AI 回复中嵌入 `<<<ACTION>>>{json}<<<END_ACTION>>>` 块，流结束后批量解析并执行 |
+| **5 种动作** | `create_value_domain` / `create_capability` / `create_scenario` / `create_epc_process` / `create_chain` |
+| **执行层** | `src/lib/copilot/chat-actions.ts` — 解析 ACTION 块，调用 Zustand store 方法执行建模 |
+| **参考文档** | 上传 Word/PDF/Excel/TXT/Markdown/CSV，解析后注入 AI Prompt |
+| **面板边界** | `h-screen overflow-hidden`，超出部分滚动查看 |
 
 ## 平台级能力
 
@@ -175,8 +180,8 @@ Copilot 专项：`pnpm exec vitest run tests/unit/copilot tests/integration/copi
 - **动画**：GSAP
 - **状态管理**：Zustand + persist
 - **数据服务**：Supabase / PostgreSQL 适配
-- **AI 集成**：coze-coding-dev-sdk（豆包 LLM）
-- **Copilot UI**：`@copilotkit/react-core` · `@copilotkit/react-ui` · `@copilotkit/runtime`
+- **AI 集成**：coze-coding-dev-sdk（豆包 Seed 2.0 Pro）
+- **MCP 协议**：`@modelcontextprotocol/sdk`
 - **文件解析**：xlsx、mammoth、pdf-parse
 - **测试**：Vitest 4、Testing Library、happy-dom
 
@@ -191,8 +196,28 @@ pnpm dev
 
 启动后访问：
 
-- 产品介绍页：`http://localhost:3000`
-- 建模工作台：`http://localhost:3000/tool`
+- 产品介绍页：`http://localhost:5000`
+- 建模工作台：`http://localhost:5000/tool`
+
+> 端口通过 `DEPLOY_RUN_PORT` 环境变量读取，默认 5000。
+
+### CLI 工具
+
+```bash
+pnpm ontology help          # 帮助信息
+pnpm ontology projects      # 列出所有项目
+pnpm ontology project <id>  # 查看项目详情
+pnpm ontology metadata      # 获取元数据列表
+pnpm ontology template      # 下载 Excel 模板
+pnpm ontology skills        # 列出 Agent 技能
+pnpm ontology sync          # HR 同步状态
+```
+
+### MCP Server
+
+```bash
+pnpm tsx packages/ontology-mcp/src/index.ts   # 启动 MCP Server（Stdio transport）
+```
 
 生产构建：
 
@@ -222,9 +247,11 @@ lint → ts-check → unit → integration → e2e smoke
 
 ## 环境变量
 
-项目可以在无远端数据源时使用内置示例数据；接入 Supabase 或远端初始化数据时再配置：
-
 ```env
+# AI 模型（可选，默认 doubao-seed-2-0-pro-260215）
+CHAT_MODEL=
+
+# Supabase（可选，无配置时使用 localStorage）
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
@@ -235,50 +262,59 @@ SUPABASE_SERVICE_ROLE_KEY=
 ```text
 src/
 ├── app/
-│   ├── page.tsx                  # 产品介绍页
+│   ├── page.tsx                  # 产品介绍页 + 4类服务入口
 │   ├── tool/page.tsx             # 建模工作台入口
+│   ├── cli/index.ts              # CLI 入口（pnpm ontology）
 │   └── api/
+│       ├── chat/                 # AI 对话（SSE 流式，豆包 Seed 2.0 Pro）
+│       ├── generate-model/       # AI 模型生成
+│       ├── generate-element-draft/ # AI 要素草稿生成
+│       ├── agent/skills/         # Agent 技能元数据
+│       │   └── execute/          # Skill 统一执行 API（12 种操作）
 │       ├── excel-import/         # Excel 导入
 │       ├── excel-template/       # Excel 模板下载
-│       ├── copilotkit/           # CopilotKit Runtime（coze 豆包）
-│       ├── analyze-document-model/ # 文档推断（3 子 prompt）
-│       ├── generate-module-draft/  # 模块 draft 生成（A/B/C/EPC）
-│       ├── generate-element-draft/ # 要素 draft 生成（E1–E8）
+│       ├── export/               # Excel 导出（xlsx-from-manifest）
 │       ├── reference-documents/  # 参考文档上传与解析
 │       ├── hr-sync/              # HR 同步 (trigger/config/history)
-│       ├── masterdata/init/      # 主数据初始化
 │       ├── metadata/init/        # 元数据初始化
+│       ├── entity-lifecycle/     # 实体生命周期导出
+│       ├── agent-semantic-layer/ # Agent 语义层导出
 │       └── projects/             # 项目持久化
 ├── components/
 │   ├── landing/                  # 产品介绍页组件
+│   │   ├── Hero.tsx              # Hero 区（GSAP 动画 + CTA）
+│   │   └── ServiceEntry.tsx      # 4 类服务入口卡片
 │   └── ontology/                 # 建模工作台组件
-│       └── copilot/              # Copilot 面板 + Actions
+│       ├── copilot/              # AI Copilot 子系统
+│       │   ├── modeling-copilot-panel.tsx # AI 对话面板（SSE + ACTION 执行）
+│       │   └── copilot-system-prompt.ts   # 系统提示词
+│       ├── epc-steps-editor.tsx  # EPC 步骤表格编辑器
+│       └── ...
 ├── lib/
-│   ├── copilot/                  # Copilot Actions、文档编排、coze adapter
-│   ├── business-chain/           # US-S04: A/B/C 业务链树
-│   ├── element-library/          # US-S07: 要素库 + 未引用查询
-│   ├── element-selector/         # US-S06: EPC 要素选择器
-│   ├── epc-pipeline/             # US-S05: saveEpc
-│   ├── module-version/           # US-S03/S14: 模块版本管理
-│   ├── scenario-workspace/       # US-S08: C 工作区逻辑
-│   ├── business-epc-linter/      # US-S09/S15: W-EPC 17 条警示规则
-│   ├── epc-coverage/             # US-S16: 覆盖率分析
-│   ├── epc-cross-consistency/    # US-S17: 交叉一致性验证
-│   ├── epc-derivation/           # US-S18: EPC 推导 + Badge
-│   ├── excel/                    # US-S10: Excel 分模块导入导出
-│   ├── ai-draft/                 # US-S11: AI draft 填充
-│   ├── legacy-audit/             # US-S12: 遗留代码审计
-│   ├── migration/                # US-S12: BusinessScenario → A/B/C
-│   ├── manifest-compiler/        # US-S13: compileSimplifiedChain
-│   ├── e1-entity/                # US-S06: E1 实体创建
-│   ├── data-model/               # E1 数据模型纯函数（data-model-editor 提取）
-│   ├── metadata-local.ts         # 本地元数据 (57 条)
+│   ├── copilot/                  # ACTION 解析 + Store 执行
+│   │   └── chat-actions.ts       # 5 种动作解析与执行
+│   ├── action-executor.ts        # 纯函数版 ACTION 执行器
+│   ├── business-chain/           # A/B/C 业务链树
+│   ├── excel/                    # Excel 导入导出（中文表头 + 字母前缀 Sheet 名）
+│   ├── epc-pipeline/             # saveEpc
+│   ├── module-version/           # 模块版本管理
 │   ├── ontology-validator.ts     # 校验引擎
-│   └── ontology-normalizer.ts    # 模型规范化
+│   └── ...
 ├── store/
-│   └── ontology-store.ts         # 全局状态 (Zustand + persist)
+│   └── ontology-store.ts         # 全局状态 (Zustand + persist，内联实现)
+├── cli/
+│   └── index.ts                  # CLI 工具入口
 └── types/
     └── ontology.ts               # 核心类型定义
+
+packages/
+└── ontology-mcp/                 # MCP Server 包
+    └── src/
+        ├── index.ts              # MCP Server 入口（Stdio transport）
+        ├── tools/                # MCP 工具定义
+        ├── resources/            # MCP 资源
+        ├── prompts/              # MCP 提示词
+        └── store/                # MCP 项目存储
 
 tests/
 ├── unit/
@@ -323,22 +359,30 @@ GET    /api/projects/:id
 PUT    /api/projects/:id
 DELETE /api/projects/:id
 GET    /api/metadata/init
-GET    /api/masterdata/init
 
-# Excel 导入导出
+# Excel 导入导出（中文表头 + 字母前缀 Sheet 名）
 GET    /api/excel-template
 POST   /api/excel-import
+POST   /api/export/xlsx-from-manifest
 
-# AI / Copilot
-GET    /api/copilotkit              # CopilotKit Runtime（coze 豆包）
-POST   /api/copilotkit
-POST   /api/analyze-document-model  # 整文档推断（chain + EPC + elements）
-POST   /api/generate-module-draft   # A/B/C/EPC 模块 draft
-POST   /api/generate-element-draft  # E1–E8 要素 draft
+# AI 对话（SSE 流式）
+POST   /api/chat
+
+# AI 模型生成
+POST   /api/generate-model
+POST   /api/generate-element-draft
+
+# Agent Skill 执行（统一入口，12 种操作）
+GET    /api/agent/skills/execute
+POST   /api/agent/skills/execute
 
 # 参考文档
 POST   /api/reference-documents/upload
 DELETE /api/reference-documents/:docId
+
+# 实体生命周期 & Agent 语义层
+GET    /api/entity-lifecycle?entityId=xxx
+GET    /api/agent-semantic-layer
 
 # HR 同步
 POST   /api/hr-sync/trigger
@@ -351,8 +395,13 @@ POST   /api/hr-sync/resolve-conflict
 ## 开发约束
 
 - 必须使用 pnpm，`preinstall` 会通过 `only-allow` 拦截其它包管理器。
+- 端口固定为 5000（通过 `DEPLOY_RUN_PORT` 环境变量读取），禁止硬编码。
 - 不要回退到旧字段契约（`scenarioId`、`type`、`metadataId` 等已淘汰字段）。
 - 实体业务归属以 `businessScenarioId` 为准，实体角色以 `entityRole` 为准。
+- Excel 导入/导出 Sheet 名格式：字母前缀+中文（如 `E1-实体`），导入时自动去除前缀。
+- Excel 导出表头为中文，导入时自动归一化中文表头到英文 key。
+- `ontology-store.ts` 为内联实现（4214行），不依赖外部 store-adapter。
+- AI 模型默认为豆包 Seed 2.0 Pro，可通过 `CHAT_MODEL` 环境变量覆盖。
 - 所有变更必须通过 TDD 六步法：Spec → PRD → Testing(Case) → Coding → Unit → E2E。
 - 提交前运行 `ci:check` 确保全绿。
 
