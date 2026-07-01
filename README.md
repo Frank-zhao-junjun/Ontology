@@ -17,8 +17,9 @@ A (ValueDomain) ─→ B (Capability) ─→ C (Scenario) ─→ EPC (EpcProcess
 | **MCP Server** | `pnpm tsx packages/ontology-mcp/src/index.ts` | AI Agent 通过 MCP 协议调用建模工具 |
 | **CLI** | `pnpm ontology <command>` | 命令行批量操作，零外部依赖 |
 | **Agent Skill API** | `POST /api/agent/skills/execute` | REST API 统一入口，12 种操作 |
+| **Skill ZIP 下载** | `GET /api/agent/skills/download` | 下载完整技能包 ZIP，导入到任意 Agent 框架 |
 
-首页 `/` 提供产品介绍、架构说明和 4 类服务入口卡片。
+首页 `/` 提供 MCP / CLI / Skill 三栏 Tab 切换式服务入口，Skill Tab 含一键下载 ZIP 按钮。
 
 ## 核心架构
 
@@ -374,6 +375,34 @@ curl -X POST https://Ontology1.coze.site/api/agent/skills/execute \
 | `execute_skill` | 执行 Agent 技能 | `skillType`, `action` |
 | `hr_sync_status` | HR 同步状态 | — |
 | `hr_sync_trigger` | 触发 HR 同步 | `source` |
+
+### 方式 4：Skill ZIP 下载
+
+下载完整技能包 ZIP，导入到任意 Agent 框架，即刻具备本体建模能力。
+
+**下载**：
+
+```bash
+# 命令行下载
+curl -o ontology-skill.zip https://Ontology1.coze.site/api/agent/skills/download
+
+# 或在首页 Skill Tab 点击「下载技能包」按钮
+```
+
+**ZIP 内容**：
+
+```
+ontology-skill/
+├── skill.json              # 技能清单（12种操作定义、3种接入方式配置）
+├── README.md               # 完整使用说明
+├── config/
+│   ├── mcp.json            # MCP 客户端配置
+│   └── cli.env             # CLI 环境变量
+├── examples/
+│   ├── curl-examples.sh    # curl 调用示例
+│   └── mcp-client-example.json  # MCP 客户端配置示例
+└── openapi.yaml            # OpenAPI 3.0 规范
+```
 
 ## 常用脚本
 

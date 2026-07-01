@@ -238,8 +238,10 @@ packages/
 #### 14.4 Agent Skill API
 - **入口**：`POST /api/agent/skills/execute`
 - **GET**：返回所有可用操作列表（12 种）
+- **ZIP 下载**：`GET /api/agent/skills/download` — 下载完整技能包 ZIP（skill.json + README.md + config/ + examples/ + openapi.yaml）
 - **操作**：`list_projects` / `get_project` / `list_metadata` / `ai_generate` / `ai_chat` / `create_model` / `excel_template` / `export_manifest` / `list_skills` / `execute_skill` / `hr_sync_status` / `hr_sync_trigger`
 - **统一后端**：Skill / MCP / CLI 三种方式最终都通过此 API 或直接调用 Web API 路由
+- **首页入口**：ServiceEntry 组件 Tab 切换（MCP / CLI / Skill），Skill Tab 含 ZIP 下载按钮
 
 ## 开发命令
 
@@ -455,6 +457,7 @@ SSE 流式对话，使用豆包 Seed 2.0 Pro 模型。AI 回复中嵌入 `<<<ACT
 ```
 GET  /api/agent/skills/execute          # 返回12种可用操作列表
 POST /api/agent/skills/execute          # 执行指定操作
+GET  /api/agent/skills/download         # 下载技能包 ZIP（skill.json + README + config + examples + openapi.yaml）
 ```
 
 **请求体**:
