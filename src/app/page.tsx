@@ -6,6 +6,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 import Navigation from '@/components/landing/Navigation';
 import Hero from '@/components/landing/Hero';
+import ServiceEntry from '@/components/landing/ServiceEntry';
 import Architecture from '@/components/landing/Architecture';
 import DataFlow from '@/components/landing/DataFlow';
 import Metamodels from '@/components/landing/Metamodels';
@@ -42,6 +43,7 @@ export default function Home() {
       
       <main className="relative">
         <Hero />
+        <ServiceEntry />
         <div id="architecture">
           <Architecture />
         </div>

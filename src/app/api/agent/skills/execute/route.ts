@@ -1,0 +1,225 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * POST /api/agent/skills/execute
+ * 执行建模操作 — Skill/MCP/CLI 的统一后端入口
+ *
+ * 所有操作通过 HTTP 调用内部 API 路由实现，不直接操作 store
+ * （store 只在浏览器端，服务端通过 API 路由间互相调用）
+ *
+ * 请求体:
+ * {
+ *   "operation": "list_projects" | "create_project" | "list_domains" | "create_value_domain" | ...,
+ *   "params": { ... }
+ * }
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { operation, params = {} } = body;
+
+    if (!operation) {
+      return NextResponse.json(
+        { success: false, error: '缺少 operation 参数' },
+        { status: 400 }
+      );
+    }
+
+    const base = request.nextUrl.origin;
+
+    switch (operation) {
+      // ── 项目管理 ──
+      case 'list_projects': {
+        const res = await fetch(`${base}/api/projects`);
+        const data = await res.json();
+        return NextResponse.json({ success: true, data });
+      }
+
+      case 'get_project': {
+        const { projectId } = params;
+        if (!projectId) return error('缺少 projectId');
+        const res = await fetch(`${base}/api/projects/${projectId}`);
+        const data = await res.json();
+        return NextResponse.json({ success: true, data });
+      }
+
+      // ── 元数据 ──
+      case 'list_metadata': {
+        const res = await fetch(`${base}/api/metadata/init`);
+        const data = await res.json();
+        return NextResponse.json({ success: true, data });
+      }
+
+      // ── AI 建模 ──
+      case 'ai_generate': {
+        const { entity, domain, project, existingModels, metadataList } = params;
+        if (!entity) return error('缺少 entity 参数');
+        const res = await fetch(`${base}/api/generate-model`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entity, domain, project, existingModels, metadataList }),
+        });
+        const data = await res.json();
+        return NextResponse.json({ success: true, data });
+      }
+
+      case 'ai_chat': {
+        const { messages } = params;
+        if (!messages || !Array.isArray(messages)) return error('缺少 messages 数组');
+        // 返回 SSE 流的 URL，由调用方自行 fetch
+        return NextResponse.json({
+          success: true,
+          data: {
+            endpoint: '/api/chat',
+            method: 'POST',
+            body: { messages },
+            stream: true,
+          },
+        });
+      }
+
+      // ── Excel 导入导出 ──
+      case 'excel_template': {
+        const res = await fetch(`${base}/api/excel-template`);
+        const buf = await res.arrayBuffer();
+        return NextResponse.json({
+          success: true,
+          data: {
+            size: buf.byteLength,
+            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            endpoint: '/api/excel-template',
+          },
+        });
+      }
+
+      case 'export_manifest': {
+        const { manifest } = params;
+        if (!manifest) return error('缺少 manifest 参数');
+        const res = await fetch(`${base}/api/export/xlsx-from-manifest`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(manifest),
+        });
+        const buf = await res.arrayBuffer();
+        return NextResponse.json({
+          success: true,
+          data: {
+            size: buf.byteLength,
+            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          },
+        });
+      }
+
+      // ── Agent Skills ──
+      case 'list_skills': {
+        const { type } = params;
+        const url = new URL(`${base}/api/agent/skills`);
+        if (type) url.searchParams.set('type', type);
+        const res = await fetch(url);
+        const data = await res.json();
+        return NextResponse.json({ success: true, data });
+      }
+
+      case 'execute_skill': {
+        const { skillType, action, skillData } = params;
+        const res = await fetch(`${base}/api/agent/skills`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, type: skillType, data: skillData }),
+        });
+        const data = await res.json();
+        return NextResponse.json({ success: true, data });
+      }
+
+      // ── HR 同步 ──
+      case 'hr_sync_status': {
+        const res = await fetch(`${base}/api/hr-sync/status`);
+        const data = await res.json();
+        return NextResponse.json({ success: true, data });
+      }
+
+      case 'hr_sync_trigger': {
+        const { source } = params;
+        const res = await fetch(`${base}/api/hr-sync/trigger`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source }),
+        });
+        const data = await res.json();
+        return NextResponse.json({ success: true, data });
+      }
+
+      // ── 建模操作（通过 AI chat 间接执行） ──
+      case 'create_model': {
+        const { description, domain, projectInfo } = params;
+        if (!description) return error('缺少 description 参数');
+        const messages = [
+          {
+            role: 'user',
+            content: `请在当前项目中创建以下建模要素：${description}`,
+          },
+        ];
+        return NextResponse.json({
+          success: true,
+          data: {
+            endpoint: '/api/chat',
+            method: 'POST',
+            body: { messages },
+            stream: true,
+            note: 'AI 将返回 <<<ACTION>>> 块，由调用方解析并执行',
+          },
+        });
+      }
+
+      default:
+        return NextResponse.json(
+          {
+            success: false,
+            error: `未知操作: ${operation}`,
+            available: [
+              'list_projects', 'get_project', 'list_metadata',
+              'ai_generate', 'ai_chat', 'create_model',
+              'excel_template', 'export_manifest',
+              'list_skills', 'execute_skill',
+              'hr_sync_status', 'hr_sync_trigger',
+            ],
+          },
+          { status: 400 }
+        );
+    }
+  } catch (error) {
+    console.error('Skill execute error:', error);
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : '执行失败' },
+      { status: 500 }
+    );
+  }
+}
+
+function error(msg: string) {
+  return NextResponse.json({ success: false, error: msg }, { status: 400 });
+}
+
+/**
+ * GET /api/agent/skills/execute
+ * 返回所有可用操作列表
+ */
+export async function GET() {
+  return NextResponse.json({
+    success: true,
+    operations: [
+      { name: 'list_projects', desc: '列出所有项目', params: {} },
+      { name: 'get_project', desc: '获取项目详情', params: { projectId: 'string' } },
+      { name: 'list_metadata', desc: '获取元数据列表', params: {} },
+      { name: 'ai_generate', desc: 'AI生成模型建议', params: { entity: 'object', domain: 'object', project: 'object', existingModels: 'object', metadataList: 'array' } },
+      { name: 'ai_chat', desc: 'AI对话（SSE流式）', params: { messages: 'array' } },
+      { name: 'create_model', desc: '通过AI创建建模要素', params: { description: 'string', domain: 'object', projectInfo: 'object' } },
+      { name: 'excel_template', desc: '获取Excel模板', params: {} },
+      { name: 'export_manifest', desc: '导出Manifest为Excel', params: { manifest: 'object' } },
+      { name: 'list_skills', desc: '列出Agent技能', params: { type: 'string?' } },
+      { name: 'execute_skill', desc: '执行Agent技能', params: { skillType: 'string', action: 'string', skillData: 'object' } },
+      { name: 'hr_sync_status', desc: 'HR同步状态', params: {} },
+      { name: 'hr_sync_trigger', desc: '触发HR同步', params: { source: 'string' } },
+    ],
+  });
+}

@@ -3,13 +3,12 @@
     "ontology-mcp": {
       "command": "pnpm",
       "args": [
-        "--dir",
-        "D:\\AI\\Ontology",
-        "exec",
         "tsx",
         "packages/ontology-mcp/src/index.ts"
       ],
-      "env": {}
+      "env": {
+        "ONTOLOGY_API_BASE": "http://localhost:5000"
+      }
     }
   }
 }
