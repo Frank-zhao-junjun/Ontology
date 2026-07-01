@@ -12,41 +12,80 @@
 - **UI 组件**: shadcn/ui (基于 Radix UI)
 - **样式**: Tailwind CSS 4
 - **状态管理**: Zustand (持久化存储)
-- **AI集成**: coze-coding-dev-sdk (豆包大模型)
+- **AI集成**: coze-coding-dev-sdk (豆包 Seed 2.0 Pro)
 - **文件解析**: xlsx
+- **MCP协议**: @modelcontextprotocol/sdk
+- **落地页动画**: GSAP
 
 ## 目录结构
 
 ```
 src/
 ├── app/                          # Next.js App Router
-│   ├── page.tsx                 # 主页面入口（领域选择）
+│   ├── page.tsx                 # 落地页（含4类服务入口卡片）
+│   ├── tool/page.tsx            # 建模工作台页面
 │   ├── layout.tsx               # 根布局
 │   ├── globals.css              # 全局样式
+│   ├── cli/index.ts             # CLI 入口（pnpm ontology）
 │   └── api/                     # API 路由
-│       ├── metadata/init/       # 元数据初始化接口
+│       ├── chat/                # AI对话（SSE流式，豆包Seed 2.0 Pro）
 │       ├── generate-model/      # AI模型生成接口
+│       ├── generate-element-draft/ # AI要素草稿生成
+│       ├── metadata/init/       # 元数据初始化接口
 │       ├── excel-template/      # Excel模板下载接口
-│       └── excel-import/        # Excel文件导入接口
+│       ├── excel-import/        # Excel文件导入接口
+│       ├── export/              # Excel导出（xlsx-from-manifest）
+│       ├── entity-lifecycle/    # 实体生命周期导出
+│       ├── agent-semantic-layer/ # Agent语义层导出
+│       ├── agent/skills/        # Agent技能元数据 + 执行入口
+│       │   └── execute/         # Skill统一执行API（12种操作）
+│       └── reference-documents/ # 参考文档上传/解析
 ├── components/
+│   ├── landing/                 # 落地页组件
+│   │   ├── Hero.tsx             # Hero区（GSAP动画 + CTA）
+│   │   └── ServiceEntry.tsx     # 4类服务入口卡片
 │   └── ontology/                # 本体建模组件
 │       ├── domain-selector.tsx  # 领域选择器
 │       ├── project-creator.tsx  # 项目创建器
 │       ├── modeling-workspace.tsx # 建模工作台
-│       ├── data-model-editor.tsx # 数据模型编辑器
-│       ├── behavior-model-editor.tsx # 行为模型编辑器
-│       ├── rule-model-editor.tsx # 规则模型编辑器
-│       ├── process-model-editor.tsx # 流程模型编辑器
-│       ├── event-model-editor.tsx # 事件模型编辑器
-│       ├── metadata-manager.tsx # 元数据管理器
-│       ├── manual-generator.tsx # 建模手册生成器
-│       └── excel-import-dialog.tsx # Excel导入对话框
+│       ├── copilot/             # AI Copilot 子系统
+│       │   ├── modeling-copilot-panel.tsx # AI对话面板（SSE流式 + ACTION执行）
+│       │   └── copilot-system-prompt.ts   # 系统提示词（含ACTION块定义）
+│       ├── epc-steps-editor.tsx # EPC步骤编辑器（表格布局）
+│       ├── business-chain-detail.tsx # 业务链详情
+│       └── ...                  # 其他建模编辑器
 ├── store/
-│   └── ontology-store.ts        # Zustand 状态管理
+│   └── ontology-store.ts        # Zustand 状态管理（4214行，内联实现）
 ├── types/
 │   └── ontology.ts              # TypeScript 类型定义
 └── lib/
-    └── utils.ts                 # 工具函数
+    ├── utils.ts                 # 工具函数
+    ├── copilot/
+    │   └── chat-actions.ts      # ACTION块解析 + Store执行（5种动作）
+    ├── action-executor.ts       # 纯函数版ACTION执行器
+    ├── excel/
+    │   ├── export-excel.ts      # Excel导出（中文表头）
+    │   ├── import-excel.ts      # Excel导入（中文表头归一化）
+    │   └── excel-schema.ts      # Sheet定义（字母前缀+中文）
+    └── business-chain/
+        └── business-chain.ts    # 业务链纯函数（addValueDomain等）
+
+packages/
+└── ontology-mcp/                # MCP Server 包
+    └── src/
+        ├── index.ts             # MCP Server入口（Stdio transport）
+        ├── tools/               # MCP工具定义
+        │   ├── project-tools.ts
+        │   ├── business-chain-tools.ts
+        │   └── analysis-tools.ts
+        ├── resources/           # MCP资源
+        │   └── project-resources.ts
+        ├── prompts/             # MCP提示词
+        │   └── copilot-prompts.ts
+        ├── store/               # MCP项目存储
+        │   └── project-store.ts
+        └── utils/
+            └── helpers.ts
 ```
 
 ## 核心功能
@@ -90,6 +129,15 @@ src/
 - **模型建议**：基于实体和领域信息，AI自动生成五大模型建议
 - **一键应用**：可将AI建议一键应用到当前实体
 - **元数据匹配**：生成属性时优先使用预定义元数据
+
+### 8.5. AI Copilot 对话建模
+- **模型**：豆包 Seed 2.0 Pro（`doubao-seed-2-0-pro-260215`），可通过 `CHAT_MODEL` 环境变量覆盖
+- **流式输出**：SSE 协议，前端 `fetch` + `getReader()` 打字机式渲染
+- **ACTION 机制**：AI 在回复中嵌入 `<<<ACTION>>>{json}<<<END_ACTION>>>` 块，流结束后批量解析并执行
+- **5 种动作**：`create_value_domain` / `create_capability` / `create_scenario` / `create_epc_process` / `create_chain`
+- **执行层**：`src/lib/copilot/chat-actions.ts` — 解析 ACTION 块，调用 Zustand store 方法执行建模
+- **参考文档**：支持上传 Word/PDF/Excel/TXT/Markdown/CSV，解析后注入 AI Prompt
+- **面板边界**：`h-screen overflow-hidden`，超出部分滚动查看
 
 ### 9. 建模手册生成
 - Markdown 格式输出
@@ -146,6 +194,43 @@ src/
 - **API**：POST /api/reference-documents/upload + DELETE + POST extract-entities
 - **安全**：文档仅存浏览器 localStorage，不上传云端
 
+### 14. 四类服务接入方式 (Service Access Modes)
+
+本体建模工具提供 4 种接入方式，入口卡片位于首页落地页：
+
+#### 14.1 Web UI
+- **入口**：`/tool`（建模工作台）
+- **组件**：`src/components/ontology/modeling-workspace.tsx`
+- **能力**：完整的图形化建模界面，含 AI Copilot 对话面板、EPC 步骤表格、业务链树
+
+#### 14.2 MCP Server
+- **入口**：`packages/ontology-mcp/src/index.ts`（Stdio transport）
+- **配置**：`.mcp.json` — 指向项目相对路径
+- **启动**：`pnpm tsx packages/ontology-mcp/src/index.ts`
+- **工具**：项目工具（list/get/create/export）+ 业务链工具（价值域/能力/场景/EPC）+ 分析工具
+- **资源**：项目数据只读资源
+- **提示词**：建模 Copilot 提示词模板
+- **依赖**：`@modelcontextprotocol/sdk`
+
+#### 14.3 CLI
+- **入口**：`src/cli/index.ts`（`pnpm ontology <command>`）
+- **依赖**：零外部依赖，纯 Node.js `fetch`
+- **命令**：
+  - `ontology projects` — 列出所有项目
+  - `ontology project <id>` — 查看项目详情
+  - `ontology metadata` — 获取元数据列表
+  - `ontology generate` — AI 生成模型建议
+  - `ontology template` — 下载 Excel 模板
+  - `ontology skills` — 列出 Agent 技能
+  - `ontology sync` — HR 同步状态
+  - `ontology help` — 帮助信息
+
+#### 14.4 Agent Skill API
+- **入口**：`POST /api/agent/skills/execute`
+- **GET**：返回所有可用操作列表（12 种）
+- **操作**：`list_projects` / `get_project` / `list_metadata` / `ai_generate` / `ai_chat` / `create_model` / `excel_template` / `export_manifest` / `list_skills` / `execute_skill` / `hr_sync_status` / `hr_sync_trigger`
+- **统一后端**：Skill / MCP / CLI 三种方式最终都通过此 API 或直接调用 Web API 路由
+
 ## 开发命令
 
 ```bash
@@ -163,6 +248,14 @@ pnpm start
 
 # 类型检查
 npx tsc --noEmit
+
+# CLI 工具
+pnpm ontology help          # 帮助
+pnpm ontology projects      # 列出项目
+pnpm ontology metadata      # 元数据列表
+
+# MCP Server
+pnpm tsx packages/ontology-mcp/src/index.ts
 ```
 
 ## 状态管理
@@ -196,6 +289,15 @@ deleteMetadata(metadataId);
 addStateMachine(stateMachine);
 updateStateMachine(smId, stateMachine);
 deleteStateMachine(smId);
+
+// 业务链操作（AI Copilot ACTION 执行的目标方法）
+addValueDomain({ name, nameEn, description });
+addCapability(parentId, { name, nameEn, description });
+addScenario(parentId, { name, nameEn, description });
+addEpcProcess(parentId, { name, nameEn, description });
+
+// 项目导出
+exportProject();
 
 // ... 其他模型操作类似
 ```
@@ -318,6 +420,45 @@ GET /api/agent-semantic-layer
 ```
 返回完整 AgentSemanticLayer JSON（intents/terms/relations/recoveries/policies/mappings + metadata.coverage 统计）。
 
+### AI 对话（SSE 流式）
+```
+POST /api/chat
+```
+SSE 流式对话，使用豆包 Seed 2.0 Pro 模型。AI 回复中嵌入 `<<<ACTION>>>` 块，前端解析后执行建模操作。
+
+**请求体**:
+```json
+{
+  "messages": [{ "role": "user", "content": "创建一个生产管理价值域" }],
+  "projectContext": { ... },
+  "referenceDocuments": [{ "name": "需求文档.docx", "content": "..." }]
+}
+```
+
+**返回**: `text/event-stream`，每行 `data: {"content":"..."}`
+
+### Agent Skill 执行
+```
+GET  /api/agent/skills/execute          # 返回12种可用操作列表
+POST /api/agent/skills/execute          # 执行指定操作
+```
+
+**请求体**:
+```json
+{
+  "operation": "list_projects",
+  "params": {}
+}
+```
+
+**支持的操作**: list_projects / get_project / list_metadata / ai_generate / ai_chat / create_model / excel_template / export_manifest / list_skills / execute_skill / hr_sync_status / hr_sync_trigger
+
+### Excel 导出
+```
+POST /api/export/xlsx-from-manifest
+```
+基于 manifest 导出 Excel，所有 Sheet 表头为中文名称，Sheet 名含字母前缀+中文（如 `A-业务价值域`、`E1-实体`）。
+
 ## 类型定义
 
 所有类型定义位于 `src/types/ontology.ts`，主要包括：
@@ -365,10 +506,15 @@ coze start
 
 ## 注意事项
 
-1. 端口固定为 5000，不可修改
+1. 端口固定为 5000（通过 `DEPLOY_RUN_PORT` 环境变量读取），不可修改
 2. 使用 pnpm 作为包管理器，禁止使用 npm 或 yarn
 3. 所有状态数据自动保存在浏览器 localStorage
 4. 导出的 JSON 可用于导入恢复项目
+5. AI 模型默认为豆包 Seed 2.0 Pro，可通过 `CHAT_MODEL` 环境变量覆盖
+6. Excel 导入/导出 Sheet 名格式：字母前缀+中文（如 `E1-实体`），导入时自动去除前缀
+7. Excel 导出表头为中文，导入时自动归一化中文表头到英文 key
+8. MCP Server 配置在 `.mcp.json`，CLI 入口在 `package.json` 的 `bin` 字段
+9. ontology-store.ts 为内联实现（4214行），不依赖外部 store-adapter
 
 ## 相关文档
 
