@@ -26,7 +26,9 @@
     "test:phase3": "vitest run tests/unit/business-epc-linter.spec.ts tests/unit/business-epc-linter-store.spec.ts tests/unit/excel-schema.spec.ts tests/unit/excel-export.spec.ts tests/unit/excel-import.spec.ts tests/unit/ai-draft.spec.ts tests/unit/ai-draft-store.spec.ts tests/unit/generate-module-draft-route.spec.ts tests/integration/warning-center.spec.tsx tests/integration/ai-draft-fill.spec.tsx tests/e2e/warning-center.e2e.spec.ts tests/e2e/excel-import-export.e2e.spec.ts",
     "test:phase4": "vitest run tests/unit/legacy-audit.spec.ts tests/unit/legacy-entrypoints-audit.spec.ts tests/unit/legacy-removal-store.spec.ts tests/unit/legacy-migration.spec.ts tests/unit/business-scenario-migration.spec.ts tests/unit/compile-simplified-chain.spec.ts tests/unit/manifest-manufacturing-golden.spec.ts",
     "test:phase:all": "pnpm run test:phase1 && pnpm run test:phase1.5 && pnpm run test:phase2 && pnpm run test:phase3 && pnpm run test:phase4",
-    "ci:check": "pnpm run lint && pnpm run ts-check && pnpm run test:unit && pnpm run test:integration && pnpm run test:e2e:smoke && pnpm run test:phase4"
+    "ci:check": "pnpm run lint && pnpm run ts-check && pnpm run test:unit && pnpm run test:integration && pnpm run test:e2e:smoke && pnpm run test:phase4",
+    "lint:build": "eslint . --quiet",
+    "validate": "pnpm run --parallel '/^(ts-check|lint:build)$/'"
   },
   "dependencies": {
     "@ant-design/icons": "^6.2.5",
