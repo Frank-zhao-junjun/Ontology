@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "ontology-mcp": {
-      "url": "http://localhost:5000/api/mcp"
+      "url": "https://Ontology1.coze.site/api/mcp"
     }
   }
 }

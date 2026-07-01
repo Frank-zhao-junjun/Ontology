@@ -207,7 +207,7 @@ packages/
 - **HTTP 端点**：`POST /api/mcp`（Streamable HTTP transport，互联网可达）
 - **本地入口**：`packages/ontology-mcp/src/index.ts`（Stdio transport，本地开发）
 - **服务工厂**：`src/lib/mcp/server.ts`（createMcpServer，tools + resources + prompts）
-- **配置**：`.mcp.json` — HTTP URL 模式（部署后直接配 URL）
+- **配置**：`.mcp.json` — HTTP URL 模式（`https://Ontology1.coze.site/api/mcp`）
 - **启动（本地）**：`pnpm tsx packages/ontology-mcp/src/index.ts`
 - **工具**：8 个（list_projects, get_project, create_project, export_project, add_value_domain, add_capability, add_scenario, add_epc_process）
 - **资源**：4 个只读项目资源

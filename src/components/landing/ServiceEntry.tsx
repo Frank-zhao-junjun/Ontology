@@ -153,13 +153,13 @@ const ServiceEntry = () => {
             MCP Server 配置
           </h3>
           <p className="text-sm text-[#171717]/60 mb-4">
-            将以下配置添加到你的 MCP 客户端（Claude Desktop / Cursor）配置文件中，部署后替换为你的域名：
+            将以下配置添加到你的 MCP 客户端（Claude Desktop / Cursor）配置文件中：
           </p>
           <div className="bg-[#1a1a1a] rounded-[6px] p-4 overflow-x-auto">
             <pre className="text-xs text-[#e7e5e4] font-mono leading-relaxed">{`{
   "mcpServers": {
     "ontology-mcp": {
-      "url": "https://你的域名.coze.site/api/mcp"
+      "url": "https://Ontology1.coze.site/api/mcp"
     }
   }
 }`}</pre>

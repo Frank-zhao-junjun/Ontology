@@ -223,7 +223,7 @@ MCP Server 部署后通过 `/api/mcp` 端点提供 HTTP transport，任何 MCP �
 {
   "mcpServers": {
     "ontology": {
-      "url": "https://你的域名.coze.site/api/mcp"
+      "url": "https://Ontology1.coze.site/api/mcp"
     }
   }
 }
@@ -231,14 +231,14 @@ MCP Server 部署后通过 `/api/mcp` 端点提供 HTTP transport，任何 MCP �
 
 **HTTP 模式（互联网可接入，部署后默认）**：
 
-部署后 MCP 端点为 `https://你的域名.coze.site/api/mcp`，任何 MCP 客户端均可通过 URL 接入：
+部署后 MCP 端点为 `https://Ontology1.coze.site/api/mcp`，任何 MCP 客户端均可通过 URL 接入：
 
 ```json
 // Cursor / Claude Desktop / 任意 MCP Client 配置
 {
   "mcpServers": {
     "ontology": {
-      "url": "https://你的域名.coze.site/api/mcp"
+      "url": "https://Ontology1.coze.site/api/mcp"
     }
   }
 }
