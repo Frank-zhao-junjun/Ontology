@@ -5,9 +5,31 @@
   "bin": {
     "ontology": "./src/cli/index.ts"
   },
+  "ontology-cli": {
+    "name": "ontology-cli",
+    "version": "1.0.0",
+    "description": "Ontology Modeling CLI - 命令行本体建模工具",
+    "bin": {
+      "ontology-cli": "./dist/cli/index.js"
+    },
+    "keywords": [
+      "ontology",
+      "cli",
+      "modeling",
+      "mcp",
+      "agent"
+    ],
+    "files": [
+      "dist/cli/**/*"
+    ],
+    "engines": {
+      "node": ">=18.0.0"
+    }
+  },
   "scripts": {
     "ontology": "tsx src/cli/index.ts",
     "build": "bash ./scripts/build.sh",
+    "build:cli": "tsup src/cli/index.ts --format esm --dts --out-dir dist/cli",
     "dev": "bash ./scripts/dev.sh",
     "preinstall": "npx only-allow pnpm",
     "lint": "eslint",
@@ -35,6 +57,7 @@
     "@aws-sdk/client-s3": "^3.958.0",
     "@aws-sdk/lib-storage": "^3.958.0",
     "@hookform/resolvers": "^5.2.2",
+    "@inquirer/prompts": "^8.5.2",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",

@@ -276,8 +276,17 @@ pnpm ontology metadata
 # AI 生成五大模型建议
 pnpm ontology generate 物料 Material
 
+# 导出项目 JSON 到文件
+pnpm ontology export <projectId> ./my-project.json
+
+# 导入 Excel 文件
+pnpm ontology import ./ontology-template.xlsx
+
 # 下载 Excel 导入模板
 pnpm ontology template
+
+# AI 对话（SSE 流式输出）
+pnpm ontology chat "帮我创建一个生产管理价值域"
 
 # 列出 Agent 技能
 pnpm ontology skills
@@ -285,8 +294,23 @@ pnpm ontology skills
 # 触发 HR 同步
 pnpm ontology sync feishu
 
+# 交互式菜单模式
+pnpm ontology interactive
+
 # 帮助信息
 pnpm ontology help
+```
+
+**NPM 包发布**：CLI 已配置为独立 npm 包 `ontology-cli`，发布后可直接通过 `npx` 使用：
+
+```bash
+# 发布（在 packages/ontology-cli/ 目录下）
+cd packages/ontology-cli && npm publish
+
+# 使用（无需安装）
+npx ontology-cli projects
+npx ontology-cli chat "帮我创建一个生产管理价值域"
+npx ontology-cli interactive
 ```
 
 **连接地址**：默认连接 `https://Ontology1.coze.site`，可通过环境变量覆盖：

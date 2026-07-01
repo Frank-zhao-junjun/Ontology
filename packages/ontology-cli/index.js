@@ -1,29 +1,21 @@
 #!/usr/bin/env node
 /**
- * Ontology CLI — 本体建模命令行工具
+ * Ontology CLI — Standalone Build (no TypeScript, no tsx required)
  *
- * 用法:
- *   pnpm ontology <command> [options]
+ * This file is auto-generated from src/cli/index.ts.
+ * It can be published to npm as `ontology-cli` and run via `npx ontology-cli`.
+ *
+ * Usage:
  *   npx ontology-cli <command> [options]
- *
- * 命令:
- *   projects            列出所有项目
- *   project <id>        查看项目详情
- *   metadata            列出元数据字段
- *   generate <名称>     AI生成模型建议
- *   export <id>         导出项目JSON
- *   import <file>       导入Excel文件
- *   template            下载Excel模板
- *   chat [消息]         AI对话（SSE流式）
- *   skills [type]       列出Agent技能
- *   sync <source>       触发HR同步
- *   interactive         交互式菜单模式
- *   help                显示帮助
+ *   ontology-cli <command> [options]
  */
+
+import { select, input } from '@inquirer/prompts';
+import { existsSync, statSync, readFileSync, writeFileSync } from 'fs';
 
 const API_BASE = process.env.ONTOLOGY_API_BASE || 'https://Ontology1.coze.site';
 
-// ── Colors (no external deps) ──
+// ── Colors ──
 const c = {
   reset: '\x1b[0m',
   bold: '\x1b[1m',
@@ -34,16 +26,15 @@ const c = {
   blue: '\x1b[34m',
   cyan: '\x1b[36m',
   gray: '\x1b[90m',
-  magenta: '\x1b[35m',
 };
 
-function info(msg: string) { console.log(`${c.cyan}i${c.reset} ${msg}`); }
-function success(msg: string) { console.log(`${c.green}\u2713${c.reset} ${msg}`); }
-function error(msg: string) { console.error(`${c.red}\u2717${c.reset} ${msg}`); }
-function warn(msg: string) { console.log(`${c.yellow}!${c.reset} ${msg}`); }
+function info(msg) { console.log(`${c.cyan}i${c.reset} ${msg}`); }
+function success(msg) { console.log(`${c.green}\u2713${c.reset} ${msg}`); }
+function error(msg) { console.error(`${c.red}\u2717${c.reset} ${msg}`); }
+function warn(msg) { console.log(`${c.yellow}!${c.reset} ${msg}`); }
 
 // ── HTTP helper ──
-async function api(path: string, options: RequestInit = {}): Promise<any> {
+async function api(path, options = {}) {
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       ...options,
@@ -88,7 +79,7 @@ async function cmdProjects() {
   }
 }
 
-async function cmdProject(id: string) {
+async function cmdProject(id) {
   if (!id) { error('\u8bf7\u63d0\u4f9b\u9879\u76eeID'); return; }
   info(`\u6b63\u5728\u83b7\u53d6\u9879\u76ee ${id} ...`);
   const data = await api(`/api/projects/${id}`);
@@ -103,7 +94,7 @@ async function cmdProject(id: string) {
       for (const e of p.entities) {
         console.log(`  ${c.green}\u25cf${c.reset} ${e.name} (${e.nameEn || '-'}) [${e.role || 'entity'}]`);
         if (e.attributes?.length) {
-          console.log(`    ${c.dim}\u5c5e\u6027: ${e.attributes.map((a: any) => a.name).join(', ')}${c.reset}`);
+          console.log(`    ${c.dim}\u5c5e\u6027: ${e.attributes.map(a => a.name).join(', ')}${c.reset}`);
         }
       }
     }
@@ -134,7 +125,7 @@ async function cmdMetadata() {
   }
 }
 
-async function cmdGenerate(args: string[]) {
+async function cmdGenerate(args) {
   const entityName = args[0];
   if (!entityName) {
     error('\u7528\u6cd5: generate <\u5b9e\u4f53\u540d\u79f0> [\u5b9e\u4f53\u82f1\u6587\u540d]');
@@ -193,11 +184,11 @@ async function cmdGenerate(args: string[]) {
   }
 }
 
-async function cmdExport(args: string[]) {
+async function cmdExport(args) {
   const projectId = args[0];
   if (!projectId) {
     error('\u7528\u6cd5: export <\u9879\u76eeID> [\u8f93\u51fa\u6587\u4ef6\u8def\u5f84]');
-    console.log(`${c.dim}\u5148\u8fd0\u884c "pnpm ontology projects" \u67e5\u770b\u9879\u76eeID${c.reset}`);
+    console.log(`${c.dim}\u5148\u8fd0\u884c "ontology-cli projects" \u67e5\u770b\u9879\u76eeID${c.reset}`);
     return;
   }
   const outputPath = args[1] || `project-${projectId}-${Date.now()}.json`;
@@ -205,28 +196,26 @@ async function cmdExport(args: string[]) {
   const data = await api(`/api/projects/${projectId}`);
   if (data.success !== false && (data.data || data)) {
     const projectData = data.data || data;
-    const fs = await import('fs');
     const json = JSON.stringify(projectData, null, 2);
-    fs.writeFileSync(outputPath, json, 'utf-8');
+    writeFileSync(outputPath, json, 'utf-8');
     success(`\u9879\u76ee\u5df2\u5bfc\u51fa: ${outputPath} (${(json.length / 1024).toFixed(1)} KB)`);
   } else {
     error(data.error || '\u5bfc\u51fa\u5931\u8d25');
   }
 }
 
-async function cmdImport(args: string[]) {
+async function cmdImport(args) {
   const filePath = args[0];
   if (!filePath) {
     error('\u7528\u6cd5: import <Excel\u6587\u4ef6\u8def\u5f84>');
-    console.log(`${c.dim}\u5148\u8fd0\u884c "pnpm ontology template" \u4e0b\u8f7d\u6a21\u677f${c.reset}`);
+    console.log(`${c.dim}\u5148\u8fd0\u884c "ontology-cli template" \u4e0b\u8f7d\u6a21\u677f${c.reset}`);
     return;
   }
-  const fs = await import('fs');
-  if (!fs.existsSync(filePath)) {
+  if (!existsSync(filePath)) {
     error(`\u6587\u4ef6\u4e0d\u5b58\u5728: ${filePath}`);
     return;
   }
-  const stat = fs.statSync(filePath);
+  const stat = statSync(filePath);
   if (stat.size > 5 * 1024 * 1024) {
     error('\u6587\u4ef6\u8d85\u8fc7 5MB \u4e0a\u9650');
     return;
@@ -234,7 +223,7 @@ async function cmdImport(args: string[]) {
   info(`\u6b63\u5728\u5bfc\u5165 ${filePath} (${(stat.size / 1024).toFixed(1)} KB) ...`);
 
   try {
-    const fileBuffer = fs.readFileSync(filePath);
+    const fileBuffer = readFileSync(filePath);
     const blob = new Blob([fileBuffer]);
     const formData = new FormData();
     formData.append('file', blob, filePath.split('/').pop() || 'upload.xlsx');
@@ -292,11 +281,11 @@ async function cmdImport(args: string[]) {
   }
 }
 
-async function cmdChat(args: string[]) {
+async function cmdChat(args) {
   const message = args.join(' ').trim();
   if (!message) {
     error('\u7528\u6cd5: chat <\u6d88\u606f\u5185\u5bb9>');
-    console.log(`${c.dim}\u793a\u4f8b: pnpm ontology chat "\u5e2e\u6211\u521b\u5efa\u4e00\u4e2a\u751f\u4ea7\u7ba1\u7406\u4ef7\u503c\u57df"${c.reset}`);
+    console.log(`${c.dim}\u793a\u4f8b: ontology-cli chat "\u5e2e\u6211\u521b\u5efa\u4e00\u4e2a\u751f\u4ea7\u7ba1\u7406\u4ef7\u503c\u57df"${c.reset}`);
     return;
   }
 
@@ -306,9 +295,7 @@ async function cmdChat(args: string[]) {
   try {
     const res = await fetch(`${API_BASE}/api/chat`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messages: [{ role: 'user', content: message }],
       }),
@@ -357,7 +344,6 @@ async function cmdChat(args: string[]) {
 
     console.log(`\n${c.dim}\u2500`.repeat(60) + c.reset);
 
-    // Check for ACTION blocks
     const actionMatches = fullContent.match(/<<<ACTION>>>([\s\S]*?)<<<END_ACTION>>>/g);
     if (actionMatches) {
       console.log(`\n${c.bold}${c.green}\u2713 AI \u751f\u6210\u4e86 ${actionMatches.length} \u4e2a\u5efa\u6a21\u52a8\u4f5c${c.reset}`);
@@ -386,15 +372,14 @@ async function cmdTemplate() {
     if (!res.ok) { error(`\u4e0b\u8f7d\u5931\u8d25: HTTP ${res.status}`); return; }
     const buf = Buffer.from(await res.arrayBuffer());
     const filename = `ontology-template-${Date.now()}.xlsx`;
-    const fs = await import('fs');
-    fs.writeFileSync(filename, buf);
+    writeFileSync(filename, buf);
     success(`\u6a21\u677f\u5df2\u4fdd\u5b58: ${filename} (${(buf.length / 1024).toFixed(1)} KB)`);
   } catch (e) {
     error(`\u4e0b\u8f7d\u5931\u8d25: ${e instanceof Error ? e.message : '\u672a\u77e5\u9519\u8bef'}`);
   }
 }
 
-async function cmdSkills(type?: string) {
+async function cmdSkills(type) {
   info('\u6b63\u5728\u83b7\u53d6\u6280\u80fd\u5217\u8868...');
   const query = type ? `?type=${type}` : '';
   const data = await api(`/api/agent/skills${query}`);
@@ -424,7 +409,7 @@ async function cmdSkills(type?: string) {
   }
 }
 
-async function cmdSync(source?: string) {
+async function cmdSync(source) {
   if (!source) {
     error('\u7528\u6cd5: sync <source> (feishu|dingtalk|wecom|sap|workday|custom)');
     return;
@@ -446,8 +431,8 @@ function cmdHelp() {
 ${c.bold}${c.cyan}Ontology CLI \u2014 \u672c\u4f53\u5efa\u6a21\u547d\u4ee4\u884c\u5de5\u5177${c.reset}
 
 ${c.bold}\u7528\u6cd5:${c.reset}
-  pnpm ontology <command> [options]
   npx ontology-cli <command> [options]
+  pnpm ontology <command> [options]
 
 ${c.bold}\u547d\u4ee4:${c.reset}
   ${c.green}projects${c.reset}              \u5217\u51fa\u6240\u6709\u9879\u76ee
@@ -468,34 +453,32 @@ ${c.bold}\u73af\u5883\u53d8\u91cf:${c.reset}
 
 ${c.bold}\u793a\u4f8b:${c.reset}
   ${c.dim}# \u5217\u51fa\u6240\u6709\u9879\u76ee${c.reset}
-  pnpm ontology projects
+  npx ontology-cli projects
 
   ${c.dim}# AI\u751f\u6210\u7269\u6599\u5b9e\u4f53\u7684\u6a21\u578b\u5efa\u8bae${c.reset}
-  pnpm ontology generate \u7269\u6599 Material
+  npx ontology-cli generate \u7269\u6599 Material
 
   ${c.dim}# \u5bfc\u51fa\u9879\u76eeJSON${c.reset}
-  pnpm ontology export proj-123 ./my-project.json
+  npx ontology-cli export proj-123 ./my-project.json
 
   ${c.dim}# \u5bfc\u5165Excel${c.reset}
-  pnpm ontology import ./ontology-template-123.xlsx
+  npx ontology-cli import ./ontology-template-123.xlsx
 
   ${c.dim}# AI\u5bf9\u8bdd${c.reset}
-  pnpm ontology chat "\u5e2e\u6211\u521b\u5efa\u4e00\u4e2a\u751f\u4ea7\u7ba1\u7406\u4ef7\u503c\u57df"
+  npx ontology-cli chat "\u5e2e\u6211\u521b\u5efa\u4e00\u4e2a\u751f\u4ea7\u7ba1\u7406\u4ef7\u503c\u57df"
 
   ${c.dim}# \u4ea4\u4e92\u6a21\u5f0f${c.reset}
-  pnpm ontology interactive
+  npx ontology-cli interactive
 `);
 }
 
 // ── Interactive Mode ──
 async function cmdInteractive() {
-  const { select, input, confirm } = await import('@inquirer/prompts');
-
   console.log(`\n${c.bold}${c.cyan}Ontology CLI \u2014 \u4ea4\u4e92\u6a21\u5f0f${c.reset}\n`);
 
   let running = true;
   while (running) {
-    const action = await select<string>({
+    const action = await select({
       message: '\u8bf7\u9009\u62e9\u64cd\u4f5c',
       choices: [
         { name: '\u6d4f\u89c8\u9879\u76ee\u5217\u8868', value: 'projects' },
@@ -526,9 +509,9 @@ async function cmdInteractive() {
             warn('\u6682\u65e0\u9879\u76ee');
             break;
           }
-          const projectId = await select<string>({
+          const projectId = await select({
             message: '\u9009\u62e9\u9879\u76ee',
-            choices: projects.map((p: any) => ({
+            choices: projects.map(p => ({
               name: `${p.name} (${p.id?.slice(0, 8)}...)`,
               value: p.id,
             })),
@@ -557,9 +540,9 @@ async function cmdInteractive() {
             warn('\u6682\u65e0\u9879\u76ee');
             break;
           }
-          const projectId = await select<string>({
+          const projectId = await select({
             message: '\u9009\u62e9\u8981\u5bfc\u51fa\u7684\u9879\u76ee',
-            choices: projects.map((p: any) => ({
+            choices: projects.map(p => ({
               name: `${p.name} (${p.id?.slice(0, 8)}...)`,
               value: p.id,
             })),
@@ -601,7 +584,7 @@ async function cmdInteractive() {
           break;
       }
     } catch (e) {
-      if (e instanceof Error && e.message.includes('exit')) {
+      if (e instanceof Error && (e.message.includes('exit') || e.message.includes('AbortError'))) {
         running = false;
         break;
       }
@@ -660,7 +643,7 @@ async function main() {
       break;
     default:
       error(`\u672a\u77e5\u547d\u4ee4: ${command}`);
-      console.log(`\u8fd0\u884c ${c.dim}pnpm ontology help${c.reset} \u67e5\u770b\u53ef\u7528\u547d\u4ee4`);
+      console.log(`\u8fd0\u884c ${c.dim}ontology-cli help${c.reset} \u67e5\u770b\u53ef\u7528\u547d\u4ee4`);
       process.exit(1);
   }
 }

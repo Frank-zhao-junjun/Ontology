@@ -1,0 +1,32 @@
+{
+  "name": "ontology-cli",
+  "version": "1.0.0",
+  "description": "Ontology Modeling CLI - 命令行本体建模工具",
+  "type": "module",
+  "bin": {
+    "ontology-cli": "./index.js"
+  },
+  "scripts": {
+    "start": "node ./index.js"
+  },
+  "keywords": [
+    "ontology",
+    "cli",
+    "modeling",
+    "mcp",
+    "agent",
+    "domain-driven-design"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@inquirer/prompts": "^8.5.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ]
+}

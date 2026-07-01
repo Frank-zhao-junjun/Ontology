@@ -219,15 +219,20 @@ packages/
 
 #### 14.3 CLI
 - **入口**：`src/cli/index.ts`（`pnpm ontology <command>`）
-- **依赖**：零外部依赖，纯 Node.js `fetch`
+- **NPM 包**：`packages/ontology-cli/`（发布为 `ontology-cli`，支持 `npx ontology-cli`）
+- **依赖**：`@inquirer/prompts`（交互模式），纯 Node.js `fetch`
 - **命令**：
   - `ontology projects` — 列出所有项目
   - `ontology project <id>` — 查看项目详情
   - `ontology metadata` — 获取元数据列表
   - `ontology generate` — AI 生成模型建议
+  - `ontology export <id> [path]` — 导出项目 JSON
+  - `ontology import <file>` — 导入 Excel 文件
   - `ontology template` — 下载 Excel 模板
+  - `ontology chat <消息>` — AI 对话（SSE 流式）
   - `ontology skills` — 列出 Agent 技能
-  - `ontology sync` — HR 同步状态
+  - `ontology sync <source>` — HR 同步状态
+  - `ontology interactive` — 交互式菜单模式（inquirer）
   - `ontology help` — 帮助信息
 
 #### 14.4 Agent Skill API
@@ -258,6 +263,10 @@ npx tsc --noEmit
 pnpm ontology help          # 帮助
 pnpm ontology projects      # 列出项目
 pnpm ontology metadata      # 元数据列表
+pnpm ontology export <id>   # 导出项目 JSON
+pnpm ontology import <file> # 导入 Excel
+pnpm ontology chat "消息"   # AI 对话
+pnpm ontology interactive   # 交互模式
 
 # MCP Server
 pnpm tsx packages/ontology-mcp/src/index.ts
