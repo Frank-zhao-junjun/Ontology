@@ -18,7 +18,7 @@
  *   help              显示帮助
  */
 
-const API_BASE = process.env.ONTOLOGY_API_BASE || `http://localhost:${process.env.DEPLOY_RUN_PORT || 5000}`;
+const API_BASE = process.env.ONTOLOGY_API_BASE || 'https://Ontology1.coze.site';
 
 // ── Colors (no external deps) ──
 const c = {
@@ -269,8 +269,7 @@ ${c.bold}命令:${c.reset}
   ${c.green}help${c.reset}                  显示此帮助信息
 
 ${c.bold}环境变量:${c.reset}
-  ${c.dim}ONTOLOGY_API_BASE${c.reset}   API基础地址 (默认: http://localhost:5000)
-  ${c.dim}DEPLOY_RUN_PORT${c.reset}     服务端口 (默认: 5000)
+  ${c.dim}ONTOLOGY_API_BASE${c.reset}   API基础地址 (默认: https://Ontology1.coze.site)
 
 ${c.bold}示例:${c.reset}
   ${c.dim}# 列出所有项目${c.reset}
