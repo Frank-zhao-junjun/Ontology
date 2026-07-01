@@ -1,17 +1,18 @@
 # 模型导出为 Skill 包 — 功能规格说明书
 
 > 状态：待确认  
-> 相关概念：第二个 Skill（已建好的本体模型作为 Agent 可消费的产物）
+> 相关概念：第二个 Skill（已建好的本体模型作为 Agent 可消费的产物）  
+> 核心约束：**不强制 confirmed 状态，任何状态均可导出，但必须在产物中标注每个本体对象的状态**
 
 ---
 
 ## 1. 背景与目标
 
 ### 1.1 背景
-当前建模工具在模型确认后支持 4 种导出格式：JSON / YAML / Excel / Markdown。这些格式主要用于人工阅读、备份、协作或二次开发，但**无法被 Agent 直接理解和消费**。
+当前建模工具支持 4 种导出格式：JSON / YAML / Excel / Markdown。这些格式主要用于人工阅读、备份、协作或二次开发，但**无法被 Agent 直接理解和消费**。
 
 ### 1.2 目标
-新增第 5 种导出格式 **Skill 包（ZIP）**，将已确认的本体模型封装为 Agent 可直接加载的领域知识技能。用户导出后，可导入到任意支持 Skill 的 Agent 框架，使 Agent 具备对该领域模型的理解、查询和推理能力。
+新增第 5 种导出格式 **Skill 包（ZIP）**，将本体模型封装为 Agent 可直接加载的领域知识技能。用户导出后，可导入到任意支持 Skill 的 Agent 框架，使 Agent 具备对该领域模型的理解、查询和推理能力。
 
 ### 1.3 与第一个 Skill 的区别
 
@@ -28,12 +29,13 @@
 ## 2. 用户故事
 
 ### US-1 业务人员导出模型给 Agent
-> 作为业务分析师，我在 UI 中完成了「离散制造」领域的本体建模并确认，希望导出为 Skill 包，交给 Agent 使用，让它能回答关于该领域模型的问题。
+> 作为业务分析师，我在 UI 中完成了「离散制造」领域的本体建模，希望导出为 Skill 包，交给 Agent 使用，让它能回答关于该领域模型的问题。
 
 **验收标准**：
-- 确认状态的模型才显示"导出为 Skill"选项
+- 任何状态的模型都可以导出为 Skill
 - 导出过程在 3 秒内完成
 - 下载的 ZIP 可被常见解压工具打开
+- 导出的文档中注明每个本体对象的状态
 
 ### US-2 Agent 消费导出的 Skill
 > 作为 Agent 开发者，我拿到了用户导出的 Skill ZIP，希望直接加载到 Agent 框架中，无需手动解析原始 JSON。
@@ -45,7 +47,7 @@
 - 内含 `README.md` 使用说明
 
 ### US-3 选择导出范围
-> 作为建模人员，我希望只导出部分已确认的模块（如只导出数据模型 + 规则模型），而不是整个项目。
+> 作为建模人员，我希望只导出部分模块（如只导出数据模型 + 规则模型），而不是整个项目。
 
 **验收标准**：
 - 导出界面提供范围选择：全部 / 仅数据模型 / 仅行为模型 / 仅规则模型 / 仅流程模型 / 仅事件模型
@@ -57,8 +59,9 @@
 
 ### 3.1 In Scope
 - UI 导出功能新增"Skill 包（ZIP）"选项
-- 仅允许状态为 `confirmed` 的模型导出
+- 任何状态的模型均可导出，但导出的文档和每个本体对象上需标注状态
 - 导出范围选择（全部/部分模型）
+- 支持 4 种生成方式：UI 点击导出、Agent 调用 MCP、Agent 调用 CLI、Agent 调用 Skill API
 - 后端生成 ZIP（skill.json + ontology.json + intents.json + README.md + examples/）
 - 下载接口：`POST /api/export/skill` 或 `GET /api/export/skill?projectId=xxx&scope=all`
 
@@ -121,7 +124,7 @@ ontology-model-skill/
 
 ### 4.2 ontology.json
 
-直接复用项目数据结构，但根据导出范围过滤。保留核心模型字段：
+直接复用项目数据结构，但根据导出范围过滤。每个本体对象保留原始状态字段（如 `status`、`confirmed`、`version` 等），并在 `metadata` 中汇总整体状态。
 
 ```json
 {
@@ -131,11 +134,30 @@ ontology-model-skill/
     "domain": "离散制造",
     "description": "...",
     "exportedAt": "...",
-    "scope": ["data", "behavior", "rule", "process", "event"]
+    "scope": ["data", "behavior", "rule", "process", "event"],
+    "projectStatus": "draft",
+    "version": "1.0.0",
+    "statusAnnotation": "本 Skill 由 draft 状态项目导出，部分对象可能尚未确认"
   },
   "dataModel": {
-    "entities": [...],
-    "attributes": [...],
+    "entities": [
+      {
+        "id": "ent-xxx",
+        "name": "物料",
+        "nameEn": "Material",
+        "status": "confirmed",
+        "...": "..."
+      }
+    ],
+    "attributes": [
+      {
+        "id": "attr-xxx",
+        "name": "物料编码",
+        "nameEn": "materialCode",
+        "status": "draft",
+        "...": "..."
+      }
+    ],
     "relations": [...]
   },
   "behaviorModel": {
@@ -225,6 +247,12 @@ ontology-model-skill/
 - 不涉及模型外的业务判断
 - 不执行写操作
 
+## 状态说明
+本 Skill 从 `{projectStatus}` 状态的项目导出。对象级状态含义如下：
+- `confirmed`：已确认对象，可放心使用
+- `draft` / `review`：未最终确认，使用时需谨慎
+- `unknown`：源数据中未记录状态，已按默认处理
+
 ## 示例查询
 见 examples/query-examples.md
 ```
@@ -234,6 +262,8 @@ ontology-model-skill/
 面向最终用户的说明文件，包含：
 - Skill 简介
 - 适用场景
+- 导出时的项目状态说明
+- 对象状态标注说明（draft / confirmed / unknown 等含义）
 - 快速开始（如何加载到常见 Agent 框架）
 - 文件说明
 - 示例查询
@@ -271,9 +301,11 @@ ontology-model-skill/
           用户确认后生成并下载 ZIP
 ```
 
-### 5.3 状态限制
-- 只有状态为 `confirmed` 的模型才能导出为 Skill
-- 未确认时，Skill 选项置灰，Tooltip 提示："请将模型确认后再导出为 Skill"
+### 5.3 状态标注
+- 任何状态的项目均可导出为 Skill，不强制要求 `confirmed`
+- 导出时在每个本体对象上保留并标注其原始状态
+- README.md 和 SKILL.md 中需说明导出时的整体项目状态
+- UI 中 Skill 选项始终可用，导出前给出提示："当前项目为 {status} 状态，导出的 Skill 将包含未确认对象"
 
 ### 5.4 视觉规范
 - 遵循现有工作台设计风格
@@ -316,14 +348,16 @@ POST /api/export/skill
 
 失败：
 ```json
-{ "success": false, "error": "模型未确认，无法导出为 Skill" }
+{ "success": false, "error": "项目不存在或导出范围为空" }
 ```
+
+**说明**：导出不再校验 `confirmed` 状态，但会在响应头 `X-Project-Status` 和 ZIP 内的 `skill.json` / `ontology.json` 中注明项目状态。
 
 ---
 
 ## 6.5 Agent 通过 MCP / CLI / Skill API 导出模型
 
-除了 UI 导出，Agent 通过 MCP、CLI、Skill API 接入建模能力后，也应能产出 5 种格式之一的本体模型制品。5 种格式统一为：`json` | `yaml` | `excel` | `md` | `skill`。
+除了 UI 导出，Agent 通过 MCP、CLI、Skill API 接入建模能力后，也应能产出 5 种格式之一的本体模型制品。5 种格式统一为：`json` | `yaml` | `excel` | `md` | `skill`。4 种生成方式（UI / MCP / CLI / Skill API）行为一致，均不强制 `confirmed` 状态，但都会在产物中标注状态。
 
 ### 6.5.1 CLI
 
@@ -349,7 +383,7 @@ ontology export <projectId> ./my-skill.zip --format=skill --scope=data
 - `excel`：调用 `/api/export/xlsx-from-manifest`，写入 `.xlsx`
 - `skill`：调用 `/api/export/skill`，写入 ZIP
 - 未指定 `--format` 时默认 `json`，保持向后兼容
-- 导出 `skill` 时项目状态必须为 `confirmed`
+- 任何状态的项目均可导出；导出文件内会标注对象状态
 
 ### 6.5.2 MCP Server
 
@@ -404,7 +438,7 @@ ontology export <projectId> ./my-skill.zip --format=skill --scope=data
 **设计原则**：
 - 大文件（excel/skill）返回下载 URL，避免塞爆 MCP 消息体
 - 小文件（json/yaml/md）直接返回内容，便于 Agent 立即使用
-- 项目状态不是 `confirmed` 时返回错误，明确提示 Agent 先确认模型
+- 不强制项目状态为 `confirmed`，但返回内容中需包含 `projectStatus` 和对象级状态标注
 
 ### 6.5.3 Skill API
 
@@ -425,7 +459,8 @@ ontology export <projectId> ./my-skill.zip --format=skill --scope=data
 - 与 MCP `export_project` 工具对齐
 - `json`/`yaml`/`md`：返回 `content` 字段
 - `excel`/`skill`：返回 `downloadUrl` 字段
-- 错误码统一：未确认返回 `MODEL_NOT_CONFIRMED`
+- 错误码统一：项目不存在返回 `PROJECT_NOT_FOUND`，导出范围为空返回 `EMPTY_SCOPE`
+- 不强制 `confirmed` 状态，响应中返回 `projectStatus`
 
 ### 6.5.4 统一格式对照
 
@@ -442,7 +477,7 @@ ontology export <projectId> ./my-skill.zip --format=skill --scope=data
 ## 7. 数据模型映射
 
 ### 7.1 状态字段
-项目对象中需要新增或复用状态字段：
+项目对象和每个本体对象上需要保留状态字段。若当前不存在，建议补充：
 
 ```typescript
 interface OntologyProject {
@@ -451,9 +486,16 @@ interface OntologyProject {
   confirmedAt?: string;
   version?: string;
 }
+
+interface Entity {
+  // ... 已有字段
+  status?: 'draft' | 'confirmed';
+}
+
+// 属性、关系、状态机、规则、事件等对象同理
 ```
 
-如果当前已存在"确认/归档"相关功能（AGENTS.md 中提到 Phase 1.5 S14 模块确认/归档 UI），则直接复用该状态字段。
+导出时：**不校验状态，只保留并标注状态**。如果对象上没有状态字段，默认标注为 `unknown` 或留空。
 
 ### 7.2 导出范围过滤逻辑
 
@@ -473,14 +515,15 @@ interface OntologyProject {
 ### 8.1 导出前置校验
 1. projectId 必须存在
 2. 项目必须存在
-3. 项目状态必须为 `confirmed`
-4. 根据 scope 至少包含一个非空模型
+3. 根据 scope 至少包含一个非空模型
+4. **不校验**项目状态，但需在导出产物中标注状态
 
 ### 8.2 数据完整性校验
 1. 导出的 entities 必须有 name 和 nameEn
 2. 导出的 relations 必须引用存在的 entity
 3. 状态机的 states 必须包含初始状态和至少一个终止状态
 4. 规则必须有 condition 和 message
+5. 每个导出的对象必须保留 `status` 字段；缺失时标记为 `unknown`
 
 ---
 
@@ -488,7 +531,7 @@ interface OntologyProject {
 
 ### Phase 1：后端 API（预计 1-2 轮迭代）
 1. 新建 `src/app/api/export/skill/route.ts`
-2. 实现项目状态校验
+2. 移除状态校验，改为状态标注
 3. 实现 scope 过滤逻辑
 4. 使用 JSZip 生成 ZIP
 5. 写入 skill.json / SKILL.md / README.md / ontology.json / intents.json / examples/ 
@@ -498,7 +541,7 @@ interface OntologyProject {
 1. 在导出功能处新增"Skill 包（ZIP）"选项
 2. 新增范围选择弹窗/下拉
 3. 调用 POST /api/export/skill 并触发下载
-4. 未确认状态置灰并提示
+4. 导出前提示当前项目状态，并在产物中标注对象状态
 
 ### Phase 3：Agent 导出能力扩展（预计 1 轮迭代）
 1. CLI `export` 命令支持 `--format` 参数
@@ -521,37 +564,38 @@ interface OntologyProject {
 - ZIP 文件生成
 
 ### 10.2 接口测试
-- `POST /api/export/skill` 正常流程
-- 未确认项目返回 400
+- `POST /api/export/skill` 正常流程（draft / confirmed 均可）
 - 无效 scope 返回 400
 - ZIP 内容完整性验证
+- 导出产物中包含正确的对象状态标注
 
 ### 10.3 UI 测试
-- Skill 选项可见性
-- 未确认状态禁用
+- Skill 选项始终可见
+- 导出前状态提示正确
 - 范围选择正确传递
+- 导出产物状态标注正确
 
 ---
 
 ## 11. 风险与依赖
 
 ### 11.1 风险
-1. **模型状态字段缺失**：如果当前项目没有 `confirmed` 状态字段，需要先补充
+1. **模型状态字段缺失**：如果当前对象没有 `status` 字段，导出时默认标记为 `unknown`，不影响功能
 2. **模型数据量大**：大模型导出 ZIP 可能耗时较长，需要设置合理的超时
 3. **Agent 框架标准不统一**：不同 Agent 对 Skill 包格式要求不同，本次采用通用 JSON 结构
 
 ### 11.2 依赖
-1. 需要确认 UI 中"确认"状态的具体实现位置
-2. 需要确认导出功能当前所在的组件
-3. 需要确认 Agent 导出能力是否和 UI 导出能力在同一版本交付
+1. 需要确认导出功能当前所在的组件
+2. 需要确认 Agent 导出能力是否和 UI 导出能力在同一版本交付
+3. 需要确认对象状态字段的命名和取值范围
 
 ---
 
 ## 12. 待确认问题
 
-1. 项目当前是否有 `confirmed` 状态字段？如果有，字段名是什么？
-2. 导出功能当前位于哪个组件/页面？
-3. Skill 包命名规则是否接受 `ontology-model-skill-{projectName}-v{version}.zip`？
-4. 是否需要支持导出时自定义 Skill 名称和描述？
-5. examples/ 内容希望自动生成还是使用固定模板？
-6. Agent 导出 5 种格式是否和 UI Skill 导出一起实现？还是分阶段？
+1. 导出功能当前位于哪个组件/页面？
+2. Skill 包命名规则是否接受 `ontology-model-skill-{projectName}-v{version}.zip`？
+3. 是否需要支持导出时自定义 Skill 名称和描述？
+4. examples/ 内容希望自动生成还是使用固定模板？
+5. Agent 导出 5 种格式是否和 UI Skill 导出一起实现？还是分阶段？
+6. 对象状态字段若缺失，默认标记为 `unknown` 是否可接受？
