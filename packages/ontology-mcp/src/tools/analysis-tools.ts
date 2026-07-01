@@ -3,6 +3,7 @@
  *
  * Wraps @ontology/core queries and manifest compiler.
  * Uses lazy dynamic imports to resolve tsconfig path aliases at runtime.
+ * Project data is read from the remote API (HTTP-backed ProjectStore).
  */
 
 import { z } from 'zod';
@@ -70,7 +71,7 @@ export const analysisToolHandlers: Record<string, ToolHandler> = {
   ontology_manifest_compile: async (args: Record<string, unknown>) => {
     try {
       const { projectId, version, compiledBy } = CompileManifestSchema.parse(args);
-      const stored = projectStore.get(projectId);
+      const stored = await projectStore.get(projectId);
       if (!stored) throw new Error(`项目不存在: ${projectId}`);
 
       const compiler = await import('@/lib/manifest-compiler/index');
@@ -93,7 +94,7 @@ export const analysisToolHandlers: Record<string, ToolHandler> = {
     try {
       const { projectId } = ProjectIdOnlySchema.parse(args);
       const core = await import('@ontology/core');
-      const stored = projectStore.get(projectId);
+      const stored = await projectStore.get(projectId);
       if (!stored) throw new Error(`项目不存在: ${projectId}`);
 
       const warnings = core.getBusinessEpcWarnings(stored.data);
@@ -109,7 +110,7 @@ export const analysisToolHandlers: Record<string, ToolHandler> = {
     try {
       const { projectId } = ProjectIdOnlySchema.parse(args);
       const core = await import('@ontology/core');
-      const stored = projectStore.get(projectId);
+      const stored = await projectStore.get(projectId);
       if (!stored) throw new Error(`项目不存在: ${projectId}`);
 
       const project = stored.data;

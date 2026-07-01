@@ -3,6 +3,7 @@
  *
  * Wraps @ontology/core business-chain.ts CRUD pure functions.
  * Uses lazy dynamic imports to resolve tsconfig path aliases at runtime.
+ * Project data is persisted via the remote API (HTTP-backed ProjectStore).
  */
 
 import { z } from 'zod';
@@ -89,17 +90,18 @@ export const chainToolDefinitions: ToolDefinition[] = [
 
 // ----- Helpers -----
 
-function getProjectOrThrow(projectId: string) {
-  const stored = projectStore.get(projectId);
+async function getProjectOrThrow(projectId: string) {
+  const stored = await projectStore.get(projectId);
   if (!stored) throw new Error(`项目不存在: ${projectId}`);
   return stored;
 }
 
-function saveProject(projectId: string, updatedProject: OntologyProject) {
-  const p = projectStore.get(projectId)!;
-  p.data = updatedProject;
-  p.updatedAt = updatedProject.updatedAt ?? new Date().toISOString();
-  projectStore.set(p);
+async function saveProject(projectId: string, updatedProject: OntologyProject) {
+  const stored = await projectStore.get(projectId);
+  if (!stored) throw new Error(`项目不存在: ${projectId}`);
+  stored.data = updatedProject;
+  stored.updatedAt = updatedProject.updatedAt ?? new Date().toISOString();
+  await projectStore.set(stored);
 }
 
 // ----- Handlers -----
@@ -109,7 +111,7 @@ export const chainToolHandlers: Record<string, ToolHandler> = {
     try {
       const { projectId, kind, parentId, name, nameEn, description } = AddNodeSchema.parse(args);
       const core = await import('@ontology/core');
-      const stored = getProjectOrThrow(projectId);
+      const stored = await getProjectOrThrow(projectId);
       const project = stored.data;
       const input = { name, nameEn, description };
 
@@ -142,7 +144,7 @@ export const chainToolHandlers: Record<string, ToolHandler> = {
           throw new Error(`不支持的节点类型: ${kind}`);
       }
 
-      saveProject(projectId, result.project);
+      await saveProject(projectId, result.project);
       return { content: [{ type: 'text', text: successResponse({ node: result.node }) }] };
     } catch (err) {
       return { content: [{ type: 'text', text: errorResponse(err) }] };
@@ -153,7 +155,7 @@ export const chainToolHandlers: Record<string, ToolHandler> = {
     try {
       const { projectId, kind, nodeId, name, nameEn, description } = UpdateNodeSchema.parse(args);
       const core = await import('@ontology/core');
-      const stored = getProjectOrThrow(projectId);
+      const stored = await getProjectOrThrow(projectId);
       const project = stored.data;
       const updates: Record<string, string> = {};
       if (name !== undefined) updates.name = name;
@@ -178,7 +180,7 @@ export const chainToolHandlers: Record<string, ToolHandler> = {
           throw new Error(`不支持的节点类型: ${kind}`);
       }
 
-      saveProject(projectId, updatedProject);
+      await saveProject(projectId, updatedProject);
       return { content: [{ type: 'text', text: successResponse({ updated: true }) }] };
     } catch (err) {
       return { content: [{ type: 'text', text: errorResponse(err) }] };
@@ -189,7 +191,7 @@ export const chainToolHandlers: Record<string, ToolHandler> = {
     try {
       const { projectId, kind, nodeId } = DeleteNodeSchema.parse(args);
       const core = await import('@ontology/core');
-      const stored = getProjectOrThrow(projectId);
+      const stored = await getProjectOrThrow(projectId);
       const project = stored.data;
 
       let updatedProject: OntologyProject;
@@ -210,7 +212,7 @@ export const chainToolHandlers: Record<string, ToolHandler> = {
           throw new Error(`不支持的节点类型: ${kind}`);
       }
 
-      saveProject(projectId, updatedProject);
+      await saveProject(projectId, updatedProject);
       return { content: [{ type: 'text', text: successResponse({ deleted: true }) }] };
     } catch (err) {
       return { content: [{ type: 'text', text: errorResponse(err) }] };

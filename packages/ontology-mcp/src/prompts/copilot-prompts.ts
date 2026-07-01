@@ -44,7 +44,7 @@ export const promptHandlers: Record<string, PromptHandler> = {
     if (projectId) {
       try {
         const { projectStore } = await import('../store/project-store.js');
-        const stored = projectStore.get(projectId);
+        const stored = await projectStore.get(projectId);
         if (stored) {
           const p = stored.data;
           contextNote = `\n当前项目: **${p.name}** (${p.id})`;
@@ -119,7 +119,7 @@ ${contextNote}${projectSummary}`,
     if (projectId) {
       try {
         const { projectStore } = await import('../store/project-store.js');
-        const stored = projectStore.get(projectId);
+        const stored = await projectStore.get(projectId);
         if (stored) {
           contextNote = `\n正在检查项目: **${stored.data.name}** (${stored.data.id})`;
         } else {

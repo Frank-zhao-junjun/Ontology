@@ -56,7 +56,7 @@ export const resourceReaders: Record<string, ResourceReader> = {
   'ontology://project/{projectId}/state': async (uri: string) => {
     const parsed = parseProjectUri(uri);
     if (!parsed) throw new Error(`无效的 resource URI: ${uri}`);
-    const stored = projectStore.get(parsed.projectId);
+    const stored = await projectStore.get(parsed.projectId);
     if (!stored) throw new Error(`项目不存在: ${parsed.projectId}`);
 
     const project = stored.data;
@@ -96,7 +96,7 @@ export const resourceReaders: Record<string, ResourceReader> = {
   'ontology://project/{projectId}/manifest': async (uri: string) => {
     const parsed = parseProjectUri(uri);
     if (!parsed) throw new Error(`无效的 resource URI: ${uri}`);
-    const stored = projectStore.get(parsed.projectId);
+    const stored = await projectStore.get(parsed.projectId);
     if (!stored) throw new Error(`项目不存在: ${parsed.projectId}`);
 
     const compiler = await import('@/lib/manifest-compiler/index');
@@ -116,7 +116,7 @@ export const resourceReaders: Record<string, ResourceReader> = {
   'ontology://project/{projectId}/coverage': async (uri: string) => {
     const parsed = parseProjectUri(uri);
     if (!parsed) throw new Error(`无效的 resource URI: ${uri}`);
-    const stored = projectStore.get(parsed.projectId);
+    const stored = await projectStore.get(parsed.projectId);
     if (!stored) throw new Error(`项目不存在: ${parsed.projectId}`);
 
     const core = await import('@ontology/core');
@@ -160,7 +160,7 @@ export const resourceReaders: Record<string, ResourceReader> = {
   'ontology://project/{projectId}/consistency': async (uri: string) => {
     const parsed = parseProjectUri(uri);
     if (!parsed) throw new Error(`无效的 resource URI: ${uri}`);
-    const stored = projectStore.get(parsed.projectId);
+    const stored = await projectStore.get(parsed.projectId);
     if (!stored) throw new Error(`项目不存在: ${parsed.projectId}`);
 
     const core = await import('@ontology/core');

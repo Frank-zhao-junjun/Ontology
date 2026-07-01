@@ -1,16 +1,17 @@
 /**
- * Lightweight in-memory project store for the MCP server.
+ * HTTP-backed project store for the MCP server.
  *
- * Maintains a Map<string, OntologyProject> and supports
- * JSON-file load/save for persistence across restarts.
+ * All project data is persisted server-side via the deployed API:
+ *   GET    /api/mcp/projects        — list all projects
+ *   POST   /api/mcp/projects        — create/upsert project
+ *   GET    /api/mcp/projects/[id]   — get project
+ *   PUT    /api/mcp/projects/[id]   — update project
+ *   DELETE /api/mcp/projects/[id]   — delete project
+ *
+ * The API base URL is configured via ONTOLOGY_API_BASE env var.
+ * Falls back to http://localhost:${DEPLOY_RUN_PORT} for local dev.
  */
 
-import { readFile, writeFile, existsSync, mkdirSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-
-// We cannot import OntologyProject directly without the `@/` path alias,
-// so we define a minimal store interface using unknown and let the
-// callers cast via the core module's type.
 export interface StoredProject {
   id: string;
   name: string;
@@ -19,86 +20,118 @@ export interface StoredProject {
   updatedAt: string;
 }
 
-export class ProjectStore {
-  private projects = new Map<string, StoredProject>();
-  private storeDir: string;
+function getApiBase(): string {
+  const envBase = process.env.ONTOLOGY_API_BASE;
+  if (envBase) return envBase.replace(/\/$/, '');
+  const port = process.env.DEPLOY_RUN_PORT || '5000';
+  return `http://localhost:${port}`;
+}
 
-  constructor(storeDir?: string) {
-    this.storeDir = storeDir ?? resolve(process.cwd(), '.ontology-store');
-    if (!existsSync(this.storeDir)) {
-      mkdirSync(this.storeDir, { recursive: true });
+async function httpGet(path: string): Promise<unknown> {
+  const res = await fetch(`${getApiBase()}${path}`);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`HTTP ${res.status}: ${body}`);
+  }
+  return res.json();
+}
+
+async function httpPost(path: string, body: unknown): Promise<unknown> {
+  const res = await fetch(`${getApiBase()}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HTTP ${res.status}: ${text}`);
+  }
+  return res.json();
+}
+
+async function httpPut(path: string, body: unknown): Promise<unknown> {
+  const res = await fetch(`${getApiBase()}${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HTTP ${res.status}: ${text}`);
+  }
+  return res.json();
+}
+
+async function httpDelete(path: string): Promise<unknown> {
+  const res = await fetch(`${getApiBase()}${path}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HTTP ${res.status}: ${text}`);
+  }
+  return res.json();
+}
+
+export class ProjectStore {
+  /** Get a project by id from the remote API. Returns undefined if not found. */
+  async get(id: string): Promise<StoredProject | undefined> {
+    try {
+      const res = (await httpGet(`/api/mcp/projects/${id}`)) as {
+        success: boolean;
+        data?: StoredProject['data'];
+        error?: string;
+      };
+      if (!res.success || !res.data) return undefined;
+      const data = res.data;
+      return {
+        id: data.id || id,
+        name: data.name || 'Untitled',
+        data,
+        updatedAt: data.updatedAt || new Date().toISOString(),
+      };
+    } catch {
+      return undefined;
     }
   }
 
-  /** Get a project by id. Returns undefined if not found. */
-  get(id: string): StoredProject | undefined {
-    return this.projects.get(id);
-  }
-
-  /** Set/overwrite a project. */
-  set(project: StoredProject): void {
-    this.projects.set(project.id, project);
+  /** Create or overwrite a project via the remote API. */
+  async set(project: StoredProject): Promise<void> {
+    await httpPost('/api/mcp/projects', {
+      id: project.id,
+      name: project.name,
+      data: project.data,
+    });
   }
 
   /** Delete a project by id. Returns true if existed. */
-  delete(id: string): boolean {
-    return this.projects.delete(id);
+  async delete(id: string): Promise<boolean> {
+    try {
+      await httpDelete(`/api/mcp/projects/${id}`);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /** List all project summaries (no full data). */
-  list(): { id: string; name: string; updatedAt: string }[] {
-    return Array.from(this.projects.values()).map((p) => ({
-      id: p.id,
-      name: p.name,
-      updatedAt: p.updatedAt,
-    }));
+  async list(): Promise<{ id: string; name: string; updatedAt: string }[]> {
+    try {
+      const res = (await httpGet('/api/mcp/projects')) as {
+        success: boolean;
+        data?: Array<{ id: string; name: string; updatedAt: string }>;
+        error?: string;
+      };
+      if (!res.success || !Array.isArray(res.data)) return [];
+      return res.data;
+    } catch {
+      return [];
+    }
   }
 
-  /** Load a project from a JSON file and cache in memory. */
-  loadFromFile(filePath: string): Promise<StoredProject> {
-    return new Promise((resolvePromise, reject) => {
-      readFile(filePath, 'utf-8', (err, data) => {
-        if (err) {
-          reject(new Error(`无法读取文件: ${filePath} — ${err.message}`));
-          return;
-        }
-        try {
-          const raw = JSON.parse(data);
-          const project: StoredProject = {
-            id: raw.id || 'unknown',
-            name: raw.name || 'Untitled',
-            data: raw,
-            updatedAt: raw.updatedAt || new Date().toISOString(),
-          };
-          this.projects.set(project.id, project);
-          resolvePromise(project);
-        } catch (parseErr) {
-          reject(new Error(`JSON 解析失败: ${filePath}`));
-        }
-      });
-    });
-  }
-
-  /** Save a project to a JSON file. */
-  saveToFile(id: string, filePath?: string): Promise<string> {
-    const project = this.projects.get(id);
-    if (!project) {
-      return Promise.reject(new Error(`项目不存在: ${id}`));
-    }
-    const outPath = filePath ?? resolve(this.storeDir, `${id}.json`);
-    const dir = dirname(outPath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
-    }
-    return new Promise((resolvePromise, reject) => {
-      writeFile(outPath, JSON.stringify(project.data, null, 2), 'utf-8', (err) => {
-        if (err) {
-          reject(new Error(`保存失败: ${err.message}`));
-          return;
-        }
-        resolvePromise(outPath);
-      });
-    });
+  /** Update a project via PUT (partial update not supported — full replace). */
+  async update(id: string, data: StoredProject['data']): Promise<void> {
+    await httpPut(`/api/mcp/projects/${id}`, data);
   }
 }
 

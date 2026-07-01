@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "ontology-mcp": {
-      "command": "pnpm",
+      "command": "npx",
       "args": [
         "tsx",
         "packages/ontology-mcp/src/index.ts"
