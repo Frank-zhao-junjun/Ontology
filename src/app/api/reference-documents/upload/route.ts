@@ -15,6 +15,11 @@ const ALLOWED_TYPES: Record<string, string> = {
 };
 
 export async function POST(request: NextRequest) {
+  const contentType = request.headers.get('content-type') || '';
+  if (!contentType.includes('multipart/form-data')) {
+    return NextResponse.json({ success: false, error: '未上传文件' }, { status: 400 });
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;

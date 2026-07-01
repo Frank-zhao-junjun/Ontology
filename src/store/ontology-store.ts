@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -34,21 +34,7 @@ import {
   canDeleteBusinessChainNode,
   type BusinessChainNodeKind,
 } from '@/lib/business-chain/tree';
-import { createStoreAdapter } from '@/lib/ontology-core/store-adapter';
 import { resolveBusinessChainModuleStatus } from '@/lib/business-chain/module-status';
-import {
-  createProject as createProjectPure,
-  loadProject as loadProjectPure,
-  saveProject as saveProjectPure,
-} from '@/lib/project';
-import {
-  getBusinessEpcWarnings as getBusinessEpcWarningsPure,
-  getEpcCoverage as getEpcCoveragePure,
-  getCrossConsistency as getCrossConsistencyPure,
-  getUnreferencedElements as getUnreferencedElementsPure,
-  getSemanticCoverage as getSemanticCoveragePure,
-  deriveEpcStepsFromScenario as deriveEpcStepsFromScenarioPure,
-} from '@/lib/queries';
 import { rebuildUsageIndex as rebuildUsageIndexFromProject } from '@/lib/epc-pipeline/rebuild-usage-index';
 import { runSaveEpcPipeline } from '@/lib/epc-pipeline/save-epc';
 import { migrateBusinessScenariosToChain } from '@/lib/migration/business-scenario-to-chain';
@@ -855,10 +841,8 @@ function ensureRuleDefinitionRules(rule: Rule, stateProject: OntologyProject | n
 
 export const useOntologyStore = create<OntologyState>()(
   persist(
-    (set, get) => {
-      const adapter = createStoreAdapter(set, get);
-      return {
-        project: null,
+    (set, get) => ({
+      project: null,
       metadataList: [],
       masterDataList: [],
       masterDataRecords: {},
@@ -869,19 +853,38 @@ export const useOntologyStore = create<OntologyState>()(
       auditTrail: [],
       
       createProject: (name, domain, description) => {
-        const { project } = createProjectPure(name, domain, description);
-        set({ project, activeModelType: 'data' });
+        const now = new Date().toISOString();
+        set({
+          project: {
+            id: generateId(),
+            name,
+            description,
+            domain,
+            dataModel: null,
+            behaviorModel: null,
+            ruleModel: null,
+            processModel: null,
+            eventModel: null,
+            epcModel: null,
+            governanceModel: createEmptyGovernanceModel(),
+            dataSourcesModel: createEmptyDataSourcesModel(),
+            moduleVersionRecords: [],
+            createdAt: now,
+            updatedAt: now,
+          },
+          activeModelType: 'data',
+        });
       },
       
       updateProjectName: (name) => {
         set((state) => ({
-          project: state.project ? saveProjectPure({ ...state.project, name }) : null,
+          project: state.project ? { ...state.project, name, updatedAt: new Date().toISOString() } : null,
         }));
       },
-
+      
       updateProjectDescription: (description) => {
         set((state) => ({
-          project: state.project ? saveProjectPure({ ...state.project, description }) : null,
+          project: state.project ? { ...state.project, description, updatedAt: new Date().toISOString() } : null,
         }));
       },
       
@@ -2751,7 +2754,18 @@ export const useOntologyStore = create<OntologyState>()(
 
       getSemanticCoverage: () => {
         const { project } = get();
-        return project ? getSemanticCoveragePure(project) : null;
+        if (!project?.agentSemanticLayer) return null;
+        const layer = project.agentSemanticLayer;
+        const totalEntities = project.dataModel?.entities.length || 0;
+        const totalActions = project.behaviorModel?.actions?.length || 0;
+        const entitiesWithIntents = new Set(layer.intents.map((i) => i.targetEntityId)).size;
+        const actionsWithRecovery = new Set(layer.errorRecoveries.map((er) => er.actionId)).size;
+        return {
+          entitiesWithIntents,
+          totalEntities,
+          actionsWithRecovery,
+          totalActions,
+        };
       },
 
       // ========== 组织体系 ==========
@@ -3182,7 +3196,7 @@ export const useOntologyStore = create<OntologyState>()(
       
       importProject: (json) => {
         try {
-          const project = loadProjectPure(JSON.parse(json));
+          const project = normalizeOntologyProject(JSON.parse(json) as OntologyProject);
           set({ project, activeModelType: 'data' });
         } catch (error) {
           console.error('导入项目失败:', error);
@@ -3826,29 +3840,321 @@ export const useOntologyStore = create<OntologyState>()(
         set({ selectedBusinessChainNode: node });
       },
 
-      addValueDomain: (input) => adapter.addValueDomain(input),
+      addValueDomain: (input) => {
+        const fields = normalizeBusinessChainNodeInput(input);
+        const node: ValueDomain = { id: generateId(), ...fields };
+        set((state) => {
+          if (!state.project) throw new Error('没有活动项目');
+          const valueDomains = [...(state.project.valueDomains ?? []), node];
+          const records = saveModuleDraftRecord(state.project.moduleVersionRecords ?? [], {
+            moduleKind: 'A',
+            moduleId: node.id,
+            snapshot: node,
+            recordId: generateId(),
+          });
+          return {
+            project: {
+              ...state.project,
+              valueDomains,
+              moduleVersionRecords: records,
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+        return node;
+      },
 
-      updateValueDomain: (id, updates) => adapter.updateValueDomain(id, updates),
+      updateValueDomain: (id, updates) => {
+        set((state) => {
+          if (!state.project) throw new Error('没有活动项目');
+          const valueDomains = state.project.valueDomains ?? [];
+          const index = valueDomains.findIndex((item) => item.id === id);
+          if (index < 0) throw new Error('业务价值域不存在');
+          const current = valueDomains[index];
+          const nextNode: ValueDomain = {
+            ...current,
+            ...(updates.name !== undefined ? { name: updates.name.trim() } : {}),
+            ...(updates.nameEn !== undefined ? { nameEn: updates.nameEn.trim() || undefined } : {}),
+            ...(updates.description !== undefined ? { description: updates.description.trim() || undefined } : {}),
+          };
+          if (!nextNode.name.trim()) throw new Error('名称不能为空');
+          const nextDomains = valueDomains.slice();
+          nextDomains[index] = nextNode;
+          const records = saveModuleDraftRecord(state.project.moduleVersionRecords ?? [], {
+            moduleKind: 'A',
+            moduleId: id,
+            snapshot: nextNode,
+            recordId: generateId(),
+          });
+          return {
+            project: {
+              ...state.project,
+              valueDomains: nextDomains,
+              moduleVersionRecords: records,
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+      },
 
-      deleteValueDomain: (id) => adapter.deleteValueDomain(id),
+      deleteValueDomain: (id) => {
+        const state = get();
+        if (!state.project) throw new Error('没有活动项目');
+        if (!canDeleteBusinessChainNode(businessChainSlicesFromProject(state.project), 'A', id)) {
+          throw new Error('存在子节点，无法删除');
+        }
+        set({
+          project: {
+            ...state.project,
+            valueDomains: (state.project.valueDomains ?? []).filter((item) => item.id !== id),
+            updatedAt: new Date().toISOString(),
+          },
+          selectedBusinessChainNode:
+            state.selectedBusinessChainNode?.kind === 'A' && state.selectedBusinessChainNode.id === id
+              ? null
+              : state.selectedBusinessChainNode,
+        });
+      },
 
-      addCapability: (parentAId, input) => adapter.addCapability(parentAId, input),
+      addCapability: (parentAId, input) => {
+        const state = get();
+        if (!state.project) throw new Error('没有活动项目');
+        if (!(state.project.valueDomains ?? []).some((item) => item.id === parentAId)) {
+          throw new Error('父级业务价值域不存在');
+        }
+        const fields = normalizeBusinessChainNodeInput(input);
+        const node: Capability = { id: generateId(), parentId: parentAId, ...fields };
+        set((s) => {
+          if (!s.project) throw new Error('没有活动项目');
+          const capabilities = [...(s.project.capabilities ?? []), node];
+          const records = saveModuleDraftRecord(s.project.moduleVersionRecords ?? [], {
+            moduleKind: 'B',
+            moduleId: node.id,
+            snapshot: node,
+            recordId: generateId(),
+          });
+          return {
+            project: {
+              ...s.project,
+              capabilities,
+              moduleVersionRecords: records,
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+        return node;
+      },
 
-      updateCapability: (id, updates) => adapter.updateCapability(id, updates),
+      updateCapability: (id, updates) => {
+        set((state) => {
+          if (!state.project) throw new Error('没有活动项目');
+          const capabilities = state.project.capabilities ?? [];
+          const index = capabilities.findIndex((item) => item.id === id);
+          if (index < 0) throw new Error('业务能力不存在');
+          const current = capabilities[index];
+          const nextNode: Capability = {
+            ...current,
+            ...(updates.name !== undefined ? { name: updates.name.trim() } : {}),
+            ...(updates.nameEn !== undefined ? { nameEn: updates.nameEn.trim() || undefined } : {}),
+            ...(updates.description !== undefined ? { description: updates.description.trim() || undefined } : {}),
+          };
+          if (!nextNode.name.trim()) throw new Error('名称不能为空');
+          const nextList = capabilities.slice();
+          nextList[index] = nextNode;
+          const records = saveModuleDraftRecord(state.project.moduleVersionRecords ?? [], {
+            moduleKind: 'B',
+            moduleId: id,
+            snapshot: nextNode,
+            recordId: generateId(),
+          });
+          return {
+            project: {
+              ...state.project,
+              capabilities: nextList,
+              moduleVersionRecords: records,
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+      },
 
-      deleteCapability: (id) => adapter.deleteCapability(id),
+      deleteCapability: (id) => {
+        const state = get();
+        if (!state.project) throw new Error('没有活动项目');
+        if (!canDeleteBusinessChainNode(businessChainSlicesFromProject(state.project), 'B', id)) {
+          throw new Error('存在子节点，无法删除');
+        }
+        set({
+          project: {
+            ...state.project,
+            capabilities: (state.project.capabilities ?? []).filter((item) => item.id !== id),
+            updatedAt: new Date().toISOString(),
+          },
+          selectedBusinessChainNode:
+            state.selectedBusinessChainNode?.kind === 'B' && state.selectedBusinessChainNode.id === id
+              ? null
+              : state.selectedBusinessChainNode,
+        });
+      },
 
-      addScenario: (parentBId, input) => adapter.addScenario(parentBId, input),
+      addScenario: (parentBId, input) => {
+        const state = get();
+        if (!state.project) throw new Error('没有活动项目');
+        if (!(state.project.capabilities ?? []).some((item) => item.id === parentBId)) {
+          throw new Error('父级业务能力不存在');
+        }
+        const fields = normalizeBusinessChainNodeInput(input);
+        const node: Scenario = { id: generateId(), parentId: parentBId, ...fields };
+        set((s) => {
+          if (!s.project) throw new Error('没有活动项目');
+          const scenarios = [...(s.project.scenarios ?? []), node];
+          const records = saveModuleDraftRecord(s.project.moduleVersionRecords ?? [], {
+            moduleKind: 'C',
+            moduleId: node.id,
+            snapshot: node,
+            recordId: generateId(),
+          });
+          return {
+            project: {
+              ...s.project,
+              scenarios,
+              moduleVersionRecords: records,
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+        return node;
+      },
 
-      updateScenario: (id, updates) => adapter.updateScenario(id, updates),
+      updateScenario: (id, updates) => {
+        set((state) => {
+          if (!state.project) throw new Error('没有活动项目');
+          const scenarios = state.project.scenarios ?? [];
+          const index = scenarios.findIndex((item) => item.id === id);
+          if (index < 0) throw new Error('业务场景不存在');
+          const current = scenarios[index];
+          const nextNode: Scenario = {
+            ...current,
+            ...(updates.name !== undefined ? { name: updates.name.trim() } : {}),
+            ...(updates.nameEn !== undefined ? { nameEn: updates.nameEn.trim() || undefined } : {}),
+            ...(updates.description !== undefined ? { description: updates.description.trim() || undefined } : {}),
+          };
+          if (!nextNode.name.trim()) throw new Error('名称不能为空');
+          const nextList = scenarios.slice();
+          nextList[index] = nextNode;
+          const records = saveModuleDraftRecord(state.project.moduleVersionRecords ?? [], {
+            moduleKind: 'C',
+            moduleId: id,
+            snapshot: nextNode,
+            recordId: generateId(),
+          });
+          return {
+            project: {
+              ...state.project,
+              scenarios: nextList,
+              moduleVersionRecords: records,
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+      },
 
-      deleteScenario: (id) => adapter.deleteScenario(id),
+      deleteScenario: (id) => {
+        const state = get();
+        if (!state.project) throw new Error('没有活动项目');
+        if (!canDeleteBusinessChainNode(businessChainSlicesFromProject(state.project), 'C', id)) {
+          throw new Error('存在子节点，无法删除');
+        }
+        set({
+          project: {
+            ...state.project,
+            scenarios: (state.project.scenarios ?? []).filter((item) => item.id !== id),
+            updatedAt: new Date().toISOString(),
+          },
+          selectedBusinessChainNode:
+            state.selectedBusinessChainNode?.kind === 'C' && state.selectedBusinessChainNode.id === id
+              ? null
+              : state.selectedBusinessChainNode,
+        });
+      },
 
-      addEpcProcess: (parentCId, input) => adapter.addEpcProcess(parentCId, input),
+      addEpcProcess: (parentCId, input) => {
+        const state = get();
+        if (!state.project) throw new Error('没有活动项目');
+        if (!(state.project.scenarios ?? []).some((item) => item.id === parentCId)) {
+          throw new Error('父级业务场景不存在');
+        }
+        const fields = normalizeBusinessChainNodeInput(input);
+        const node: EpcProcess = { id: generateId(), parentId: parentCId, steps: [], ...fields };
+        set((s) => {
+          if (!s.project) throw new Error('没有活动项目');
+          const epcProcesses = [...(s.project.epcProcesses ?? []), node];
+          const records = saveModuleDraftRecord(s.project.moduleVersionRecords ?? [], {
+            moduleKind: 'EPC',
+            moduleId: node.id,
+            snapshot: node,
+            recordId: generateId(),
+          });
+          return {
+            project: {
+              ...s.project,
+              epcProcesses,
+              moduleVersionRecords: records,
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+        return node;
+      },
 
-      updateEpcProcess: (id, updates) => adapter.updateEpcProcess(id, updates),
+      updateEpcProcess: (id, updates) => {
+        set((state) => {
+          if (!state.project) throw new Error('没有活动项目');
+          const epcProcesses = state.project.epcProcesses ?? [];
+          const index = epcProcesses.findIndex((item) => item.id === id);
+          if (index < 0) throw new Error('EPC 流程不存在');
+          const current = epcProcesses[index];
+          const nextNode: EpcProcess = {
+            ...current,
+            ...(updates.name !== undefined ? { name: updates.name.trim() } : {}),
+            ...(updates.nameEn !== undefined ? { nameEn: updates.nameEn.trim() || undefined } : {}),
+            ...(updates.description !== undefined ? { description: updates.description.trim() || undefined } : {}),
+          };
+          if (!nextNode.name.trim()) throw new Error('名称不能为空');
+          const nextList = epcProcesses.slice();
+          nextList[index] = nextNode;
+          const records = saveModuleDraftRecord(state.project.moduleVersionRecords ?? [], {
+            moduleKind: 'EPC',
+            moduleId: id,
+            snapshot: nextNode,
+            recordId: generateId(),
+          });
+          return {
+            project: {
+              ...state.project,
+              epcProcesses: nextList,
+              moduleVersionRecords: records,
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+      },
 
-      deleteEpcProcess: (id) => adapter.deleteEpcProcess(id),
+      deleteEpcProcess: (id) => {
+        const state = get();
+        if (!state.project) throw new Error('没有活动项目');
+        set({
+          project: {
+            ...state.project,
+            epcProcesses: (state.project.epcProcesses ?? []).filter((item) => item.id !== id),
+            updatedAt: new Date().toISOString(),
+          },
+          selectedBusinessChainNode:
+            state.selectedBusinessChainNode?.kind === 'EPC' && state.selectedBusinessChainNode.id === id
+              ? null
+              : state.selectedBusinessChainNode,
+        });
+      },
 
       getBusinessChainModuleStatus: (kind, moduleId) => {
         const records = get().project?.moduleVersionRecords ?? [];
@@ -3918,8 +4224,8 @@ export const useOntologyStore = create<OntologyState>()(
       },
 
       getUnreferencedElements: () => {
-        const { project } = get();
-        return project ? getUnreferencedElementsPure(project) : [];
+        const elements = get().project?.metaElements ?? [];
+        return filterUnreferencedElements(elements, true);
       },
 
       getScenarioChildEpcs: (scenarioId) => {
@@ -3936,18 +4242,46 @@ export const useOntologyStore = create<OntologyState>()(
       },
 
       getEpcCoverage: (scenarioId) => {
-        const { project } = get();
-        return project ? getEpcCoveragePure(project, scenarioId) : emptyCoverageReport(scenarioId);
+        const project = get().project;
+        if (!project) return emptyCoverageReport(scenarioId);
+        return computeCoverage({
+          scenarioId,
+          scenarios: project.scenarios ?? [],
+          epcProcesses: project.epcProcesses ?? [],
+          metaElements: project.metaElements ?? [],
+          moduleVersionRecords: project.moduleVersionRecords ?? [],
+        });
       },
 
       getCrossConsistency: (scenarioId) => {
-        const { project } = get();
-        return project ? getCrossConsistencyPure(project, scenarioId) : [];
+        const project = get().project;
+        if (!project) return [];
+        return validateCrossConsistency({
+          scenarioId,
+          scenarios: project.scenarios ?? [],
+          capabilities: project.capabilities ?? [],
+          valueDomains: project.valueDomains ?? [],
+          epcProcesses: project.epcProcesses ?? [],
+          metaElements: project.metaElements ?? [],
+          moduleVersionRecords: project.moduleVersionRecords ?? [],
+          behaviorModel: project.behaviorModel ?? null,
+          eventModel: project.eventModel ?? null,
+          ruleModel: project.ruleModel ?? null,
+          metricsModel: project.metricsModel ?? null,
+          dataSourcesModel: project.dataSourcesModel ?? null,
+          governanceModel: project.governanceModel ?? null,
+        });
       },
 
       deriveEpcStepsFromScenario: (scenarioId) => {
-        const { project } = get();
-        return project ? deriveEpcStepsFromScenarioPure(project, scenarioId) : [];
+        const project = get().project;
+        if (!project) return [];
+        if (!getLatestConfirmed(project.moduleVersionRecords ?? [], 'C', scenarioId)) return [];
+        const confirmed = filterConfirmedMetaElements(
+          project.metaElements ?? [],
+          project.moduleVersionRecords ?? [],
+        );
+        return deriveEpcSteps({ metaElements: confirmed });
       },
 
       applyDerivedStepsToScenarioEpc: (scenarioId, targetEpcId) => {
@@ -3974,8 +4308,14 @@ export const useOntologyStore = create<OntologyState>()(
       },
 
       getBusinessEpcWarnings: () => {
-        const { project } = get();
-        return project ? getBusinessEpcWarningsPure(project) : [];
+        const project = get().project;
+        if (!project) return [];
+        return lintBusinessEpc({
+          moduleVersionRecords: project.moduleVersionRecords ?? [],
+          scenarios: project.scenarios,
+          epcProcesses: project.epcProcesses,
+          metaElements: project.metaElements,
+        });
       },
 
       applyAiModuleDraft: (moduleKind, moduleId, suggestion) => {
@@ -4196,8 +4536,7 @@ export const useOntologyStore = create<OntologyState>()(
         
         return JSON.stringify(packageData, null, 2);
       },
-      };
-    },
+    }),
     {
       name: 'ontology-storage',
       merge: (persistedState, currentState) => {

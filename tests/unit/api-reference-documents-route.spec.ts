@@ -255,7 +255,7 @@ describe('Reference Documents — Upload Route (POST /api/reference-documents/up
     const request = new NextRequest('http://localhost/api/reference-documents/upload', {
       method: 'POST',
       body: JSON.stringify({ not: 'formdata' }),
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'multipart/form-data' },
     });
 
     const response = await uploadPost(request);
