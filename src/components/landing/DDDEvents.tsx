@@ -78,8 +78,8 @@ const DDDEvents = () => {
       icon: GitBranch,
       title: 'EPC全域关联',
       decision: '模型即关联',
-      description: 'EPC 将 12 大元模型通过 EpcModelRef 全域关联，EpcChain 串联完整业务链路',
-      details: '每个 EPC 节点（Event/Function/Connector/InfoObject/OrgUnit）通过 refs 引用具体模型元素，支持 12 种 modelType 和 13 种 refRole。一条 EpcChain 从起点到终点，自动推导涉及的实体、状态、规则、事件、角色。',
+      description: 'EPC 将 12 种元模型类型通过 EPC流程模型 全域关联，EpcChain 串联完整业务链路',
+      details: '每个 EPC 节点（Event/Function/Connector/InfoObject/OrgUnit）通过 refs 引用具体模型元素，支持 12 种元模型类型和 13 种引用角色。一条 EpcChain 从起点到终点，自动推导涉及的实体、状态、规则、事件、角色。',
       code: `type EpcModelRefModelType =
   'data' | 'behavior' | 'rule'
     | 'event' | 'organization' | 'metric'
