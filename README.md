@@ -99,6 +99,8 @@ EPC 通过 **A→B→C→EPC 业务树** 将八维要素（E1–E8）串联为�
 ### 导出与迁移
 
 - **Manifest 编译**（US-S13）：`compileSimplifiedChain` 将业务树 + EPC 映射到平台契约格式
+- **5 种导出格式**：JSON / YAML / Markdown / Excel / Skill ZIP，UI / CLI / MCP / Skill API 统一支持
+- **Skill ZIP 导出**（新增）：`POST /api/export/skill` — 将本体模型封装为 Agent 可消费的领域知识技能包
 - **Excel 分模块导入导出**（US-S10）：12 个模块 Sheet + 隐藏引用表，支持模板下载和批量导入
 - **业务场景迁移**（US-S12）：旧 `BusinessScenario` → A/B/C 一键迁移
 - **Legacy 审计**（US-S12）：检测并报告旧结构残留
@@ -277,8 +279,10 @@ pnpm ontology metadata
 # AI 生成五大模型建议
 pnpm ontology generate 物料 Material
 
-# 导出项目 JSON 到文件
+# 导出项目（支持 --format=json|yaml|excel|md|skill）
 pnpm ontology export <projectId> ./my-project.json
+pnpm ontology export <projectId> --format=skill --scope=data
+pnpm ontology export <projectId> --format=md
 
 # 导入 Excel 文件
 pnpm ontology import ./ontology-template.xlsx
@@ -370,7 +374,7 @@ curl -X POST https://Ontology1.coze.site/api/agent/skills/execute \
 | `ai_chat` | AI 对话（SSE 流式） | `messages` |
 | `create_model` | AI 创建建模要素 | `description`, `domain`, `projectInfo` |
 | `excel_template` | 获取 Excel 模板 | — |
-| `export_manifest` | 导出 Manifest 为 Excel | `manifest` |
+| `export_manifest` | 导出项目（5 种格式，默认 Excel） | `manifest`, `format`, `scope`, `project` |
 | `list_skills` | 列出 Agent 技能 | `type`（可选） |
 | `execute_skill` | 执行 Agent 技能 | `skillType`, `action` |
 | `hr_sync_status` | HR 同步状态 | — |

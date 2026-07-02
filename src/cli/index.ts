@@ -22,6 +22,7 @@
  */
 
 const API_BASE = process.env.ONTOLOGY_API_BASE || 'https://Ontology1.coze.site';
+type SkillExportScope = 'all' | 'data' | 'behavior' | 'rule' | 'process' | 'event';
 
 // ── Colors (no external deps) ──
 const c = {
@@ -194,23 +195,114 @@ async function cmdGenerate(args: string[]) {
 }
 
 async function cmdExport(args: string[]) {
-  const projectId = args[0];
+  // Parse --format=<json|yaml|excel|md|skill> and --scope=<all|data|behavior|rule|process|event>
+  const positional: string[] = [];
+  let format = 'json';
+  let scope = 'all';
+
+  for (const arg of args) {
+    if (arg.startsWith('--format=')) {
+      format = arg.slice('--format='.length);
+    } else if (arg.startsWith('--scope=')) {
+      scope = arg.slice('--scope='.length);
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  const projectId = positional[0];
   if (!projectId) {
-    error('\u7528\u6cd5: export <\u9879\u76eeID> [\u8f93\u51fa\u6587\u4ef6\u8def\u5f84]');
+    error('\u7528\u6cd5: export <\u9879\u76eeID> [\u8f93\u51fa\u6587\u4ef6\u8def\u5f84] [--format=json|yaml|excel|md|skill] [--scope=all|data|behavior|rule|process|event]');
     console.log(`${c.dim}\u5148\u8fd0\u884c "pnpm ontology projects" \u67e5\u770b\u9879\u76eeID${c.reset}`);
     return;
   }
-  const outputPath = args[1] || `project-${projectId}-${Date.now()}.json`;
-  info(`\u6b63\u5728\u5bfc\u51fa\u9879\u76ee ${projectId} ...`);
+
+  // Fetch project data
+  info(`\u6b63\u5728\u83b7\u53d6\u9879\u76ee ${projectId} ...`);
   const data = await api(`/api/projects/${projectId}`);
-  if (data.success !== false && (data.data || data)) {
-    const projectData = data.data || data;
-    const fs = await import('fs');
+  if (data.success === false || (!data.data && !data)) {
+    error(data.error || '\u5bfc\u51fa\u5931\u8d25');
+    return;
+  }
+  const projectData = data.data || data;
+  const fs = await import('fs');
+
+  if (format === 'skill') {
+    // Skill ZIP: call POST /api/export/skill
+    const outputPath = positional[1] || `ontology-model-skill-${projectId}-${Date.now()}.zip`;
+    info(`\u6b63\u5728\u751f\u6210 Skill ZIP (scope=${scope}) ...`);
+    const res = await fetch(`${API_BASE}/api/export/skill`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project: projectData, scope, includeExamples: true, includeSemanticLayer: true }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+      error(err.message || '\u5bfc\u51fa Skill \u5931\u8d25');
+      return;
+    }
+    const buffer = Buffer.from(await res.arrayBuffer());
+    fs.writeFileSync(outputPath, buffer);
+    success(`Skill ZIP \u5df2\u5bfc\u51fa: ${outputPath} (${(buffer.length / 1024).toFixed(1)} KB)`);
+  } else if (format === 'excel') {
+    // Excel: compile manifest then POST to /api/export/xlsx-from-manifest
+    const outputPath = positional[1] || `project-${projectId}-${Date.now()}.xlsx`;
+    info('\u6b63\u5728\u751f\u6210 Excel ...');
+    try {
+      const { compileManifest } = await import('@/lib/manifest-compiler/index');
+      const manifest = compileManifest(projectData);
+      const res = await fetch(`${API_BASE}/api/export/xlsx-from-manifest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(manifest),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const buffer = Buffer.from(await res.arrayBuffer());
+      fs.writeFileSync(outputPath, buffer);
+      success(`Excel \u5df2\u5bfc\u51fa: ${outputPath} (${(buffer.length / 1024).toFixed(1)} KB)`);
+    } catch (err) {
+      error(`Excel \u5bfc\u51fa\u5931\u8d25: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  } else if (format === 'md') {
+    // Markdown: client-side render
+    const outputPath = positional[1] || `project-${projectId}-${Date.now()}.md`;
+    info('\u6b63\u5728\u751f\u6210 Markdown ...');
+    try {
+      const { buildOntologyJson } = await import('@/lib/skill-export/build-ontology-json');
+      const { renderOntologyMarkdown } = await import('@/lib/skill-export/markdown-renderer');
+      const onto = buildOntologyJson(projectData, {
+        scope: scope as SkillExportScope,
+        includeSemanticLayer: true,
+        exportedAt: new Date().toISOString(),
+        version: projectData.version || '1.0.0',
+      });
+      const md = renderOntologyMarkdown(onto);
+      fs.writeFileSync(outputPath, md, 'utf-8');
+      success(`Markdown \u5df2\u5bfc\u51fa: ${outputPath} (${(md.length / 1024).toFixed(1)} KB)`);
+    } catch (err) {
+      error(`Markdown \u5bfc\u51fa\u5931\u8d25: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  } else if (format === 'yaml') {
+    // YAML: compile manifest to YAML
+    const outputPath = positional[1] || `project-${projectId}-${Date.now()}.yaml`;
+    info('\u6b63\u5728\u751f\u6210 YAML ...');
+    try {
+      const { compileManifest } = await import('@/lib/manifest-compiler/index');
+      const { stringify } = await import('yaml');
+      const manifest = compileManifest(projectData);
+      const yaml = stringify(manifest, { lineWidth: 0 });
+      fs.writeFileSync(outputPath, yaml, 'utf-8');
+      success(`YAML \u5df2\u5bfc\u51fa: ${outputPath} (${(yaml.length / 1024).toFixed(1)} KB)`);
+    } catch (err) {
+      error(`YAML \u5bfc\u51fa\u5931\u8d25: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  } else {
+    // JSON (default): existing behavior
+    const outputPath = positional[1] || `project-${projectId}-${Date.now()}.json`;
+    info(`\u6b63\u5728\u5bfc\u51fa\u9879\u76ee ${projectId} ...`);
     const json = JSON.stringify(projectData, null, 2);
     fs.writeFileSync(outputPath, json, 'utf-8');
     success(`\u9879\u76ee\u5df2\u5bfc\u51fa: ${outputPath} (${(json.length / 1024).toFixed(1)} KB)`);
-  } else {
-    error(data.error || '\u5bfc\u51fa\u5931\u8d25');
   }
 }
 

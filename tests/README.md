@@ -9,11 +9,23 @@
 | **P0-12 制造域 golden** | `unit/manifest-manufacturing-golden.spec.ts` | compile → validate → export；id/nameEn 与 golden 子集对齐 |
 | 前端导出 | `unit/manifest-export.spec.ts` | `buildManifestExportBundle` |
 
+## Skill 导出（新增）
+
+| 套件 | 文件 | 说明 |
+|------|------|------|
+| annotate-status | `unit/skill-export-annotate-status.spec.ts` | resolveProjectStatus, annotateObjectStatus |
+| build-ontology-json | `unit/skill-export-build-ontology-json.spec.ts` | buildOntologyJson, isEmptyScope, scope 过滤 |
+| build-skill-json | `unit/skill-export-build-skill-json.spec.ts` | buildSkillJson 元数据生成 |
+| build-intents-json | `unit/skill-export-build-intents-json.spec.ts` | entity/relation/rule/stateMachine intents |
+| Route | `unit/export-skill-route.spec.ts` | POST /api/export/skill 接口测试 |
+
 ### 运行
 
 ```bash
 pnpm exec vitest run tests/unit/manifest-manufacturing-golden.spec.ts
 pnpm exec vitest run tests/unit/manifest-validator.spec.ts tests/unit/manifest-compiler.spec.ts tests/unit/manifest-export.spec.ts tests/unit/manifest-manufacturing-golden.spec.ts
+pnpm exec vitest run tests/unit/skill-export-*
+pnpm exec vitest run tests/unit/export-skill-route.spec.ts
 ```
 
 ### P0-12 期望文件

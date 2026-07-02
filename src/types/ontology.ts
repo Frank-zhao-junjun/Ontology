@@ -2003,6 +2003,9 @@ export interface OntologyProject {
   name: string;
   description?: string;
   domain: Domain;
+  status?: 'draft' | 'review' | 'confirmed' | 'archived';
+  version?: string;
+  confirmedAt?: string;
   dataModel: DataModel | null;
   behaviorModel: BehaviorModel | null;
   ruleModel: RuleModel | null;

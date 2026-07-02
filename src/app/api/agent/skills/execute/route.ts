@@ -93,7 +93,77 @@ export async function POST(request: NextRequest) {
       }
 
       case 'export_manifest': {
-        const { manifest } = params;
+        const { manifest, format = 'excel', scope = 'all', includeExamples = true, includeSemanticLayer = true, project, projectId } = params;
+
+        // Skill ZIP: needs project data, calls /api/export/skill
+        if (format === 'skill') {
+          const projectData = project || (projectId ? await (async () => {
+            const projRes = await fetch(`${base}/api/projects/${projectId}`);
+            const projJson = await projRes.json();
+            return projJson.data || projJson;
+          })() : null);
+          if (!projectData) return error('Skill 导出需要 project 或 projectId');
+          const res = await fetch(`${base}/api/export/skill`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project: projectData, scope, includeExamples, includeSemanticLayer }),
+          });
+          const buf = await res.arrayBuffer();
+          const filename = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'ontology-model-skill.zip';
+          return NextResponse.json({
+            success: true,
+            data: {
+              format: 'skill',
+              filename,
+              size: buf.byteLength,
+              downloadUrl: `${base}/api/export/skill`,
+              mimeType: 'application/zip',
+              message: 'Use downloadUrl with POST and the same params to download the ZIP.',
+            },
+          });
+        }
+
+        // Markdown
+        if (format === 'md') {
+          const projectData = project || (projectId ? await (async () => {
+            const projRes = await fetch(`${base}/api/projects/${projectId}`);
+            const projJson = await projRes.json();
+            return projJson.data || projJson;
+          })() : null);
+          if (!projectData) return error('Markdown 导出需要 project 或 projectId');
+          const { buildOntologyJson } = await import('@/lib/skill-export/build-ontology-json');
+          const { renderOntologyMarkdown } = await import('@/lib/skill-export/markdown-renderer');
+          const onto = buildOntologyJson(projectData, {
+            scope: scope as any, includeSemanticLayer,
+            exportedAt: new Date().toISOString(),
+            version: projectData.version || '1.0.0',
+          });
+          return NextResponse.json({
+            success: true,
+            data: { format: 'md', content: renderOntologyMarkdown(onto) },
+          });
+        }
+
+        // JSON: return manifest as-is
+        if (format === 'json') {
+          if (!manifest) return error('缺少 manifest 参数');
+          return NextResponse.json({
+            success: true,
+            data: { format: 'json', content: JSON.stringify(manifest, null, 2) },
+          });
+        }
+
+        // YAML: compile manifest to YAML
+        if (format === 'yaml') {
+          if (!manifest) return error('缺少 manifest 参数');
+          const { stringify } = await import('yaml');
+          return NextResponse.json({
+            success: true,
+            data: { format: 'yaml', content: stringify(manifest, { lineWidth: 0 }) },
+          });
+        }
+
+        // Excel (default): existing behavior
         if (!manifest) return error('缺少 manifest 参数');
         const res = await fetch(`${base}/api/export/xlsx-from-manifest`, {
           method: 'POST',
@@ -104,6 +174,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           data: {
+            format: 'excel',
             size: buf.byteLength,
             mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           },

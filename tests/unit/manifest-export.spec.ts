@@ -30,7 +30,7 @@ describe('manifest-export', () => {
     expect(bundle.format).toBe('yaml');
     expect(bundle.filename).toBe('test-ontology-ontology-manifest.yaml');
     expect(bundle.content).toContain('apiVersion: ontology.platform/v1');
-    expect(bundle.validation.valid).toBe(true);
+    expect(bundle.validation?.valid).toBe(true);
   });
 
   it('校验失败时不应触发下载', () => {
@@ -45,7 +45,7 @@ describe('manifest-export', () => {
       { format: 'json' }
     );
 
-    expect(bundle.validation.valid).toBe(false);
+    expect(bundle.validation?.valid).toBe(false);
     const createElement = vi.spyOn(document, 'createElement');
     expect(downloadManifestExport(bundle)).toBe(false);
     expect(createElement).not.toHaveBeenCalled();

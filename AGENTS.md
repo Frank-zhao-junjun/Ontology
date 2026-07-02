@@ -34,7 +34,7 @@ src/
 │       ├── metadata/init/       # 元数据初始化接口
 │       ├── excel-template/      # Excel模板下载接口
 │       ├── excel-import/        # Excel文件导入接口
-│       ├── export/              # Excel导出（xlsx-from-manifest）
+│       ├── export/              # 导出 API（xlsx-from-manifest + skill ZIP）
 │       ├── entity-lifecycle/    # 实体生命周期导出
 │       ├── agent-semantic-layer/ # Agent语义层导出
 │       ├── agent/skills/        # Agent技能元数据 + 执行入口
@@ -209,7 +209,7 @@ packages/
 - **服务工厂**：`src/lib/mcp/server.ts`（createMcpServer，tools + resources + prompts）
 - **配置**：`.mcp.json` — HTTP URL 模式（`https://Ontology1.coze.site/api/mcp`）
 - **启动（本地）**：`pnpm tsx packages/ontology-mcp/src/index.ts`
-- **工具**：8 个（list_projects, get_project, create_project, export_project, add_value_domain, add_capability, add_scenario, add_epc_process）
+- **工具**：8 个（list_projects, get_project, create_project, export_project（支持 5 种格式: json/yaml/md/excel/skill）, add_value_domain, add_capability, add_scenario, add_epc_process）
 - **资源**：4 个只读项目资源
 - **提示词**：2 个建模 Copilot 提示词模板
 - **依赖**：`@modelcontextprotocol/sdk`
@@ -226,7 +226,7 @@ packages/
   - `ontology project <id>` — 查看项目详情
   - `ontology metadata` — 获取元数据列表
   - `ontology generate` — AI 生成模型建议
-  - `ontology export <id> [path]` — 导出项目 JSON
+  - `ontology export <id> [path] [--format=json|yaml|excel|md|skill] [--scope=all|data|behavior|rule|process|event]` — 导出项目（5 种格式）
   - `ontology import <file>` — 导入 Excel 文件
   - `ontology template` — 下载 Excel 模板
   - `ontology chat <消息>` — AI 对话（SSE 流式）
@@ -265,7 +265,7 @@ npx tsc --noEmit
 pnpm ontology help          # 帮助
 pnpm ontology projects      # 列出项目
 pnpm ontology metadata      # 元数据列表
-pnpm ontology export <id>   # 导出项目 JSON
+pnpm ontology export <id>   # 导出项目（支持 --format=json|yaml|excel|md|skill）
 pnpm ontology import <file> # 导入 Excel
 pnpm ontology chat "消息"   # AI 对话
 pnpm ontology interactive   # 交互模式
@@ -469,6 +469,12 @@ GET  /api/agent/skills/download         # 下载技能包 ZIP（skill.json + REA
 ```
 
 **支持的操作**: list_projects / get_project / list_metadata / ai_generate / ai_chat / create_model / excel_template / export_manifest / list_skills / execute_skill / hr_sync_status / hr_sync_trigger
+
+### Skill ZIP 导出（新增）
+```
+POST /api/export/skill
+```
+将本体模型封装为 Agent 可直接消费的 Skill ZIP 包。支持 scope 过滤（all/data/behavior/rule/process/event）。详见 `docs/features/model-export-skill-spec.md`。
 
 ### Excel 导出
 ```
