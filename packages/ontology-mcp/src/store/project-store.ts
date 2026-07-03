@@ -114,6 +114,19 @@ export class ProjectStore {
     }
   }
 
+  /** Auto-generate 8 metamodel drafts for an EPC process and return the updated project. */
+  async autoGenerateEpcMetamodels(project: StoredProject['data'], epcId: string): Promise<StoredProject['data']> {
+    const res = (await httpPost('/api/epc-processes/auto-generate', { project, epcId })) as {
+      success: boolean;
+      data?: StoredProject['data'];
+      error?: string;
+    };
+    if (!res.success || !res.data) {
+      throw new Error(res.error || '自动生成元模型失败');
+    }
+    return res.data;
+  }
+
   /** List all project summaries (no full data). */
   async list(): Promise<{ id: string; name: string; updatedAt: string }[]> {
     try {

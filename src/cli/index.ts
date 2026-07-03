@@ -16,6 +16,8 @@
  *   template            下载Excel模板
  *   chat [消息]         AI对话（SSE流式）
  *   skills [type]       列出Agent技能
+ *   chain-add <项目ID>  创建业务链节点（支持EPC自动元模型）
+ *   chain-add <项目ID>  创建业务链节点（支持EPC自动元模型）
  *   sync <source>       触发HR同步
  *   interactive         交互式菜单模式
  *   help                显示帮助
@@ -424,6 +426,52 @@ async function cmdSkills(type?: string) {
   }
 }
 
+async function cmdChainAdd(args: string[]) {
+  const projectId = args[0];
+  if (!projectId) {
+    error('用法: chain-add <项目ID> --parent <父节点ID> --name <名称> [--auto]');
+    return;
+  }
+
+  const parentIdFlag = args.indexOf('--parent');
+  const nameFlag = args.indexOf('--name');
+  const autoFlag = args.includes('--auto');
+  const parentId = parentIdFlag >= 0 ? args[parentIdFlag + 1] : '';
+  const name = nameFlag >= 0 ? args[nameFlag + 1] : `EPC-${Date.now()}`;
+  if (!parentId) {
+    error('缺少 --parent <父节点ID>');
+    return;
+  }
+
+  info(`正在获取项目 ${projectId} ...`);
+  const projectRes = await api(`/api/projects/${projectId}`);
+  if (projectRes.success === false || !projectRes.data) {
+    error(projectRes.error || '获取项目失败');
+    return;
+  }
+
+  info(`正在创建 EPC 流程 "${name}" ...`);
+  const res = await api('/api/epc-processes/auto-generate', {
+    method: 'POST',
+    body: JSON.stringify({
+      project: projectRes.data,
+      parentId,
+      name,
+      autoGenerateMetamodels: autoFlag,
+    }),
+  });
+  if (res.success) {
+    success(`EPC 流程 "${name}" 创建成功`);
+    if (autoFlag && res.data?.businessChain?.epcProcesses) {
+      const epc = res.data.businessChain.epcProcesses[res.data.businessChain.epcProcesses.length - 1];
+      console.log(`  ${c.green}\u25cf${c.reset} ID: ${epc.id}`);
+      console.log(`  ${c.green}\u25cf${c.reset} 元模型引用: ${epc.generatedRefs?.length || 0} 个`);
+    }
+  } else {
+    error(res.error || '创建失败');
+  }
+}
+
 async function cmdSync(source?: string) {
   if (!source) {
     error('\u7528\u6cd5: sync <source> (feishu|dingtalk|wecom|sap|workday|custom)');
@@ -459,7 +507,7 @@ ${c.bold}\u547d\u4ee4:${c.reset}
   ${c.green}template${c.reset}              \u4e0b\u8f7dExcel\u5bfc\u5165\u6a21\u677f
   ${c.green}chat${c.reset} <\u6d88\u606f>          AI\u5bf9\u8bdd\uff08SSE\u6d41\u5f0f\uff09
   ${c.green}skills${c.reset} [type]         \u5217\u51faAgent\u6280\u80fd (superpowers|gstack|ralph)
-  ${c.green}sync${c.reset} <source>         \u89e6\u53d1HR\u7cfb\u7edf\u540c\u6b65
+  ${c.green}sync${c.reset} <source>         \u89e6\u53d1HR\u7cfb\u7edf\u540c\u6b65\n  ${c.green}chain-add${c.reset} <\u9879\u76eeID>    \u521b\u5efa\u4e1a\u52a1\u94fe\u8282\u70b9\uff08\u652f\u6301EPC\u81ea\u52a8\u5143\u6a21\u578b\uff09
   ${c.green}interactive${c.reset}           \u4ea4\u4e92\u5f0f\u83dc\u5355\u6a21\u5f0f
   ${c.green}help${c.reset}                  \u663e\u793a\u6b64\u5e2e\u52a9\u4fe1\u606f
 
@@ -653,6 +701,9 @@ async function main() {
       break;
     case 'sync':
       await cmdSync(args[0]);
+      break;
+    case 'chain-add':
+      await cmdChainAdd(args);
       break;
     case 'interactive':
     case 'i':

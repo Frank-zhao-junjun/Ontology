@@ -26,6 +26,7 @@ export type BusinessChainNodeInput = {
   nameEn?: string;
   description?: string;
   semantics?: SemanticsBlock;
+  autoGenerateMetamodels?: boolean;
 };
 
 function normalizeInput(
@@ -316,7 +317,13 @@ export function addEpcProcess(
     throw new Error('父级业务场景不存在');
   }
   const fields = normalizeInput(input);
-  const node: EpcProcess = { id: generateId(), parentId: parentCId, steps: [], ...fields };
+  const node: EpcProcess = {
+    id: generateId(),
+    parentId: parentCId,
+    steps: [],
+    ...fields,
+    autoGenerateMetamodels: input.autoGenerateMetamodels ?? false,
+  };
   const epcProcesses = [...(project.epcProcesses ?? []), node];
   const moduleVersionRecords = saveDraft(
     project.moduleVersionRecords ?? [],

@@ -69,11 +69,13 @@ import type {
   GovernanceAgentPolicy,
   DataSourcesModel,
   DataSourceDefinition,
+  InterfaceDefinition,
   MetricsModel,
   BusinessMetric,
   TransactionBoundary,
   BehaviorIndicator,
   BehaviorConstraint,
+  ConstraintDefinition,
   ExcelParsedData,
   AttributeDataType,
   Relation,
@@ -123,6 +125,10 @@ import {
   mergeAiDraftSuggestion,
   type ModuleDraftSuggestion,
 } from '@/lib/ai-draft';
+import {
+  applyEpcMetamodelDrafts,
+  type EpcMetamodelDrafts,
+} from '@/lib/business-chain/epc-metamodel-applier';
 import { generateId } from '@/lib/id';
 
 export type BusinessChainNodeRef = { kind: BusinessChainNodeKind; id: string };
@@ -237,6 +243,11 @@ interface OntologyState {
   addTransactionBoundary: (boundary: TransactionBoundary) => void;
   updateTransactionBoundary: (boundaryId: string, boundary: Partial<TransactionBoundary>) => void;
   deleteTransactionBoundary: (boundaryId: string) => void;
+
+  // 约束层 (B07) — EPC 自动生成元模型
+  addConstraint: (constraint: ConstraintDefinition) => void;
+  updateConstraint: (constraintId: string, constraint: Partial<ConstraintDefinition>) => void;
+  deleteConstraint: (constraintId: string) => void;
 
   // EPC模型操作
   setEpcModel: (model: EpcModel) => void;
@@ -354,9 +365,10 @@ interface OntologyState {
   addScenario: (parentBId: string, input: BusinessChainNodeInput) => Scenario;
   updateScenario: (id: string, updates: Partial<BusinessChainNodeInput>) => void;
   deleteScenario: (id: string) => void;
-  addEpcProcess: (parentCId: string, input: BusinessChainNodeInput) => EpcProcess;
+  addEpcProcess: (parentCId: string, input: BusinessChainNodeInput & { autoGenerateMetamodels?: boolean }) => EpcProcess;
   updateEpcProcess: (id: string, updates: Partial<BusinessChainNodeInput>) => void;
   deleteEpcProcess: (id: string) => void;
+  applyEpcMetamodelDrafts: (epcId: string, drafts: EpcMetamodelDrafts) => void;
   getBusinessChainModuleStatus: (kind: BusinessChainNodeKind, moduleId: string) => ModuleStatus;
 
   // 简化架构 — EPC 流水线 (US-S05)
@@ -2079,6 +2091,52 @@ export const useOntologyStore = create<OntologyState>()(
                 ),
                 updatedAt: now,
               },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      // 约束层 (B07)
+      addConstraint: (constraint) => {
+        set((state) => {
+          if (!state.project) return state;
+          const now = new Date().toISOString();
+          const nextConstraint = { ...constraint, id: constraint.id || generateId(), createdAt: constraint.createdAt || now, updatedAt: constraint.updatedAt || now };
+          return {
+            project: {
+              ...state.project,
+              constraints: [...(state.project.constraints || []), nextConstraint],
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      updateConstraint: (constraintId, partialConstraint) => {
+        set((state) => {
+          if (!state.project) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              constraints: (state.project.constraints || []).map((c) =>
+                c.id === constraintId ? { ...c, ...partialConstraint, updatedAt: now } : c
+              ),
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      deleteConstraint: (constraintId) => {
+        set((state) => {
+          if (!state.project) return state;
+          const now = new Date().toISOString();
+          return {
+            project: {
+              ...state.project,
+              constraints: (state.project.constraints || []).filter((c) => c.id !== constraintId),
               updatedAt: now,
             },
           };
@@ -4085,7 +4143,13 @@ export const useOntologyStore = create<OntologyState>()(
           throw new Error('父级业务场景不存在');
         }
         const fields = normalizeBusinessChainNodeInput(input);
-        const node: EpcProcess = { id: generateId(), parentId: parentCId, steps: [], ...fields };
+        const node: EpcProcess = {
+          id: generateId(),
+          parentId: parentCId,
+          steps: [],
+          ...fields,
+          autoGenerateMetamodels: input.autoGenerateMetamodels ?? false,
+        };
         set((s) => {
           if (!s.project) throw new Error('没有活动项目');
           const epcProcesses = [...(s.project.epcProcesses ?? []), node];
@@ -4105,6 +4169,21 @@ export const useOntologyStore = create<OntologyState>()(
           };
         });
         return node;
+      },
+
+      applyEpcMetamodelDrafts: (epcId, drafts) => {
+        const state = get();
+        if (!state.project) throw new Error('没有活动项目');
+        const updatedProject = applyEpcMetamodelDrafts(state.project, epcId, drafts).project;
+        set((s) => {
+          if (!s.project) throw new Error('没有活动项目');
+          return {
+            project: {
+              ...updatedProject,
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
       },
 
       updateEpcProcess: (id, updates) => {

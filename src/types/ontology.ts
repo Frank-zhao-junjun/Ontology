@@ -1655,6 +1655,40 @@ export interface DataSourcesModel {
   updatedAt: string;
 }
 
+// ========== 约束模型 (E7) ==========
+export type ConstraintType = 'business' | 'technical' | 'data_quality' | 'security' | 'performance';
+export type ConstraintDefinitionSeverity = 'error' | 'warning' | 'info';
+
+export interface ConstraintDefinition {
+  id: string;
+  name: string;
+  nameEn: string;
+  description?: string;
+  type: ConstraintType;
+  expression?: string;
+  severity: ConstraintDefinitionSeverity;
+  boundEntityId?: string;
+  boundActionId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ========== 接口模型 (E8) ==========
+export type InterfaceType = 'api' | 'event' | 'message_queue' | 'file' | 'database';
+
+export interface InterfaceDefinition {
+  id: string;
+  name: string;
+  nameEn: string;
+  description?: string;
+  type: InterfaceType;
+  protocol?: string;
+  endpoint?: string;
+  boundEntityId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ========== 项目状态 ==========
 // ========== Transaction Boundary (B06) ==========
 export interface TransactionBoundary {
@@ -1926,6 +1960,10 @@ export interface EpcStep {
 export interface EpcProcess extends BusinessNodeBase {
   parentId: string;
   steps: EpcStep[];
+  /** EPC 创建时 AI 自动生成的 8 个元模型引用 */
+  generatedRefs?: EpcModelRef[];
+  /** 是否启用了自动生成元模型 */
+  autoGenerateMetamodels?: boolean;
 }
 
 export type ElementVisibility = 'project' | 'domain_scoped' | 'private_draft';
@@ -2013,6 +2051,8 @@ export interface OntologyProject {
   dataSourcesModel?: DataSourcesModel | null;
   metricsModel?: MetricsModel | null;
   organizationModel?: OrganizationModel | null;
+  constraints?: ConstraintDefinition[];
+  interfaces?: InterfaceDefinition[];
   agentSemanticLayer?: AgentSemanticLayer | null;
   referenceDocuments?: ReferenceDocument[];
   /** 简化架构扩展（双写，见 docs/adr-simplified-ontology-model.md） */

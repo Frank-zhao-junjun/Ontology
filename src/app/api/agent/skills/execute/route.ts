@@ -1,3 +1,5 @@
+import { addEpcProcess } from '@/lib/business-chain/business-chain';
+import { OntologyProject } from '@/types/ontology';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -171,6 +173,33 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      case 'create_epc_process': {
+        const { project, parentId, name, nameEn, description, autoGenerateMetamodels } = params;
+        if (!project) return error('缺少 project 参数');
+        if (!parentId) return error('缺少 parentId 参数');
+        if (!name) return error('缺少 name 参数');
+        const updated = addEpcProcess(project as OntologyProject, parentId, {
+          name,
+          nameEn,
+          description,
+          autoGenerateMetamodels,
+        });
+        if (!autoGenerateMetamodels) {
+          return NextResponse.json({ success: true, data: updated.project });
+        }
+        const epcId = updated.node.id;
+        const res = await fetch(`${base}/api/epc-processes/auto-generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project: updated.project, epcId }),
+        });
+        const autoData = await res.json();
+        if (!autoData.success) {
+          return NextResponse.json({ success: false, error: autoData.error || '自动生成元模型失败', data: updated });
+        }
+        return NextResponse.json({ success: true, data: autoData.data });
+      }
+
       default:
         return NextResponse.json(
           {
@@ -178,7 +207,7 @@ export async function POST(request: NextRequest) {
             error: `未知操作: ${operation}`,
             available: [
               'list_projects', 'get_project', 'list_metadata',
-              'ai_generate', 'ai_chat', 'create_model',
+              'ai_generate', 'ai_chat', 'create_model', 'create_epc_process',
               'excel_template', 'export_manifest',
               'list_skills', 'execute_skill',
               'hr_sync_status', 'hr_sync_trigger',
@@ -214,6 +243,7 @@ export async function GET() {
       { name: 'ai_generate', desc: 'AI生成模型建议', params: { entity: 'object', domain: 'object', project: 'object', existingModels: 'object', metadataList: 'array' } },
       { name: 'ai_chat', desc: 'AI对话（SSE流式）', params: { messages: 'array' } },
       { name: 'create_model', desc: '通过AI创建建模要素', params: { description: 'string', domain: 'object', projectInfo: 'object' } },
+      { name: 'create_epc_process', desc: '创建EPC流程并可自动生成8个元模型', params: { project: 'object', parentId: 'string', name: 'string', nameEn: 'string?', description: 'string?', autoGenerateMetamodels: 'boolean?' } },
       { name: 'excel_template', desc: '获取Excel模板', params: {} },
       { name: 'export_manifest', desc: '导出Manifest为Excel', params: { manifest: 'object' } },
       { name: 'list_skills', desc: '列出Agent技能', params: { type: 'string?' } },

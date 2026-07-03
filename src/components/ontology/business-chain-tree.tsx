@@ -10,6 +10,7 @@ import {
 } from '@/lib/business-chain/tree';
 import type { ModuleStatus } from '@/types/ontology';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ModuleStatusBadge } from '@/components/ontology/module-status-badge';
 import {
@@ -156,6 +157,7 @@ export function BusinessChainTree() {
   const addCapability = useOntologyStore((s) => s.addCapability);
   const addScenario = useOntologyStore((s) => s.addScenario);
   const addEpcProcess = useOntologyStore((s) => s.addEpcProcess);
+  const applyEpcMetamodelDrafts = useOntologyStore((s) => s.applyEpcMetamodelDrafts);
   const deleteValueDomain = useOntologyStore((s) => s.deleteValueDomain);
   const deleteCapability = useOntologyStore((s) => s.deleteCapability);
   const deleteScenario = useOntologyStore((s) => s.deleteScenario);
@@ -168,6 +170,8 @@ export function BusinessChainTree() {
     parentId: string;
   } | null>(null);
   const [name, setName] = useState('');
+  const [autoGenerate, setAutoGenerate] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   const slices = useMemo(
     () => ({
@@ -197,12 +201,13 @@ export function BusinessChainTree() {
 
   const openCreate = (childKind: BusinessChainNodeKind, parentId: string) => {
     setName('');
+    setAutoGenerate(false);
     setDialog({ mode: 'create', childKind, parentId });
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!dialog || !name.trim()) return;
-    const input = { name: name.trim() };
+    const input = { name: name.trim(), autoGenerateMetamodels: autoGenerate };
     let createdId: string | undefined;
 
     if (dialog.childKind === 'A') {
@@ -213,6 +218,31 @@ export function BusinessChainTree() {
       createdId = addScenario(dialog.parentId, input).id;
     } else {
       createdId = addEpcProcess(dialog.parentId, input).id;
+      if (autoGenerate && createdId && project) {
+        setGenerating(true);
+        try {
+          const res = await fetch('/api/generate-epc-metamodels', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              epcName: name.trim(),
+              epcDescription: '',
+              epcNameEn: '',
+              domainName: project.domain?.name ?? '',
+              projectName: project.name ?? '',
+              existingElements: [],
+            }),
+          });
+          const json = await res.json();
+          if (json.success && json.data) {
+            applyEpcMetamodelDrafts(createdId, json.data);
+          }
+        } catch (err) {
+          console.error('自动生成元模型失败:', err);
+        } finally {
+          setGenerating(false);
+        }
+      }
     }
 
     if (createdId) {
@@ -361,8 +391,20 @@ export function BusinessChainTree() {
               placeholder="中文名称"
             />
           </div>
-          <Button onClick={handleCreate} disabled={!name.trim()}>
-            创建
+          {dialog?.childKind === 'EPC' && (
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="bc-auto"
+                checked={autoGenerate}
+                onCheckedChange={(v) => setAutoGenerate(Boolean(v))}
+              />
+              <Label htmlFor="bc-auto" className="text-sm font-normal cursor-pointer">
+                自动生成 8 个元模型草案
+              </Label>
+            </div>
+          )}
+          <Button onClick={handleCreate} disabled={!name.trim() || generating}>
+            {generating ? '生成中...' : '创建'}
           </Button>
         </DialogContent>
       </Dialog>

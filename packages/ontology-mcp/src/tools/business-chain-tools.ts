@@ -21,6 +21,7 @@ const AddNodeSchema = z.object({
   name: z.string().min(1, '名称不能为空'),
   nameEn: z.string().optional(),
   description: z.string().optional(),
+  autoGenerateMetamodels: z.boolean().optional().describe('EPC节点专用: 创建时自动生成8个元模型草案'),
 });
 
 const UpdateNodeSchema = z.object({
@@ -109,11 +110,11 @@ async function saveProject(projectId: string, updatedProject: OntologyProject) {
 export const chainToolHandlers: Record<string, ToolHandler> = {
   ontology_business_chain_add: async (args: Record<string, unknown>) => {
     try {
-      const { projectId, kind, parentId, name, nameEn, description } = AddNodeSchema.parse(args);
+      const { projectId, kind, parentId, name, nameEn, description, autoGenerateMetamodels } = AddNodeSchema.parse(args);
       const core = await import('@ontology/core');
       const stored = await getProjectOrThrow(projectId);
       const project = stored.data;
-      const input = { name, nameEn, description };
+      const input = { name, nameEn, description, autoGenerateMetamodels };
 
       let result:
         | { project: OntologyProject; node: ValueDomain }
@@ -138,6 +139,13 @@ export const chainToolHandlers: Record<string, ToolHandler> = {
         case 'EPC': {
           if (!parentId) throw new Error('EPC类型需要 parentId（父级场景ID）');
           result = core.addEpcProcess(project, parentId, input);
+          const epcResult = result as { project: OntologyProject; node: EpcProcess };
+          if (autoGenerateMetamodels) {
+            const autoProject = await projectStore.autoGenerateEpcMetamodels(epcResult.project, epcResult.node.id);
+            await saveProject(projectId, autoProject);
+            const autoEpc = autoProject.businessChain?.epcProcesses?.find((n: EpcProcess) => n.id === epcResult.node.id);
+            return { content: [{ type: 'text', text: successResponse({ node: autoEpc || epcResult.node, generatedRefs: autoEpc?.generatedRefs }) }] };
+          }
           break;
         }
         default:
