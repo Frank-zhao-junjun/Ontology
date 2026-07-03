@@ -42,6 +42,7 @@ export function BusinessChainDetail({ onNavigateToElement }: BusinessChainDetail
   const getScenarioReferenceUnion = useOntologyStore((s) => s.getScenarioReferenceUnion);
   const setSelectedBusinessChainNode = useOntologyStore((s) => s.setSelectedBusinessChainNode);
   const confirmModuleValidated = useOntologyStore((s) => s.confirmModuleValidated);
+  const confirmEpcAndGenerateMetamodels = useOntologyStore((s) => s.confirmEpcAndGenerateMetamodels);
   const cancelModuleDraft = useOntologyStore((s) => s.cancelModuleDraft);
   const forkModuleToDraft = useOntologyStore((s) => s.forkModuleToDraft);
   const applyAiModuleDraft = useOntologyStore((s) => s.applyAiModuleDraft);
@@ -54,6 +55,7 @@ export function BusinessChainDetail({ onNavigateToElement }: BusinessChainDetail
   const [derivedSteps, setDerivedSteps] = useState<import('@/lib/epc-derivation').DerivedEpcStep[] | null>(null);
   const [fieldErrors, setFieldErrors] = useState<string[]>([]);
   const [archivedPreview, setArchivedPreview] = useState<ModuleVersionRecord | null>(null);
+  const [metamodelGenerating, setMetamodelGenerating] = useState(false);
 
   const slices = useMemo(
     () => ({
@@ -141,6 +143,23 @@ export function BusinessChainDetail({ onNavigateToElement }: BusinessChainDetail
       ? `${result.archived.version} → archived；`
       : '';
     toast.success(`${archivedMsg}${result.confirmed.version} 已 confirmed`);
+
+    // EPC 确认后，自动调用 AI 从步骤内容提取元数据生成 8 维元模型
+    if (selected.kind === 'EPC') {
+      setMetamodelGenerating(true);
+      toast.message('正在从 EPC 流程步骤中提取元数据，生成 8 维元模型...');
+      confirmEpcAndGenerateMetamodels(selected.id)
+        .then(() => {
+          toast.success('8 维元模型已从 EPC 流程中自动生成');
+        })
+        .catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : 'AI 元模型生成失败';
+          toast.error(`元模型生成失败: ${msg}`);
+        })
+        .finally(() => {
+          setMetamodelGenerating(false);
+        });
+    }
   };
 
   const handleCancelEdit = () => {
@@ -261,6 +280,11 @@ export function BusinessChainDetail({ onNavigateToElement }: BusinessChainDetail
       )}
       {selected.kind === 'EPC' && !archivedPreview && (
         <div className="border-t pt-6">
+          {metamodelGenerating && (
+            <div className="mb-3 rounded-md border border-orange-200 bg-orange-50 px-4 py-2 text-sm text-orange-700">
+              正在从 EPC 流程步骤中提取元数据，生成 8 维元模型...
+            </div>
+          )}
           <EpcStepsEditor
             key={selected.id}
             epc={node as EpcProcess}

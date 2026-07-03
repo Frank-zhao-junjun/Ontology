@@ -1,9 +1,10 @@
 import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
-import type { OntologyProject } from '@/types/ontology';
+import type { OntologyProject, MetaElement } from '@/types/ontology';
 import {
   buildEpcMetamodelPrompt,
   parseEpcMetamodelResponse,
   EpcMetamodelParseError,
+  type EpcStepInfo,
 } from '@/lib/ai-draft/epc-metamodel-prompt';
 import { applyEpcMetamodelDrafts } from '@/lib/business-chain/epc-metamodel-applier';
 
@@ -12,6 +13,9 @@ export interface EpcAutoGenerateOptions {
   temperature?: number;
   headers?: Headers;
 }
+
+/** 触发模式：creation = 创建时（仅名称/描述），confirm = 确认后（含步骤内容） */
+export type EpcGenerateTrigger = 'creation' | 'confirm';
 
 function findEpcById(project: OntologyProject, epcId: string) {
   return (project.epcProcesses ?? []).find((epc) => epc.id === epcId);
@@ -51,17 +55,49 @@ function buildExistingElementSummary(project: OntologyProject) {
   return elements;
 }
 
+/** 从 EPC 步骤和 MetaElement 列表中提取步骤信息供 AI 分析 */
+function extractStepInfos(
+  epc: { steps: { id: string; name: string; elementRef?: { dimension?: string; elementId?: string; elementName?: string } }[] },
+  metaElements: MetaElement[],
+): EpcStepInfo[] {
+  return epc.steps.map((step) => {
+    const info: EpcStepInfo = { name: step.name };
+    if (step.elementRef) {
+      info.dimension = step.elementRef.dimension;
+      info.elementName = step.elementRef.elementName;
+      // 若 elementName 未缓存，从 metaElements 查找
+      if (!info.elementName && step.elementRef.elementId) {
+        const meta = metaElements.find((m) => m.id === step.elementRef!.elementId);
+        if (meta) info.elementName = meta.name;
+      }
+    }
+    return info;
+  });
+}
+
+/**
+ * 核心：生成并应用 EPC 元模型草案
+ * - trigger='creation'：仅基于 EPC 名称/描述生成（创建时）
+ * - trigger='confirm'：基于 EPC 已确认的步骤内容提取元数据生成（确认后）
+ */
 export async function generateAndApplyEpcMetamodels(
   project: OntologyProject,
   epcId: string,
-  options: EpcAutoGenerateOptions = {},
+  options: EpcAutoGenerateOptions & { trigger?: EpcGenerateTrigger } = {},
 ): Promise<OntologyProject> {
+  const { trigger = 'creation', ...llmOptions } = options;
   const epc = findEpcById(project, epcId);
   if (!epc) {
     throw new Error(`EPC 流程 ${epcId} 不存在`);
   }
 
   const existingElements = buildExistingElementSummary(project);
+
+  // confirm 模式：从 EPC 步骤中提取元数据
+  const epcSteps = trigger === 'confirm'
+    ? extractStepInfos(epc, project.metaElements ?? [])
+    : undefined;
+
   const prompt = buildEpcMetamodelPrompt({
     epcName: epc.name,
     epcDescription: epc.description ?? '',
@@ -69,12 +105,13 @@ export async function generateAndApplyEpcMetamodels(
     domainName: project.domain?.name ?? '',
     projectName: project.name ?? '',
     existingElements,
+    epcSteps,
   });
 
   const config = new Config();
-  const customHeaders = options.headers ? HeaderUtils.extractForwardHeaders(options.headers) : undefined;
+  const customHeaders = llmOptions.headers ? HeaderUtils.extractForwardHeaders(llmOptions.headers) : undefined;
   const client = new LLMClient(config, customHeaders);
-  const model = options.model ?? process.env.GENERATE_MODEL ?? process.env.CHAT_MODEL ?? 'doubao-seed-2-0-pro-260215';
+  const model = llmOptions.model ?? process.env.GENERATE_MODEL ?? process.env.CHAT_MODEL ?? 'doubao-seed-2-0-pro-260215';
 
   const messages = [
     { role: 'system' as const, content: prompt.system },
@@ -83,7 +120,7 @@ export async function generateAndApplyEpcMetamodels(
 
   const stream = client.stream(messages, {
     model,
-    temperature: options.temperature ?? 0.3,
+    temperature: llmOptions.temperature ?? 0.3,
   });
 
   let rawText = '';

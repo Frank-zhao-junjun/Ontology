@@ -200,6 +200,24 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, data: autoData.data });
       }
 
+      case 'confirm_epc_metamodels': {
+        const project = body.params?.project as OntologyProject | undefined;
+        const epcId = body.params?.epcId as string | undefined;
+        if (!project) return NextResponse.json({ success: false, error: '缺少 project 参数' });
+        if (!epcId) return NextResponse.json({ success: false, error: '缺少 epcId 参数' });
+        const base = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${process.env.DEPLOY_RUN_PORT || 5000}`;
+        const res = await fetch(`${base}/api/epc-processes/auto-generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project, epcId, trigger: 'confirm' }),
+        });
+        const autoData = await res.json();
+        if (!autoData.success) {
+          return NextResponse.json({ success: false, error: autoData.error || '确认后生成元模型失败' });
+        }
+        return NextResponse.json({ success: true, data: autoData.data });
+      }
+
       default:
         return NextResponse.json(
           {
@@ -208,6 +226,7 @@ export async function POST(request: NextRequest) {
             available: [
               'list_projects', 'get_project', 'list_metadata',
               'ai_generate', 'ai_chat', 'create_model', 'create_epc_process',
+              'confirm_epc_metamodels',
               'excel_template', 'export_manifest',
               'list_skills', 'execute_skill',
               'hr_sync_status', 'hr_sync_trigger',
@@ -244,6 +263,7 @@ export async function GET() {
       { name: 'ai_chat', desc: 'AI对话（SSE流式）', params: { messages: 'array' } },
       { name: 'create_model', desc: '通过AI创建建模要素', params: { description: 'string', domain: 'object', projectInfo: 'object' } },
       { name: 'create_epc_process', desc: '创建EPC流程并可自动生成8个元模型', params: { project: 'object', parentId: 'string', name: 'string', nameEn: 'string?', description: 'string?', autoGenerateMetamodels: 'boolean?' } },
+      { name: 'confirm_epc_metamodels', desc: 'EPC确认后从流程步骤提取元数据，AI生成8维元模型', params: { project: 'object', epcId: 'string' } },
       { name: 'excel_template', desc: '获取Excel模板', params: {} },
       { name: 'export_manifest', desc: '导出Manifest为Excel', params: { manifest: 'object' } },
       { name: 'list_skills', desc: '列出Agent技能', params: { type: 'string?' } },

@@ -115,8 +115,12 @@ export class ProjectStore {
   }
 
   /** Auto-generate 8 metamodel drafts for an EPC process and return the updated project. */
-  async autoGenerateEpcMetamodels(project: StoredProject['data'], epcId: string): Promise<StoredProject['data']> {
-    const res = (await httpPost('/api/epc-processes/auto-generate', { project, epcId })) as {
+  async autoGenerateEpcMetamodels(
+    project: StoredProject['data'],
+    epcId: string,
+    trigger: 'creation' | 'confirm' = 'creation',
+  ): Promise<StoredProject['data']> {
+    const res = (await httpPost('/api/epc-processes/auto-generate', { project, epcId, trigger })) as {
       success: boolean;
       data?: StoredProject['data'];
       error?: string;

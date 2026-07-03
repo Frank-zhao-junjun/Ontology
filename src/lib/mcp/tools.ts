@@ -329,6 +329,50 @@ const addEpcProcessHandlers: Record<string, ToolHandler> = {
   },
 };
 
+const confirmEpcMetamodelsDefs: ToolDefinition[] = [
+  {
+    name: 'confirm_epc_metamodels',
+    description: 'After EPC confirmation, extract metadata from EPC process steps and AI-generate 8 metamodels (E1-E8)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        project: { type: 'string', description: 'Project JSON or object' },
+        epcId: { type: 'string', description: 'EPC process node ID' },
+      },
+      required: ['project', 'epcId'],
+    },
+  },
+];
+
+const confirmEpcMetamodelsHandlers: Record<string, ToolHandler> = {
+  confirm_epc_metamodels: async (args) => {
+    const project = readProjectInput(args);
+    const epcId = args['epcId'] as string;
+    if (!epcId) throw new Error('Missing epcId');
+
+    const base = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${process.env.DEPLOY_RUN_PORT || 5000}`;
+    const res = await fetch(`${base}/api/epc-processes/auto-generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project, epcId, trigger: 'confirm' }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to generate metamodels');
+
+    await projectStore.update(project.id, data.data);
+    const epc = (data.data?.epcProcesses || []).find((n: { id: string }) => n.id === epcId);
+    const refCount = epc?.generatedRefs?.length || 0;
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `EPC metamodels generated from process steps.\nEPC: ${epc?.name || epcId}\nGenerated refs: ${refCount}`,
+        },
+      ],
+    };
+  },
+};
+
 // ── Analysis Tools (2) ────────────────────────────────────────────
 
 const analyzeProjectDefs: ToolDefinition[] = [
@@ -418,6 +462,7 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...addCapabilityDefs,
   ...addScenarioDefs,
   ...addEpcProcessDefs,
+  ...confirmEpcMetamodelsDefs,
   ...analyzeProjectDefs,
   ...getBusinessChainDefs,
 ];
@@ -431,6 +476,7 @@ export const allToolHandlers: Record<string, ToolHandler> = {
   ...addCapabilityHandlers,
   ...addScenarioHandlers,
   ...addEpcProcessHandlers,
+  ...confirmEpcMetamodelsHandlers,
   ...analyzeProjectHandlers,
   ...getBusinessChainHandlers,
 };

@@ -87,6 +87,19 @@ export const chainToolDefinitions: ToolDefinition[] = [
       required: ['projectId', 'kind', 'nodeId'],
     },
   },
+  {
+    name: 'ontology_epc_confirm_generate_metamodels',
+    description: 'EPC 确认后，AI 从 EPC 流程步骤中提取元数据，自动生成 8 维元模型（E1-E8）',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string', description: '项目ID' },
+        epcId: { type: 'string', description: 'EPC 流程节点ID' },
+        trigger: { type: 'string', enum: ['confirm', 'creation'], description: '触发模式：confirm=从步骤内容提取（默认），creation=仅基于名称/描述' },
+      },
+      required: ['projectId', 'epcId'],
+    },
+  },
 ];
 
 // ----- Helpers -----
@@ -222,6 +235,26 @@ export const chainToolHandlers: Record<string, ToolHandler> = {
 
       await saveProject(projectId, updatedProject);
       return { content: [{ type: 'text', text: successResponse({ deleted: true }) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: errorResponse(err) }] };
+    }
+  },
+
+  ontology_epc_confirm_generate_metamodels: async (args: Record<string, unknown>) => {
+    try {
+      const projectId = String(args.projectId ?? '');
+      const epcId = String(args.epcId ?? '');
+      const trigger = (args.trigger === 'confirm' ? 'confirm' : 'confirm') as 'confirm' | 'creation';
+      if (!projectId) throw new Error('缺少 projectId');
+      if (!epcId) throw new Error('缺少 epcId');
+
+      const stored = await getProjectOrThrow(projectId);
+      const project = stored.data;
+      const autoProject = await projectStore.autoGenerateEpcMetamodels(project, epcId, trigger);
+      await saveProject(projectId, autoProject);
+
+      const epc = (autoProject.epcProcesses ?? []).find((n: EpcProcess) => n.id === epcId);
+      return { content: [{ type: 'text', text: successResponse({ epc, generatedRefs: epc?.generatedRefs ?? [] }) }] };
     } catch (err) {
       return { content: [{ type: 'text', text: errorResponse(err) }] };
     }

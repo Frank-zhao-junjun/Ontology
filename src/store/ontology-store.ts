@@ -369,6 +369,8 @@ interface OntologyState {
   updateEpcProcess: (id: string, updates: Partial<BusinessChainNodeInput>) => void;
   deleteEpcProcess: (id: string) => void;
   applyEpcMetamodelDrafts: (epcId: string, drafts: EpcMetamodelDrafts) => void;
+  /** EPC 确认后，调用 AI 从步骤内容提取元数据生成 8 维元模型 */
+  confirmEpcAndGenerateMetamodels: (epcId: string) => Promise<void>;
   getBusinessChainModuleStatus: (kind: BusinessChainNodeKind, moduleId: string) => ModuleStatus;
 
   // 简化架构 — EPC 流水线 (US-S05)
@@ -4180,6 +4182,38 @@ export const useOntologyStore = create<OntologyState>()(
           return {
             project: {
               ...updatedProject,
+              updatedAt: new Date().toISOString(),
+            },
+          };
+        });
+      },
+
+      confirmEpcAndGenerateMetamodels: async (epcId) => {
+        const state = get();
+        if (!state.project) throw new Error('没有活动项目');
+        const project = state.project;
+
+        const res = await fetch('/api/epc-processes/auto-generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project, epcId, trigger: 'confirm' }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'AI 元模型生成失败');
+        }
+
+        const data = await res.json();
+        if (!data.success || !data.data) {
+          throw new Error(data.error || 'AI 元模型生成失败');
+        }
+
+        set((s) => {
+          if (!s.project) throw new Error('没有活动项目');
+          return {
+            project: {
+              ...data.data,
               updatedAt: new Date().toISOString(),
             },
           };

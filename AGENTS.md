@@ -140,21 +140,28 @@ packages/
 - **面板边界**：`h-screen overflow-hidden`，超出部分滚动查看
 
 ### 8.7. EPC 元模型自动生成 (EPC Metamodel Auto-Generation)
-- **触发时机**：创建 EPC 业务流程时，勾选"自动生成元模型"选项
-- **AI 生成**：基于 EPC 名称/描述，调用豆包 Seed 2.0 Pro 生成完整 8 个元模型草案（E1-E8）
+- **两种触发模式**：
+  - `creation`：创建 EPC 业务流程时，勾选"自动生成元模型"选项，仅基于名称/描述生成
+  - `confirm`：EPC 确认后，从已编辑的流程步骤中提取元数据，生成更精准的 8 维元模型
+- **AI 生成**：调用豆包 Seed 2.0 Pro 生成完整 8 个元模型草案（E1-E8）
+- **confirm 模式提取逻辑**：从 EPC 步骤的 `elementRef` 中提取维度和关联元素，AI 按步骤语义生成（名词→实体、动词→行为/事件、条件→规则、角色→组织、度量→指标、限制→约束、外部交互→数据源）
 - **8 大元模型**：E1 数据模型 / E2 行为模型 / E3 规则模型 / E4 事件模型 / E5 组织模型 / E6 指标模型 / E7 约束模型 / E8 接口模型
 - **已存在复用**：AI 生成时传入已有元素列表，匹配则复用，不重复创建
 - **EPC refs 关联**：生成的元模型通过 `generatedRefs` 自动关联到 EPC 节点
 - **修改/删除隔离**：修改或删除 EPC 不影响已生成的元模型
-- **4 种渠道统一**：Web UI / MCP / CLI / Skill API 均支持 `autoGenerateMetamodels` 参数
+- **4 种渠道统一**：
+  - Web UI：创建时勾选自动生成；确认 EPC 时自动触发 confirm 模式
+  - MCP：`add_epc_process`（creation）/ `confirm_epc_metamodels`（confirm）
+  - CLI：`chain-add --auto`（creation）/ `epc-confirm --epc <id>`（confirm）
+  - Skill API：`create_epc_process`（creation）/ `confirm_epc_metamodels`（confirm）
 - **API**：
   - `POST /api/generate-epc-metamodels` — 纯 AI 生成草案（不应用到项目）
-  - `POST /api/epc-processes/auto-generate` — 生成并应用到项目（接收 project + epcId）
+  - `POST /api/epc-processes/auto-generate` — 生成并应用到项目（接收 project + epcId + trigger）
 - **核心文件**：
-  - `src/lib/ai-draft/epc-metamodel-prompt.ts` — Prompt 构建 + JSON 解析 + Zod 校验
+  - `src/lib/ai-draft/epc-metamodel-prompt.ts` — Prompt 构建 + JSON 解析 + Zod 校验（支持 epcSteps）
   - `src/lib/business-chain/epc-metamodel-applier.ts` — 草案应用到 OntologyProject
-  - `src/lib/business-chain/epc-auto-generator.ts` — 编排：AI 生成 + 应用 + 返回更新后的 project
-- **Store 方法**：`applyEpcMetamodelDrafts(epcId, drafts)` — 将草案应用到当前项目并关联 EPC
+  - `src/lib/business-chain/epc-auto-generator.ts` — 编排：AI 生成 + 应用 + 返回更新后的 project（支持 trigger 参数）
+- **Store 方法**：`applyEpcMetamodelDrafts(epcId, drafts)` / `confirmEpcAndGenerateMetamodels(epcId)` — 确认 EPC 时触发 AI 生成
 - **新增类型**：`ConstraintDefinition` / `InterfaceDefinition` (E7/E8 元模型容器)
 
 ### 9. 建模手册生成
@@ -227,8 +234,9 @@ packages/
 - **服务工厂**：`src/lib/mcp/server.ts`（createMcpServer，tools + resources + prompts）
 - **配置**：`.mcp.json` — HTTP URL 模式（`https://Ontology1.coze.site/api/mcp`）
 - **启动（本地）**：`pnpm tsx packages/ontology-mcp/src/index.ts`
-- **工具**：8 个（list_projects, get_project, create_project, export_project, add_value_domain, add_capability, add_scenario, add_epc_process）
+- **工具**：9 个（list_projects, get_project, create_project, export_project, add_value_domain, add_capability, add_scenario, add_epc_process, confirm_epc_metamodels）
   - `add_epc_process` 支持 `autoGenerateMetamodels: true` 参数，自动调用 AI 生成 8 个元模型草案并关联
+  - `confirm_epc_metamodels` 在 EPC 确认后从流程步骤提取元数据，AI 生成 8 维元模型
 - **资源**：4 个只读项目资源
 - **提示词**：2 个建模 Copilot 提示词模板
 - **依赖**：`@modelcontextprotocol/sdk`
@@ -250,6 +258,7 @@ packages/
   - `ontology template` — 下载 Excel 模板
   - `ontology chat <消息>` — AI 对话（SSE 流式）
   - `ontology create-epc` — 创建 EPC 流程（支持 `--auto-generate` 自动生成元模型）
+  - `ontology epc-confirm` — EPC 确认后从流程步骤提取元数据生成 8 维元模型
   - `ontology skills` — 列出 Agent 技能
   - `ontology sync <source>` — HR 同步状态
   - `ontology interactive` — 交互式菜单模式（inquirer）
@@ -259,7 +268,7 @@ packages/
 - **入口**：`POST /api/agent/skills/execute`
 - **GET**：返回所有可用操作列表（12 种）
 - **ZIP 下载**：`GET /api/agent/skills/download` — 下载完整技能包 ZIP（skill.json + README.md + config/ + examples/ + openapi.yaml）
-- **操作**：`list_projects` / `get_project` / `list_metadata` / `ai_generate` / `ai_chat` / `create_model` / `excel_template` / `export_manifest` / `list_skills` / `execute_skill` / `hr_sync_status` / `hr_sync_trigger`
+- **操作**：`list_projects` / `get_project` / `list_metadata` / `ai_generate` / `ai_chat` / `create_model` / `create_epc_process` / `confirm_epc_metamodels` / `excel_template` / `export_manifest` / `list_skills` / `execute_skill` / `hr_sync_status` / `hr_sync_trigger`
 - **统一后端**：Skill / MCP / CLI 三种方式最终都通过此 API 或直接调用 Web API 路由
 - **首页入口**：ServiceEntry 组件 Tab 切换（MCP / CLI / Skill），Skill Tab 含 ZIP 下载按钮
 
@@ -334,6 +343,7 @@ addEpcProcess(parentId, { name, nameEn, description, autoGenerateMetamodels });
 
 // EPC 元模型自动生成
 applyEpcMetamodelDrafts(epcId, drafts);
+confirmEpcAndGenerateMetamodels(epcId); // 确认 EPC 后触发 AI 从步骤提取元数据生成
 
 // 约束模型（E7）
 addConstraint(constraint);

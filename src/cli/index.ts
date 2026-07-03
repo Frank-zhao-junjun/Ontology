@@ -489,6 +489,50 @@ async function cmdSync(source?: string) {
   }
 }
 
+async function cmdEpcConfirm(args: string[]) {
+  const projectId = args[0];
+  if (!projectId) {
+    error('用法: epc-confirm <项目ID> --epc <EPC节点ID>');
+    return;
+  }
+  const epcFlag = args.indexOf('--epc');
+  const epcId = epcFlag >= 0 ? args[epcFlag + 1] : '';
+  if (!epcId) {
+    error('缺少 --epc <EPC节点ID>');
+    return;
+  }
+
+  info(`正在获取项目 ${projectId} ...`);
+  const projectRes = await api(`/api/projects/${projectId}`);
+  if (projectRes.success === false || !projectRes.data) {
+    error(projectRes.error || '获取项目失败');
+    return;
+  }
+
+  info('正在从 EPC 流程提取元数据并生成 8 维元模型 ...');
+  const res = await api('/api/epc-processes/auto-generate', {
+    method: 'POST',
+    body: JSON.stringify({
+      project: projectRes.data,
+      epcId,
+      trigger: 'confirm',
+    }),
+  });
+  if (res.success) {
+    const epc = (res.data?.epcProcesses ?? []).find((n: { id: string }) => n.id === epcId);
+    success(`EPC "${epc?.name ?? epcId}" 元模型生成完成`);
+    console.log(`  ${c.green}\u25cf${c.reset} 元模型引用: ${epc?.generatedRefs?.length || 0} 个`);
+    if (epc?.generatedRefs) {
+      for (const ref of epc.generatedRefs) {
+        const reused = ref.refRole === 'reused' ? ' (复用)' : '';
+        console.log(`    ${c.dim}- ${ref.modelType} \u2192 ${ref.refName}${reused}${c.reset}`);
+      }
+    }
+  } else {
+    error(res.error || '生成失败');
+  }
+}
+
 function cmdHelp() {
   console.log(`
 ${c.bold}${c.cyan}Ontology CLI \u2014 \u672c\u4f53\u5efa\u6a21\u547d\u4ee4\u884c\u5de5\u5177${c.reset}
@@ -508,6 +552,7 @@ ${c.bold}\u547d\u4ee4:${c.reset}
   ${c.green}chat${c.reset} <\u6d88\u606f>          AI\u5bf9\u8bdd\uff08SSE\u6d41\u5f0f\uff09
   ${c.green}skills${c.reset} [type]         \u5217\u51faAgent\u6280\u80fd (superpowers|gstack|ralph)
   ${c.green}sync${c.reset} <source>         \u89e6\u53d1HR\u7cfb\u7edf\u540c\u6b65\n  ${c.green}chain-add${c.reset} <\u9879\u76eeID>    \u521b\u5efa\u4e1a\u52a1\u94fe\u8282\u70b9\uff08\u652f\u6301EPC\u81ea\u52a8\u5143\u6a21\u578b\uff09
+  ${c.green}epc-confirm${c.reset} <\u9879\u76eeID>  EPC\u786e\u8ba4\u540e\u4ece\u6d41\u7a0b\u63d0\u53d6\u5143\u6570\u636e\u751f\u62108\u7ef4\u5143\u6a21\u578b
   ${c.green}interactive${c.reset}           \u4ea4\u4e92\u5f0f\u83dc\u5355\u6a21\u5f0f
   ${c.green}help${c.reset}                  \u663e\u793a\u6b64\u5e2e\u52a9\u4fe1\u606f
 
@@ -704,6 +749,9 @@ async function main() {
       break;
     case 'chain-add':
       await cmdChainAdd(args);
+      break;
+    case 'epc-confirm':
+      await cmdEpcConfirm(args);
       break;
     case 'interactive':
     case 'i':

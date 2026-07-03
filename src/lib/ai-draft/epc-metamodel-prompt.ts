@@ -35,6 +35,12 @@ export class EpcMetamodelParseError extends Error {
   }
 }
 
+export interface EpcStepInfo {
+  name: string;
+  dimension?: string;
+  elementName?: string;
+}
+
 export interface EpcGenerationContext {
   epcName: string;
   epcDescription: string;
@@ -47,6 +53,8 @@ export interface EpcGenerationContext {
     name: string;
     description?: string;
   }[];
+  /** EPC 确认后传入的步骤信息，AI 从中提取元数据生成更精准的 8 维元模型 */
+  epcSteps?: EpcStepInfo[];
 }
 
 export function buildEpcMetamodelPrompt(ctx: EpcGenerationContext): { system: string; user: string } {
@@ -54,14 +62,20 @@ export function buildEpcMetamodelPrompt(ctx: EpcGenerationContext): { system: st
     ? ctx.existingElements!.map(e => `- [${e.modelType}] ${e.name} (${e.id})`).join('\n')
     : '（无）';
 
-  const system = `你是一位企业架构与本体建模专家。请根据用户提供的 EPC（事件驱动流程链）业务流程信息，自动生成与之配套的 8 个元模型草案。
+  const hasSteps = (ctx.epcSteps ?? []).length > 0;
+
+  const stepsSection = hasSteps
+    ? `\n## EPC 流程步骤（已确认）\n\n以下是从 EPC 流程中提取的步骤信息，请从中分析业务语义，提取实体、行为、规则、事件、组织、指标、约束、数据源等元数据：\n\n${ctx.epcSteps!.map((s, i) => `${i + 1}. ${s.name}${s.dimension ? ` [维度: ${s.dimension}]` : ''}${s.elementName ? ` → 关联元素: ${s.elementName}` : ''}`).join('\n')}\n`
+    : '';
+
+  const system = `你是一位企业架构与本体建模专家。请根据用户提供的 EPC（事件驱动流程链）业务流程信息${hasSteps ? '及已确认的流程步骤' : ''}，自动生成与之配套的 8 个元模型草案。
 
 约束与要求：
 1. 必须覆盖全部 8 个元模型：E1 数据、E2 行为、E3 规则、E4 事件、E5 组织、E6 指标、E7 约束、E8 数据源。
 2. 如果某个元模型与已存在的元素语义相同，请在 reusedRefs 中引用已有元素，不要重复生成。
-3. 每个元模型至少生成 1 个元素。
-4. 只返回合法的 JSON，不要 Markdown 解释、不要代码块标记。
-5. 字段名使用英文，值为中文业务语义。`;
+3. 每个元模型至少生成 1 个元素。${hasSteps ? '\n4. 请从 EPC 步骤中提取业务语义，确保生成的元模型与流程步骤一一对应：步骤中出现的名词→实体(E1)、动词→行为/事件(E2/E4)、条件→规则(E3)、角色→组织(E5)、度量→指标(E6)、限制→约束(E7)、外部交互→数据源(E8)。' : ''}
+${hasSteps ? '5.' : '4.'} 只返回合法的 JSON，不要 Markdown 解释、不要代码块标记。
+${hasSteps ? '6.' : '5.'} 字段名使用英文，值为中文业务语义。`;
 
   const user = `## EPC 流程信息
 
@@ -70,7 +84,7 @@ export function buildEpcMetamodelPrompt(ctx: EpcGenerationContext): { system: st
 - 描述：${ctx.epcDescription || ''}
 - 领域：${ctx.domainName || '未指定'}
 - 项目：${ctx.projectName || '未指定'}
-
+${stepsSection}
 ## 已存在的可复用元素
 
 ${existingSummary}
