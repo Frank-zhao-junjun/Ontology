@@ -233,6 +233,21 @@ const ORCHESTRATION_HEADERS: Record<string, string> = {
   description: '描述',
 };
 
+const EPC_STEP_HEADERS: Record<string, string> = {
+  epcId: 'EPC流程ID',
+  epcName: 'EPC流程名称',
+  stepIndex: '步骤序号',
+  stepId: '步骤ID',
+  stepName: '步骤名称',
+  stepType: '步骤类型',
+  dimension: '关联维度',
+  elementId: '关联元素ID',
+  elementName: '关联元素名称',
+  actionId: '关联动作ID',
+  targetEntityId: '目标实体ID',
+  description: '步骤描述',
+};
+
 export async function POST(request: NextRequest) {
   try {
     const manifest: OntologyManifest = await request.json();
@@ -347,6 +362,29 @@ export async function POST(request: NextRequest) {
       buildSheet(toRows(spec?.process?.orchestrations as unknown as Record<string, unknown>[]), ORCHESTRATION_HEADERS),
       'Process-流程编排',
     );
+
+    // EPC step details — each step as a separate row
+    const epcStepRows: Record<string, unknown>[] = [];
+    (spec?.process?.orchestrations || []).forEach((orch) => {
+      // 只输出 source='epc' 的编排，或者无 source 标记但有 steps 的
+      (orch.steps || []).forEach((step, idx) => {
+        epcStepRows.push({
+          epcId: orch.id,
+          epcName: orch.name || '',
+          stepIndex: idx + 1,
+          stepId: step.id || '',
+          stepName: step.name || '',
+          stepType: step.type || '',
+          dimension: step.dimension || '',
+          elementId: step.elementId || '',
+          elementName: step.elementName || '',
+          actionId: step.actionId || '',
+          targetEntityId: step.targetEntityId || '',
+          description: step.description || '',
+        });
+      });
+    });
+    XLSX.utils.book_append_sheet(wb, buildSheet(epcStepRows, EPC_STEP_HEADERS), 'EPC-步骤明细');
 
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 

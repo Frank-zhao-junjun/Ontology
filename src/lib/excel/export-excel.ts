@@ -206,6 +206,36 @@ export function buildExcelWorkbook(options: ExportExcelOptions): ReturnType<type
     utils.book_append_sheet(wb, ws, config.sheetName);
   }
 
+  // EPC 步骤明细 Sheet — 每个 EPC 步骤一行
+  const epcStepHeaderRow = [
+    'EPC流程ID', 'EPC流程名称', '步骤序号', '步骤ID', '步骤名称',
+    '关联维度', '关联元素ID', '关联元素名称', '步骤描述',
+  ];
+  const epcStepDataRows: unknown[][] = [];
+  for (const m of modules) {
+    if (m.kind !== 'EPC') continue;
+    const epcId = m.id;
+    const epcName = (m.snapshot.name as string) ?? '';
+    const steps = m.snapshot.steps;
+    if (!Array.isArray(steps)) continue;
+    steps.forEach((step: Record<string, unknown>, idx: number) => {
+      const ref = step.elementRef as Record<string, unknown> | undefined;
+      epcStepDataRows.push([
+        epcId,
+        epcName,
+        idx + 1,
+        step.id ?? '',
+        step.name ?? '',
+        ref?.dimension ?? '',
+        ref?.elementId ?? '',
+        ref?.elementName ?? '',
+        step.description ?? '',
+      ]);
+    });
+  }
+  const epcStepWs = utils.aoa_to_sheet([epcStepHeaderRow, ...epcStepDataRows]);
+  utils.book_append_sheet(wb, epcStepWs, 'EPC-步骤明细');
+
   return wb;
 }
 

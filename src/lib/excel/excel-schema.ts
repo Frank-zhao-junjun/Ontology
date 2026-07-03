@@ -108,6 +108,20 @@ export const EXCEL_SHEET_CONFIGS: ExcelSheetConfig[] = [
   ),
 ];
 
+/** EPC 步骤明细 Sheet 配置（独立 Sheet，每步一行） */
+export const EPC_STEP_SHEET_NAME = 'EPC-步骤明细';
+export const EPC_STEP_COLUMNS: ExcelColumnDef[] = [
+  { key: 'epcId', header: 'EPC流程ID', type: 'string', required: true },
+  { key: 'epcName', header: 'EPC流程名称', type: 'string', required: false },
+  { key: 'stepIndex', header: '步骤序号', type: 'string', required: true },
+  { key: 'stepId', header: '步骤ID', type: 'string', required: true },
+  { key: 'stepName', header: '步骤名称', type: 'string', required: true },
+  { key: 'dimension', header: '关联维度', type: 'string', required: false, description: 'E1-E8' },
+  { key: 'elementId', header: '关联元素ID', type: 'string', required: false },
+  { key: 'elementName', header: '关联元素名称', type: 'string', required: false },
+  { key: 'description', header: '步骤描述', type: 'string', required: false },
+];
+
 // ── 隐藏引用表 ──
 
 export const HIDDEN_REF_SHEET_CONFIG: ExcelSheetConfig = {

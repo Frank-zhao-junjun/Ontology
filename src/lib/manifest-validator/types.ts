@@ -200,6 +200,12 @@ export interface ManifestProcessStep {
   actionId?: string;
   targetEntityId?: string;
   description?: string;
+  /** EPC 步骤关联的元模型维度 (E1-E8) */
+  dimension?: string;
+  /** EPC 步骤关联的元素 ID */
+  elementId?: string;
+  /** EPC 步骤关联的元素名称（缓存） */
+  elementName?: string;
 }
 
 export interface ManifestOrchestration {
@@ -208,6 +214,10 @@ export interface ManifestOrchestration {
   entryPoint: string;
   steps: ManifestProcessStep[];
   description?: string;
+  /** EPC 来源标记：区分传统 Orchestration 和 EPC 流程 */
+  source?: 'orchestration' | 'epc';
+  /** EPC 父节点 ID（场景 ID） */
+  parentId?: string;
 }
 
 export interface OntologyManifestProcess {

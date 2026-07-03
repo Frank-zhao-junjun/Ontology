@@ -194,6 +194,41 @@ export async function parseExcelImport(
     }
   }
 
+  // 5. 从 EPC-步骤明细 Sheet 合并步骤到 EPC 模块
+  const epcStepSheetName = 'EPC-步骤明细';
+  const epcStepWs = wb.Sheets[epcStepSheetName];
+  if (epcStepWs) {
+    const epcStepRows = utils.sheet_to_json<Record<string, unknown>>(epcStepWs, { defval: '' });
+    // 按 epcId 分组
+    const stepsByEpc = new Map<string, EpcStep[]>();
+    for (const r of epcStepRows) {
+      const epcId = String(r['EPC流程ID'] ?? r['epcId'] ?? '').trim();
+      if (!epcId) continue;
+      const dimension = String(r['关联维度'] ?? r['dimension'] ?? '').trim();
+      const elementId = String(r['关联元素ID'] ?? r['elementId'] ?? '').trim();
+      const elementName = String(r['关联元素名称'] ?? r['elementName'] ?? '').trim();
+      const step: EpcStep = {
+        id: String(r['步骤ID'] ?? r['stepId'] ?? `step-${Math.random().toString(36).slice(2, 8)}`),
+        name: String(r['步骤名称'] ?? r['stepName'] ?? '').trim(),
+        elementRef: (dimension || elementId) ? {
+          dimension,
+          elementId,
+          elementName,
+        } as EpcStepElementRef : undefined,
+      };
+      if (!stepsByEpc.has(epcId)) stepsByEpc.set(epcId, []);
+      stepsByEpc.get(epcId)!.push(step);
+    }
+    // 合并到对应的 EPC 模块行
+    for (const row of allRows) {
+      if (row.moduleKind !== 'EPC') continue;
+      const steps = stepsByEpc.get(row.moduleId);
+      if (steps && steps.length > 0) {
+        row.data.steps = JSON.stringify(steps);
+      }
+    }
+  }
+
   // 汇总
   const newDrafts = changes.filter((c) => c.action === 'new_draft').length;
   const updatedDrafts = changes.filter((c) => c.action === 'update_draft').length;
