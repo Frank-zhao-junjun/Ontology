@@ -1,6 +1,7 @@
 import type { OntologyProject } from '@/types/ontology';
 import type { ToolDefinition, ToolHandler } from './types';
 import { projectStore, uuidv4, readProjectInput } from './types';
+type SkillExportScope = 'all' | 'data' | 'behavior' | 'rule' | 'process' | 'event';
 
 // ── Project Tools (4) ─────────────────────────────────────────────
 
@@ -117,11 +118,23 @@ const createProjectHandlers: Record<string, ToolHandler> = {
 const exportProjectDefs: ToolDefinition[] = [
   {
     name: 'export_project',
-    description: 'Export project data as JSON',
+    description: 'Export project data. Supports 5 formats: json, yaml, md, excel, skill. Large files (excel/skill) return a downloadUrl.',
     inputSchema: {
       type: 'object',
       properties: {
         projectId: { type: 'string', description: 'Project ID to export' },
+        format: {
+          type: 'string',
+          enum: ['json', 'yaml', 'md', 'excel', 'skill'],
+          description: 'Export format. Default: json. Large files (excel/skill) return downloadUrl.',
+        },
+        scope: {
+          type: 'string',
+          enum: ['all', 'data', 'behavior', 'rule', 'process', 'event'],
+          description: 'Export scope for skill format. Default: all.',
+        },
+        includeExamples: { type: 'boolean', description: 'Include examples in skill ZIP. Default: true.' },
+        includeSemanticLayer: { type: 'boolean', description: 'Include semantic layer in skill ZIP. Default: true.' },
       },
       required: ['projectId'],
     },
@@ -134,13 +147,75 @@ const exportProjectHandlers: Record<string, ToolHandler> = {
     if (!projectId) throw new Error("'projectId' is required");
     const project = await projectStore.get(projectId);
     if (!project) throw new Error(`Project ${projectId} not found`);
+
+    const format = (args['format'] as string) || 'json';
+    const scope = (args['scope'] as string) || 'all';
+    const includeExamples = args['includeExamples'] !== false;
+    const includeSemanticLayer = args['includeSemanticLayer'] !== false;
+
+    // Validate format
+    const VALID_FORMATS = ['json', 'yaml', 'md', 'excel', 'skill'];
+    const VALID_SCOPES = ['all', 'data', 'behavior', 'rule', 'process', 'event'];
+    if (!VALID_FORMATS.includes(format)) throw new Error(`Invalid format: ${format}`);
+    if (!VALID_SCOPES.includes(scope)) throw new Error(`Invalid scope: ${scope}`);
+
+    // Use env var for API base, with fallback
+    const API_BASE = process.env.ONTOLOGY_API_BASE || process.env.NEXT_PUBLIC_SITE_URL || '';
+
+    // Helper: endpoint+method+body response for large files (per spec §6.5.2)
+    const largeFileResponse = (fmt: string, filename: string, endpoint: string, body: object) => ({
+      content: [{ type: 'text' as const, text: JSON.stringify({
+        success: true, format: fmt, filename, endpoint, method: 'POST',
+        body, message: 'Large file. POST to endpoint with the body to download.',
+      }) }],
+    });
+
+    if (format === 'skill') {
+      const { buildSkillZip } = await import('@/lib/skill-export/index');
+      const { buffer, filename } = await buildSkillZip(project, {
+        scope: scope as SkillExportScope, includeExamples, includeSemanticLayer,
+      });
+      if (buffer.length > 1024 * 1024) {
+        return largeFileResponse('skill', filename, `${API_BASE}/api/export/skill`, {
+          scope, includeExamples, includeSemanticLayer,
+        });
+      }
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify({
+          success: true, format: 'skill', filename,
+          base64Zip: Buffer.from(buffer).toString('base64'),
+          message: 'Small ZIP returned inline. For larger exports use POST /api/export/skill.',
+        }) }],
+      };
+    }
+
+    if (format === 'excel') {
+      const safeName = project.name.replace(/[^\w一-鿿-]+/gu, '_').replace(/^_+|_+$/g, '') || 'project';
+      return largeFileResponse('excel', `${safeName}-${projectId}.xlsx`, `${API_BASE}/api/export/xlsx-from-manifest`, {});
+    }
+
+    if (format === 'yaml') {
+      const { compileManifest } = await import('@/lib/manifest-compiler/index');
+      const { stringify } = await import('yaml');
+      const manifest = compileManifest(project);
+      return { content: [{ type: 'text' as const, text: stringify(manifest, { lineWidth: 0 }) }] };
+    }
+
+    if (format === 'md') {
+      const { buildOntologyJson } = await import('@/lib/skill-export/build-ontology-json');
+      const { renderOntologyMarkdown } = await import('@/lib/skill-export/markdown-renderer');
+      const p = project as OntologyProject & { version?: string };
+      const version = p.version || '1.0.0';
+      const onto = buildOntologyJson(project, {
+        scope: scope as SkillExportScope, includeSemanticLayer,
+        exportedAt: new Date().toISOString(), version,
+      });
+      return { content: [{ type: 'text' as const, text: renderOntologyMarkdown(onto) }] };
+    }
+
+    // JSON (default) — existing behavior
     return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify(project, null, 2),
-        },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(project, null, 2) }],
     };
   },
 };

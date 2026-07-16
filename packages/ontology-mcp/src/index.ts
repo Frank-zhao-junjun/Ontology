@@ -2,7 +2,7 @@
  * @ontology/mcp-server — Entry Point
  *
  * Creates an MCP Server over stdio transport and registers
- * all 8 Tools + 4 Resources + 2 Prompts.
+ * all 9 Tools + 4 Resources + 2 Prompts.
  *
  * Uses lazy dynamic imports to resolve @ontology/core and @/*
  * tsconfig path aliases at runtime.
@@ -67,6 +67,7 @@ import {
 import { projectToolDefinitions, projectToolHandlers } from './tools/project-tools.js';
 import { chainToolDefinitions, chainToolHandlers } from './tools/business-chain-tools.js';
 import { analysisToolDefinitions, analysisToolHandlers } from './tools/analysis-tools.js';
+import { exportToolDefinitions, exportToolHandlers } from './tools/export-tools.js';
 
 // Resource modules
 import { resourceDefinitions, resourceReaders } from './resources/project-resources.js';
@@ -80,12 +81,14 @@ const allToolDefs = [
   ...projectToolDefinitions,
   ...chainToolDefinitions,
   ...analysisToolDefinitions,
+  ...exportToolDefinitions,
 ];
 
 const allToolHandlers: Record<string, ToolHandler> = {
   ...projectToolHandlers,
   ...chainToolHandlers,
   ...analysisToolHandlers,
+  ...exportToolHandlers,
 };
 
 const allResourceDefs = resourceDefinitions;

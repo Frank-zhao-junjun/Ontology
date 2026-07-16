@@ -134,11 +134,11 @@ Story-01 (MCP HTTP 端点)
 
 | Story | 状态 | 迭代次数 | 开始时间 | 完成时间 | 备注 |
 |-------|------|---------|---------|---------|------|
-| Story-01 | pending | 0 | - | - | MCP HTTP 端点 |
-| Story-02 | pending | 0 | - | - | 双 Transport 适配 |
-| Story-03 | pending | 0 | - | - | Tools 数据层对接 |
-| Story-04 | pending | 0 | - | - | 文档更新 |
-| Story-05 | pending | 0 | - | - | 端到端验证 |
+|| Story-01 | ✅ completed | 1 | 2026-07-01 | 2026-07-01 | MCP HTTP 端点已实现（src/app/api/mcp/route.ts） |
+|| Story-02 | ✅ completed | 1 | 2026-07-01 | 2026-07-01 | 双 Transport 适配（stdio via packages + HTTP via api route） |
+|| Story-03 | ✅ completed | 1 | 2026-07-01 | 2026-07-01 | Tools 数据层对接（src/lib/mcp/tools.ts 504行） |
+|| Story-04 | ✅ completed | 1 | 2026-07-01 | 2026-07-01 | 文档更新已在 Phase 4 完成 |
+|| Story-05 | ✅ completed | 1 | 2026-07-01 | 2026-07-01 | 端到端验证通过 |
 
 ## 技术参考
 

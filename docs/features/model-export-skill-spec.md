@@ -63,7 +63,7 @@
 - 导出范围选择（全部/部分模型）
 - 支持 4 种生成方式：UI 点击导出、Agent 调用 MCP、Agent 调用 CLI、Agent 调用 Skill API
 - 后端生成 ZIP（skill.json + ontology.json + intents.json + README.md + examples/）
-- 下载接口：`POST /api/export/skill` 或 `GET /api/export/skill?projectId=xxx&scope=all`
+- 下载接口：`POST /api/export/skill`（请求体携带完整 project 对象，避免服务端无法访问浏览器 localStorage 中的项目数据）
 
 ### 3.2 Out of Scope（后续版本）
 - 自动上传到 Skill 市场
@@ -276,6 +276,99 @@ ontology-model-skill/
 
 ---
 
+## 4.7 Markdown 导出格式
+
+`md` 格式将按 scope 过滤后的 `ontology.json` 渲染为人类可读的 Markdown 文档，结构如下：
+
+```markdown
+# 离散制造本体模型
+
+> 导出状态：draft
+> 导出范围：all
+> 导出时间：2026-07-01T12:00:00.000Z
+
+## 数据模型
+
+### 实体：物料（Material）
+
+- 状态：confirmed
+- 属性：
+  - 物料编码（materialCode）：string，状态 confirmed
+  - 物料名称（materialName）：string，状态 draft
+
+### 关系：物料.BOM（MaterialHasBOM）
+
+- 源实体：Material
+- 目标实体：BOM
+- 类型：one-to-many
+
+## 行为模型
+...
+
+## 规则模型
+...
+```
+
+渲染规则：
+1. 一级标题为项目名称
+2. 顶部 metadata 块包含导出状态、范围、时间
+3. 每个模型按二级标题分组
+4. 每个实体/状态机/规则按三级标题展示
+5. 每个对象必须显示其 `status`
+6. 空模型省略或显示「无数据」
+
+---
+
+## 4.8 intents.json 与 examples/ 生成算法
+
+### 4.8.1 intents.json 生成规则
+
+按以下顺序为模型中的对象生成意图：
+
+1. **实体查询意图**：为每个 `Entity` 生成
+   - id: `intent-query-entity-{nameEn}`
+   - name: `查询{name}`
+   - action: `query_entity`
+   - targetEntity: `nameEn`
+   - triggerPhrases: `["{name}是什么", "查询{name}", "{name}有哪些属性"]`
+
+2. **实体解释意图**：为每个 `Entity` 生成
+   - id: `intent-explain-entity-{nameEn}`
+   - name: `解释{name}`
+   - action: `explain_entity`
+   - targetEntity: `nameEn`
+
+3. **关系意图**：为每个 `Relation` 生成
+   - id: `intent-relation-{relation.id}`（因 `Relation` 类型无 `sourceEn` 字段，使用 `relation.id` 保证唯一性）
+   - name: `{relation.name}关系查询`
+   - action: `query_relation`
+
+4. **规则意图**：为每个 `Rule` 生成
+   - id: `intent-rule-{id}`
+   - name: `{name}规则解释`
+   - action: `explain_rule`
+
+5. **状态机意图**：为每个 `StateMachine` 生成
+   - id: `intent-statemachine-{nameEn}`
+   - name: `{name}状态分析`
+   - action: `analyze_state_machine`
+
+### 4.8.2 examples/ 生成规则
+
+**query-examples.md**：
+- 每个 Entity 2 条查询示例（属性查询 + 业务含义）
+- 每个 Relation 1 条关系查询示例
+- 每个 Rule 1 条规则解释示例
+- 每个 StateMachine 1 条状态查询示例
+
+**reasoning-examples.md**：
+- 每个 Relation 1 条跨实体推理示例
+- 每个 StateMachine 1 条状态转换推理示例
+- 每个 Rule 1 条规则触发推理示例
+- 至少 1 条跨模型综合推理示例（如：实体属性变化 → 规则触发 → 事件通知）
+
+---
+
 ## 5. UI/UX 设计
 
 ### 5.1 入口位置
@@ -326,7 +419,7 @@ POST /api/export/skill
 
 ```json
 {
-  "projectId": "proj-xxx",
+  "project": { /* 完整 OntologyProject 对象 */ },
   "scope": "all",
   "includeExamples": true,
   "includeSemanticLayer": true
@@ -337,19 +430,31 @@ POST /api/export/skill
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| projectId | string | 是 | 项目 ID |
+| project | `OntologyProject` | 是 | 完整项目对象。因项目数据存储在浏览器 localStorage，服务端无法通过 projectId 查询，故由前端传入完整对象 |
 | scope | string | 否 | 导出范围：`all` / `data` / `behavior` / `rule` / `process` / `event`，默认 `all` |
 | includeExamples | boolean | 否 | 是否包含 examples/，默认 `true` |
-| includeSemanticLayer | boolean | 否 | 是否包含 Agent Semantic Layer，默认 `true` |
+| includeSemanticLayer | boolean | 否 | 是否包含 `ontology.json` 中的 `agentSemanticLayer`，默认 `true` |
 
 ### 6.4 响应
 
-成功：返回 `application/zip` 二进制流，Content-Disposition: attachment; filename="ontology-model-skill-{projectName}-{version}.zip"
+成功：返回 `application/zip` 二进制流，Content-Disposition: attachment; filename="ontology-model-skill-{projectName}-v{version}.zip"
 
 失败：
 ```json
-{ "success": false, "error": "项目不存在或导出范围为空" }
+{
+  "success": false,
+  "error": "PROJECT_NOT_FOUND",
+  "message": "请求体中缺少 project 对象"
+}
 ```
+
+| HTTP 状态码 | error | 说明 |
+|------------|-------|------|
+| 200 | — | 成功，返回 ZIP 二进制 |
+| 400 | MISSING_PROJECT | 请求体缺少 `project` |
+| 400 | INVALID_SCOPE | `scope` 不在允许范围内 |
+| 400 | EMPTY_SCOPE | `scope` 过滤后无任何模型数据 |
+| 500 | INTERNAL_ERROR | 服务端内部错误 |
 
 **说明**：导出不再校验 `confirmed` 状态，但会在响应头 `X-Project-Status` 和 ZIP 内的 `skill.json` / `ontology.json` 中注明项目状态。
 
@@ -379,19 +484,23 @@ ontology export <projectId> ./my-skill.zip --format=skill --scope=data
 ```
 
 **行为说明**：
-- `json` / `yaml` / `md`：调用现有导出逻辑，写入文本文件
-- `excel`：调用 `/api/export/xlsx-from-manifest`，写入 `.xlsx`
-- `skill`：调用 `/api/export/skill`，写入 ZIP
-- 未指定 `--format` 时默认 `json`，保持向后兼容
-- 任何状态的项目均可导出；导出文件内会标注对象状态
+1. CLI 先调用 `GET /api/projects/<projectId>` 获取完整项目对象
+2. 若项目不存在，返回 `PROJECT_NOT_FOUND`
+3. 根据 `--format` 选择导出路径：
+   - `json` / `yaml` / `md`：调用本地序列化逻辑，写入文本文件
+   - `excel`：调用 `/api/export/xlsx-from-manifest`，写入 `.xlsx`
+   - `skill`：调用 `POST /api/export/skill`（请求体携带完整 project），写入 ZIP
+4. 未指定 `--format` 时默认 `json`，保持向后兼容
+5. `--scope` 仅在 `--format=skill` 时生效，其他格式自动忽略
+6. 任何状态的项目均可导出；导出文件内会标注对象状态
 
 ### 6.5.2 MCP Server
 
-扩展 `export_project` 工具：
+**新增** `packages/ontology-mcp/src/tools/export-tools.ts`，注册 `ontology_project_export` 工具：
 
 ```json
 {
-  "name": "export_project",
+  "name": "ontology_project_export",
   "arguments": {
     "projectId": "proj-xxx",
     "format": "skill",
@@ -412,15 +521,30 @@ ontology export <projectId> ./my-skill.zip --format=skill --scope=data
 | includeExamples | boolean | 否 | `skill` 格式专用，默认 `true` |
 | includeSemanticLayer | boolean | 否 | `skill` 格式专用，默认 `true` |
 
+**实现流程**：
+1. MCP Server 通过 `projectStore.get(projectId)` 获取项目
+2. 若不存在，返回 `PROJECT_NOT_FOUND`
+3. 根据 `format` 处理：
+   - `json` / `yaml` / `md`：本地生成文本内容返回
+   - `excel`：调用 `POST /api/export/xlsx-from-manifest`
+   - `skill`：调用 `POST /api/export/skill`（请求体携带完整 project）
+
 **返回示例（skill 格式）**：
 
 ```json
 {
   "success": true,
   "format": "skill",
-  "downloadUrl": "https://Ontology1.coze.site/api/export/skill?projectId=proj-xxx&scope=all&token=xxx",
   "filename": "ontology-model-skill-生产管理-v1.0.0.zip",
-  "sizeBytes": 15360
+  "sizeBytes": 15360,
+  "endpoint": "/api/export/skill",
+  "method": "POST",
+  "body": {
+    "project": { /* 完整项目对象 */ },
+    "scope": "all",
+    "includeExamples": true,
+    "includeSemanticLayer": true
+  }
 }
 ```
 
@@ -431,12 +555,13 @@ ontology export <projectId> ./my-skill.zip --format=skill --scope=data
   "success": true,
   "format": "json",
   "content": "{...}",
-  "filename": "ontology-proj-xxx.json"
+  "filename": "ontology-proj-xxx.json",
+  "projectStatus": "draft"
 }
 ```
 
 **设计原则**：
-- 大文件（excel/skill）返回下载 URL，避免塞爆 MCP 消息体
+- 大文件（excel/skill）返回 endpoint + body，由调用方自行下载，避免塞爆 MCP 消息体
 - 小文件（json/yaml/md）直接返回内容，便于 Agent 立即使用
 - 不强制项目状态为 `confirmed`，但返回内容中需包含 `projectStatus` 和对象级状态标注
 
@@ -450,15 +575,39 @@ ontology export <projectId> ./my-skill.zip --format=skill --scope=data
   "params": {
     "projectId": "proj-xxx",
     "format": "skill",
-    "scope": "all"
+    "scope": "all",
+    "includeExamples": true,
+    "includeSemanticLayer": true
   }
 }
 ```
 
+**实现流程**：
+1. Skill API 路由先调用 `GET /api/projects/<projectId>` 获取完整项目对象
+2. 若项目不存在，返回 `{ success: false, error: 'PROJECT_NOT_FOUND' }`
+3. 根据 `format` 处理：
+   - `json` / `yaml` / `md`：本地生成文本内容返回
+   - `excel`：调用 `POST /api/export/xlsx-from-manifest`
+   - `skill`：调用 `POST /api/export/skill`（请求体携带完整 project）
+
+**返回示例（skill 格式）**：
+
+```json
+{
+  "success": true,
+  "format": "skill",
+  "filename": "ontology-model-skill-生产管理-v1.0.0.zip",
+  "sizeBytes": 15360,
+  "endpoint": "/api/export/skill",
+  "method": "POST",
+  "body": { /* 与 MCP 相同 */ }
+}
+```
+
 **行为说明**：
-- 与 MCP `export_project` 工具对齐
+- 与 MCP `ontology_project_export` 工具对齐
 - `json`/`yaml`/`md`：返回 `content` 字段
-- `excel`/`skill`：返回 `downloadUrl` 字段
+- `excel`/`skill`：返回 `endpoint` + `method` + `body`
 - 错误码统一：项目不存在返回 `PROJECT_NOT_FOUND`，导出范围为空返回 `EMPTY_SCOPE`
 - 不强制 `confirmed` 状态，响应中返回 `projectStatus`
 
@@ -477,46 +626,57 @@ ontology export <projectId> ./my-skill.zip --format=skill --scope=data
 ## 7. 数据模型映射
 
 ### 7.1 状态字段
-项目对象和每个本体对象上需要保留状态字段。若当前不存在，建议补充：
+
+统一状态类型定义：
 
 ```typescript
+// 项目级状态
+type ProjectStatus = 'draft' | 'review' | 'confirmed' | 'archived';
+
+// 对象级状态（实体、属性、关系、状态机、规则、事件等）
+type ObjectStatus = 'draft' | 'confirmed' | 'archived' | 'unknown';
+
 interface OntologyProject {
   // ... 已有字段
-  status?: 'draft' | 'review' | 'confirmed' | 'archived';
+  status?: ProjectStatus;
   confirmedAt?: string;
   version?: string;
 }
 
 interface Entity {
   // ... 已有字段
-  status?: 'draft' | 'confirmed';
+  status?: ObjectStatus;
 }
 
-// 属性、关系、状态机、规则、事件等对象同理
+// Attribute、Relation、StateMachine、Rule、EventDefinition、Orchestration 等对象同理
 ```
 
-导出时：**不校验状态，只保留并标注状态**。如果对象上没有状态字段，默认标注为 `unknown` 或留空。
+导出时：**不校验状态，只保留并标注状态**。如果对象上没有状态字段，默认标注为 `'unknown'`。
 
 ### 7.2 导出范围过滤逻辑
 
-| scope 值 | 包含内容 |
-|----------|----------|
-| all | 全部模型 + 组织 + 语义层 |
-| data | dataModel.entities / attributes / relations |
-| behavior | behaviorModel.stateMachines |
-| rule | ruleModel.rules |
-| process | processModel.orchestrations |
-| event | eventModel.eventDefinitions / subscriptions |
+| scope 值 | 包含的五大模型 | 是否受 includeSemanticLayer 影响 |
+|----------|----------------|----------------------------------|
+| all | dataModel + behaviorModel + ruleModel + processModel + eventModel | 是；`includeSemanticLayer=false` 时不包含 `agentSemanticLayer` |
+| data | dataModel.entities / attributes / relations | 否 |
+| behavior | behaviorModel.stateMachines | 否 |
+| rule | ruleModel.rules | 否 |
+| process | processModel.orchestrations | 否 |
+| event | eventModel.eventDefinitions / subscriptions | 否 |
+
+**补充说明**：
+- `organization`（部门/岗位）在 `scope=all` 时始终包含；其他 scope 下不包含
+- `agentSemanticLayer` 仅在 `scope=all` 且 `includeSemanticLayer=true` 时包含
+- `examples/` 目录仅在 `includeExamples=true` 时包含
 
 ---
 
 ## 8. 校验规则
 
 ### 8.1 导出前置校验
-1. projectId 必须存在
-2. 项目必须存在
-3. 根据 scope 至少包含一个非空模型
-4. **不校验**项目状态，但需在导出产物中标注状态
+1. 请求体中必须存在 `project` 对象
+2. 根据 `scope` 过滤后至少包含一个非空模型
+3. **不校验**项目状态，但需在导出产物中标注状态
 
 ### 8.2 数据完整性校验
 1. 导出的 entities 必须有 name 和 nameEn
@@ -585,17 +745,34 @@ interface Entity {
 3. **Agent 框架标准不统一**：不同 Agent 对 Skill 包格式要求不同，本次采用通用 JSON 结构
 
 ### 11.2 依赖
-1. 需要确认导出功能当前所在的组件
-2. 需要确认 Agent 导出能力是否和 UI 导出能力在同一版本交付
-3. 需要确认对象状态字段的命名和取值范围
+1. ✅ 导出功能当前所在的组件：`src/components/ontology/manifest-export-dialog.tsx`
+2. ✅ Agent 导出能力与 UI 导出能力在同一版本交付（A 方案）
+3. ✅ 对象状态字段的命名和取值范围已统一
 
 ---
 
-## 12. 待确认问题
+## 12. 已确认问题
 
-1. 导出功能当前位于哪个组件/页面？
-2. Skill 包命名规则是否接受 `ontology-model-skill-{projectName}-v{version}.zip`？
-3. 是否需要支持导出时自定义 Skill 名称和描述？
-4. examples/ 内容希望自动生成还是使用固定模板？
-5. Agent 导出 5 种格式是否和 UI Skill 导出一起实现？还是分阶段？
-6. 对象状态字段若缺失，默认标记为 `unknown` 是否可接受？
+> 确认时间：2026-07-01
+
+### 12.1 Spec §12 原始问题确认
+
+| # | 问题 | 确认结果 |
+|---|------|----------|
+| 1 | 导出功能当前位于哪个组件/页面？ | **UI 入口**：`src/components/ontology/manifest-export-dialog.tsx`；**导出逻辑库**：`src/lib/manifest-export.ts` |
+| 2 | Skill 包命名规则是否接受 `ontology-model-skill-{projectName}-v{version}.zip`？ | **接受**。示例：`ontology-model-skill-生产管理-v1.0.0.zip` |
+| 3 | 是否需要支持导出时自定义 Skill 名称和描述？ | **不需要**。Skill 名称/描述直接取自项目名/项目描述 |
+| 4 | examples/ 内容希望自动生成还是使用固定模板？ | **自动生成**。基于模型实体/关系/规则动态生成 query-examples.md 和 reasoning-examples.md |
+| 5 | Agent 导出 5 种格式是否和 UI Skill 导出一起实现？还是分阶段？ | **A 方案：一起实现**。UI/CLI/MCP/Skill API 统一支持 5 种格式：`json` / `yaml` / `excel` / `md` / `skill` |
+| 6 | 对象状态字段若缺失，默认标记为 `unknown` 是否可接受？ | **可接受**。缺失 `status` 的对象导出时标记为 `unknown` |
+
+### 12.2 Spec Review 关键决策确认
+
+| # | 决策项 | 确认结果 |
+|---|--------|----------|
+| 7 | `/api/export/skill` 请求体设计 | **传完整 `project` 对象**。因项目数据在浏览器 localStorage，服务端无法通过 projectId 查询 |
+| 8 | 是否保留 GET `/api/export/skill` | **删除**。只保留 POST |
+| 9 | MCP 导出工具实现方式 | **新建 `packages/ontology-mcp/src/tools/export-tools.ts`**，注册 `ontology_project_export` |
+| 10 | Markdown 格式定义 | `md` = 按 scope 过滤后的 `ontology.json` 的人类可读 Markdown 渲染 |
+| 11 | 状态字段类型 | `ProjectStatus = 'draft' \| 'review' \| 'confirmed' \| 'archived'`；`ObjectStatus = 'draft' \| 'confirmed' \| 'archived' \| 'unknown'` |
+| 12 | 错误响应格式 | `{ success: false, error: code, message: text }`，HTTP 状态码见 §6.4 |

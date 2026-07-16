@@ -120,7 +120,7 @@ describe('P0-12 manufacturing golden', () => {
         ...compileOptions,
         format: 'yaml',
       });
-      expect(bundle.validation.valid).toBe(true);
+      expect(bundle.validation?.valid).toBe(true);
       expect(bundle.content).toContain('apiVersion: ontology.platform/v1');
       expect(bundle.filename).toContain('manufacturing-ontology');
     });

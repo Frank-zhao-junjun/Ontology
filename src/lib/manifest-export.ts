@@ -7,18 +7,18 @@ import {
 } from '@/lib/manifest-validator';
 import type { OntologyProject } from '@/types/ontology';
 
-export type ManifestExportFormat = 'yaml' | 'json' | 'xlsx';
+export type ManifestExportFormat = 'yaml' | 'json' | 'xlsx' | 'skill';
 
 export interface BuildManifestExportOptions extends CompileManifestOptions {
   format?: ManifestExportFormat;
 }
 
 export interface ManifestExportBundle {
-  manifest: OntologyManifest;
+  manifest: OntologyManifest | null;
   format: ManifestExportFormat;
   content: string;
   filename: string;
-  validation: ManifestValidationResult;
+  validation: ManifestValidationResult | null;
 }
 
 function sanitizeFilenameSegment(name: string): string {
@@ -37,6 +37,19 @@ export function buildManifestExportBundle(
   options?: BuildManifestExportOptions
 ): ManifestExportBundle {
   const format = options?.format ?? 'yaml';
+
+  // Skill format: skip manifest compilation — bundle raw project for POST to /api/export/skill
+  if (format === 'skill') {
+    const idSegment = sanitizeFilenameSegment(project.id || 'ontology');
+    return {
+      manifest: null,
+      format: 'skill',
+      content: JSON.stringify(project),
+      filename: `${idSegment}-ontology-model-skill.zip`,
+      validation: null,
+    };
+  }
+
   const manifest = compileManifest(project, options);
   const validation = validateManifest(manifest);
   const idSegment = sanitizeFilenameSegment(manifest.metadata.id);
@@ -59,7 +72,7 @@ export function buildManifestExportBundle(
 
 /** 触发浏览器下载；仅在 validation.valid 时生效。 */
 export function downloadManifestExport(bundle: ManifestExportBundle): boolean {
-  if (!bundle.validation.valid) {
+  if (!bundle.validation?.valid) {
     return false;
   }
 
