@@ -6,8 +6,9 @@ import {
   type OntologyManifest,
 } from '@/lib/manifest-validator';
 import type { OntologyProject } from '@/types/ontology';
+import { projectToOwlOntology, serializeToRdfXml, serializeToTurtle } from '@/lib/owl';
 
-export type ManifestExportFormat = 'yaml' | 'json' | 'xlsx' | 'skill';
+export type ManifestExportFormat = 'yaml' | 'json' | 'xlsx' | 'skill' | 'rdf' | 'ttl';
 
 export interface BuildManifestExportOptions extends CompileManifestOptions {
   format?: ManifestExportFormat;
@@ -50,6 +51,21 @@ export function buildManifestExportBundle(
     };
   }
 
+  // RDF/XML and Turtle: use OWL converter + serializer, skip manifest compilation
+  if (format === 'rdf' || format === 'ttl') {
+    const owl = projectToOwlOntology(project);
+    const content = format === 'rdf' ? serializeToRdfXml(owl) : serializeToTurtle(owl);
+    const idSegment = sanitizeFilenameSegment(project.id || 'ontology');
+    const ext = format === 'rdf' ? 'rdf' : 'ttl';
+    return {
+      manifest: null,
+      format,
+      content,
+      filename: `${idSegment}-ontology.${ext}`,
+      validation: null,
+    };
+  }
+
   const manifest = compileManifest(project, options);
   const validation = validateManifest(manifest);
   const idSegment = sanitizeFilenameSegment(manifest.metadata.id);
@@ -70,14 +86,21 @@ export function buildManifestExportBundle(
   };
 }
 
-/** 触发浏览器下载；仅在 validation.valid 时生效。 */
+/** 触发浏览器下载；yaml/json 仅在 validation.valid 时生效，rdf/ttl 无校验门槛。 */
 export function downloadManifestExport(bundle: ManifestExportBundle): boolean {
-  if (!bundle.validation?.valid) {
+  const isOwlFormat = bundle.format === 'rdf' || bundle.format === 'ttl';
+  if (!isOwlFormat && !bundle.validation?.valid) {
     return false;
   }
 
   const mime =
-    bundle.format === 'yaml' ? 'application/x-yaml;charset=utf-8' : 'application/json;charset=utf-8';
+    bundle.format === 'yaml'
+      ? 'application/x-yaml;charset=utf-8'
+      : bundle.format === 'rdf'
+        ? 'application/rdf+xml;charset=utf-8'
+        : bundle.format === 'ttl'
+          ? 'text/turtle;charset=utf-8'
+          : 'application/json;charset=utf-8';
   const blob = new Blob([bundle.content], { type: mime });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');

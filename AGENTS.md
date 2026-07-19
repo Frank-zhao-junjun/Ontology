@@ -180,6 +180,16 @@ packages/
 - **EPC集成**：EpcOrganizationalUnit 通过 refType/refId 引用 Department/Position
 - **校验规则**：VM-O(8条)+VM-HR(4条)+VE-O(2条)+VX-O(4条)
 
+### 9.6. OWL 本体导出 (OWL Export)
+- **OWL 类型**：OwlClass / OwlObjectProperty / OwlDatatypeProperty / OwlOntology（`src/types/ontology.ts` 末尾）
+- **转换器**：`src/lib/owl/convert.ts` — `projectToOwlOntology(project, { baseUri? })`
+- **映射范围**：E1 实体/属性/关系、E4 事件、E5 部门/岗位 → owl:Class；is_a → rdfs:subClassOf、equivalent_to → owl:equivalentClass
+- **范围外（不映射）**：E2 状态机、E6 指标、E7 约束、E8 接口；Attribute 的 enumRef / isMasterDataRef
+- **属性映射**：dataType → xsd 类型；`reference` → owl:ObjectProperty（range 由 referencedEntityId 解析）
+- **容错**：SemanticRelation / reference 引用解析失败时跳过并 console.warn 计数，不生成悬空 URI
+- **序列化器**：`src/lib/owl/serialize-rdf.ts` — `serializeToRdfXml` / `serializeToTurtle`
+- **导出集成**：Manifest 导出对话框新增 RDF/XML（`.rdf`，application/rdf+xml）与 Turtle（`.ttl`，text/turtle）格式；无 manifest 校验门控，按需构建直接下载
+
 ### 10. Entity Lifecycle（实体生命周期）
 - **State 增强**：entryActions/exitActions/availableActions/constraints/allowedRoles/timeout/dataVisibility
 - **Transition 增强**：guardCondition/compensationAction/sideEffects/publishEventId/notifyRoleIds/requiresApproval/auditLog
@@ -275,6 +285,14 @@ packages/
 - **操作**：`list_projects` / `get_project` / `list_metadata` / `ai_generate` / `ai_chat` / `create_model` / `create_epc_process` / `confirm_epc_metamodels` / `excel_template` / `export_manifest` / `list_skills` / `execute_skill` / `hr_sync_status` / `hr_sync_trigger`
 - **统一后端**：Skill / MCP / CLI 三种方式最终都通过此 API 或直接调用 Web API 路由
 - **首页入口**：ServiceEntry 组件 Tab 切换（MCP / CLI / Skill），Skill Tab 含 ZIP 下载按钮
+
+### 15. NL 语义查询 (NL2Ontology)
+- **入口**：建模工作台「语义查询」Tab（TABS 数组最后，agent 之后）
+- **API**：`POST /api/nl-to-ontology`，输入 `{ query, project }`，输出 `{ success, data: NlOntologyResult }`
+- **模型**：豆包 Seed 2.0 Pro，temperature 0.1（只做语义匹配，不做创造性生成）
+- **项目摘要**：`src/lib/ai-draft/build-project-summary.ts` — 紧凑文本摘要（E1 实体/属性/关系 + E2-E8 名称列表），≤2000 字符截断并标注
+- **Prompt/解析**：`src/lib/ai-draft/nl-ontology-prompt.ts` — buildNlOntologyPrompt + Zod schema 校验（置信度 0-100 自动归一到 0-1）
+- **UI**：`src/components/ontology/nl-ontology-preview.tsx` — 实体/属性/关系三区结果，置信度颜色球（绿>80%/黄>50%/灰），点击实体通过 `onNavigateToElement` 回调跳要素库（setElementLibraryFocus + setActiveTab('elementLibrary')）
 
 ## 开发命令
 

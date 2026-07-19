@@ -2068,3 +2068,140 @@ export interface OntologyProject {
   createdAt: string;
   updatedAt: string;
 }
+
+// ========== OWL 本体类型（OWL 导出） ==========
+export type OwlClassKind = 'class' | 'object_property' | 'datatype_property' | 'named_individual';
+
+export interface OwlClass {
+  id: string;                    // 类 URI 片段
+  label: string;                 // rdfs:label
+  labelEn?: string;
+  subClassOf?: string[];         // 父类 ID 列表
+  equivalentTo?: string[];       // owl:equivalentClass
+  disjointWith?: string[];       // owl:disjointWith
+  description?: string;          // rdfs:comment
+  sourceMetaElementId?: string;  // 映射自哪个 MetaElement
+}
+
+export interface OwlObjectProperty {
+  id: string;
+  label: string;
+  domain: string;                // rdfs:domain → OwlClass.id
+  range: string;                 // rdfs:range → OwlClass.id
+  subPropertyOf?: string[];
+  inverseOf?: string;
+  transitive?: boolean;
+  symmetric?: boolean;
+  functional?: boolean;
+  description?: string;
+}
+
+export interface OwlDatatypeProperty {
+  id: string;
+  label: string;
+  domain: string;                // rdfs:domain → OwlClass.id
+  range: string;                 // xsd:string | xsd:integer | xsd:decimal | xsd:boolean | xsd:date | ...
+  functional?: boolean;
+  description?: string;
+}
+
+export interface OwlOntology {
+  baseUri: string;               // eg: "http://ontology.example.com/erp/"
+  ontologyIri: string;
+  versionInfo?: string;
+  label: string;
+  classes: OwlClass[];
+  objectProperties: OwlObjectProperty[];
+  datatypeProperties: OwlDatatypeProperty[];
+}
+
+// ========== OWL 本体类型（RDF/OWL 标准映射） ==========
+
+/** OWL 命名空间常量 */
+export const OWL_NS = {
+  owl: 'http://www.w3.org/2002/07/owl#',
+  rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+  rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+  xsd: 'http://www.w3.org/2001/XMLSchema#',
+} as const;
+
+/** AttributeDataType → XSD type IRI 映射 */
+export const ATTRIBUTE_TO_XSD: Record<AttributeDataType, string | null> = {
+  string: 'http://www.w3.org/2001/XMLSchema#string',
+  integer: 'http://www.w3.org/2001/XMLSchema#integer',
+  decimal: 'http://www.w3.org/2001/XMLSchema#decimal',
+  boolean: 'http://www.w3.org/2001/XMLSchema#boolean',
+  date: 'http://www.w3.org/2001/XMLSchema#date',
+  datetime: 'http://www.w3.org/2001/XMLSchema#dateTime',
+  text: 'http://www.w3.org/2001/XMLSchema#string',
+  enum: 'http://www.w3.org/2001/XMLSchema#string',
+  reference: null, // 映射为 ObjectProperty
+};
+
+export interface OwlClass {
+  /** 类 IRI 片段（拼接到 baseUri 后） */
+  id: string;
+  /** rdfs:label 中文 */
+  label: string;
+  /** rdfs:label 英文 */
+  labelEn?: string;
+  /** rdfs:subClassOf 父类 IRI 列表 */
+  subClassOf?: string[];
+  /** owl:equivalentClass */
+  equivalentTo?: string[];
+  /** owl:disjointWith */
+  disjointWith?: string[];
+  /** rdfs:comment */
+  description?: string;
+  /** 标记来源维度 */
+  sourceDimension?: MetaDimension;
+  /** 映射自哪个 MetaElement */
+  sourceMetaElementId?: string;
+}
+
+export interface OwlObjectProperty {
+  id: string;
+  label: string;
+  labelEn?: string;
+  /** rdfs:domain */
+  domain: string;
+  /** rdfs:range */
+  range: string;
+  subPropertyOf?: string[];
+  inverseOf?: string;
+  transitive?: boolean;
+  symmetric?: boolean;
+  functional?: boolean;
+  description?: string;
+  /** 原 Relation.type */
+  sourceRelationType?: 'one_to_one' | 'one_to_many' | 'many_to_many';
+}
+
+export interface OwlDatatypeProperty {
+  id: string;
+  label: string;
+  labelEn?: string;
+  /** rdfs:domain */
+  domain: string;
+  /** rdfs:range — XSD IRI */
+  range: string;
+  functional?: boolean;
+  required?: boolean;
+  description?: string;
+}
+
+export interface OwlOntology {
+  /** 基 URI，如 "http://ontology.example.com/erp/" */
+  baseUri: string;
+  /** 本体 IRI（通常 = baseUri） */
+  ontologyIri: string;
+  /** owl:versionInfo */
+  versionInfo?: string;
+  /** rdfs:label */
+  label: string;
+  /** 本体描述 */
+  description?: string;
+  classes: OwlClass[];
+  objectProperties: OwlObjectProperty[];
+  datatypeProperties: OwlDatatypeProperty[];
+}
