@@ -67,7 +67,7 @@ describe('skill-export/build-readme', () => {
   });
 
   it('confirmed 状态应显示"已确认"', () => {
-    const project = makeProject({ status: 'confirmed' } as any);
+    const project = makeProject({ status: 'confirmed' });
     const result = buildReadme(project, { exportedAt: '2026-07-01T00:00:00.000Z', version: '1.0.0' });
     expect(result).toContain('已确认');
   });

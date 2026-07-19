@@ -46,6 +46,7 @@ function error(msg: string) { console.error(`${c.red}\u2717${c.reset} ${msg}`); 
 function warn(msg: string) { console.log(`${c.yellow}!${c.reset} ${msg}`); }
 
 // ── HTTP helper ──
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- CLI 动态 JSON 响应
 async function api(path: string, options: RequestInit = {}): Promise<any> {
   try {
     const res = await fetch(`${API_BASE}${path}`, {
@@ -106,7 +107,7 @@ async function cmdProject(id: string) {
       for (const e of p.entities) {
         console.log(`  ${c.green}\u25cf${c.reset} ${e.name} (${e.nameEn || '-'}) [${e.role || 'entity'}]`);
         if (e.attributes?.length) {
-          console.log(`    ${c.dim}\u5c5e\u6027: ${e.attributes.map((a: any) => a.name).join(', ')}${c.reset}`);
+          console.log(`    ${c.dim}\u5c5e\u6027: ${e.attributes.map((a: { name: string }) => a.name).join(', ')}${c.reset}`);
         }
       }
     }
@@ -713,7 +714,7 @@ async function cmdInteractive() {
           }
           const projectId = await select<string>({
             message: '\u9009\u62e9\u9879\u76ee',
-            choices: projects.map((p: any) => ({
+            choices: projects.map((p: { id: string; name: string }) => ({
               name: `${p.name} (${p.id?.slice(0, 8)}...)`,
               value: p.id,
             })),
@@ -744,7 +745,7 @@ async function cmdInteractive() {
           }
           const projectId = await select<string>({
             message: '\u9009\u62e9\u8981\u5bfc\u51fa\u7684\u9879\u76ee',
-            choices: projects.map((p: any) => ({
+            choices: projects.map((p: { id: string; name: string }) => ({
               name: `${p.name} (${p.id?.slice(0, 8)}...)`,
               value: p.id,
             })),

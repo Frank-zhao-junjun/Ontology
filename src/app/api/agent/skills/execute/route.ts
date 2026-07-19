@@ -1,4 +1,5 @@
 import { addEpcProcess } from '@/lib/business-chain/business-chain';
+import type { SkillExportScope } from '@/lib/skill-export/types';
 import { OntologyProject } from '@/types/ontology';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
           const { buildOntologyJson } = await import('@/lib/skill-export/build-ontology-json');
           const { renderOntologyMarkdown } = await import('@/lib/skill-export/markdown-renderer');
           const onto = buildOntologyJson(projectData, {
-            scope: scope as any, includeSemanticLayer,
+            scope: scope as SkillExportScope, includeSemanticLayer,
             exportedAt: new Date().toISOString(),
             version: projectData.version || '1.0.0',
           });
