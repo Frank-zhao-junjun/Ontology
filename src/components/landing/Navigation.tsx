@@ -34,7 +34,7 @@ const Navigation = () => {
     { label: '元模型', id: 'metamodels' },
     { label: '技术栈', id: 'techstack' },
     { label: '路线图', id: 'roadmap' },
-    { label: 'DDD事件', id: 'dddevents' },
+    { label: '核心设计决策', id: 'dddevents' },
   ];
 
   return (
