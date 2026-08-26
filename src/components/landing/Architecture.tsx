@@ -112,7 +112,7 @@ const Architecture = () => {
           ref={titleRef}
           className="heading-2 text-center text-[#171717] mb-16"
         >
-          建模系统架构<span className="text-[#ff6e00]">全景</span>
+          本体模型架构<span className="text-[#ff6e00]">全景</span>
         </h2>
 
         {/* A -> B -> C -> EPC Chain */}
