@@ -1,7 +1,7 @@
 # Ontology 项目开发进度
 
-> 最后更新：2026-06-18
-> 当前版本：v2.1（简化重构 + EPC v3.1 升级中）
+> 最后更新：2026-07-19
+> 当前版本：v2.2（简化重构 + EPC v3.1 完成 + OWL 导出/NL2Ontology）
 
 ---
 
@@ -123,6 +123,19 @@
 ---
 
 ## 近期完成记录
+
+### 2026-07-19 — Sprint S21: OWL 导出 + NL2Ontology 语义查询
+
+> 依据 `docs/OWL_NL2ONTOLOGY_PLAN.md` 实施（借鉴微软 Ontology-Playground）。
+
+| 工作项 | 说明 |
+|--------|------|
+| Part A: OWL 导出 | `src/lib/owl/convert.ts` + `serialize-rdf.ts` — E1/E4/E5 + is_a/equivalent_to → OWL Class/Property；导出对话框新增 RDF/XML、Turtle 格式（无校验门控） |
+| Part B: NL 语义查询 | `POST /api/nl-to-ontology` + `nl-ontology-preview.tsx` — 工作台新增「语义查询」Tab，NL → 实体/属性/关系匹配（置信度色球 + 跳要素库） |
+| 新增测试 | `owl-convert`(13) + `owl-serialize-rdf`(6) + `nl-ontology-prompt`(7) + `build-project-summary`(5) = **31 用例** |
+| 存量修复 1 | lint 10 处 `no-explicit-any` error：route.ts/cli/mcp-tools 改为具体类型断言，2 个 skill-export 测试修正 cast |
+| 存量修复 2 | `excel-export.spec.ts` 断言同步：`EPC-步骤明细` Sheet（d24e542）使工作簿 13→14 |
+| 验证 | `pnpm run ci:check` 全绿：lint 0 error · ts-check pass · unit 1323 · e2e smoke 24 · phase4 32 |
 
 ### 2026-06-30 — Sprint S20: AI 对话建模测试与健壮性补强
 

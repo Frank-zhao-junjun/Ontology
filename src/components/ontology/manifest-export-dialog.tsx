@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useCallback } from 'react';
-import { Download, Loader2, Package, FileText } from 'lucide-react';
+import { Download, Loader2, Package, FileText, FileCode, FileType } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -75,9 +75,12 @@ export function ManifestExportDialog({ project, open: controlledOpen, onOpenChan
   const [xlsxLoading, setXlsxLoading] = useState(false);
   const [skillLoading, setSkillLoading] = useState(false);
   const [mdLoading, setMdLoading] = useState(false);
+  const [rdfLoading, setRdfLoading] = useState(false);
+  const [ttlLoading, setTtlLoading] = useState(false);
 
   const bundle = useMemo(() => {
-    if (!open || format === 'skill' || format === 'md') return null;
+    // rdf/ttl 无需预编译 manifest，下载时按需构建（见 handleDownloadOwl）
+    if (!open || format === 'skill' || format === 'md' || format === 'rdf' || format === 'ttl') return null;
     return buildManifestExportBundle(project, { format: format === 'xlsx' ? 'json' : format });
   }, [open, project, format]);
 
@@ -148,6 +151,22 @@ export function ManifestExportDialog({ project, open: controlledOpen, onOpenChan
       toast.error(`Markdown 导出失败：${msg}`);
     } finally {
       setMdLoading(false);
+    }
+  }, [project]);
+
+  // RDF/XML、Turtle：按需构建 bundle 并直接下载，无 manifest 校验门槛
+  const handleDownloadOwl = useCallback((owlFormat: 'rdf' | 'ttl') => {
+    const setLoading = owlFormat === 'rdf' ? setRdfLoading : setTtlLoading;
+    setLoading(true);
+    try {
+      const owlBundle = buildManifestExportBundle(project, { format: owlFormat });
+      downloadManifestExport(owlBundle);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('OWL 导出失败:', err);
+      toast.error(`OWL 导出失败：${msg}`);
+    } finally {
+      setLoading(false);
     }
   }, [project]);
 
@@ -260,6 +279,26 @@ export function ManifestExportDialog({ project, open: controlledOpen, onOpenChan
             <Package className="h-4 w-4" />
             Skill ZIP
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={format === 'rdf' ? 'default' : 'outline'}
+            onClick={() => setFormat('rdf')}
+            className="gap-1"
+          >
+            <FileCode className="h-4 w-4" />
+            RDF/XML
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={format === 'ttl' ? 'default' : 'outline'}
+            onClick={() => setFormat('ttl')}
+            className="gap-1"
+          >
+            <FileType className="h-4 w-4" />
+            Turtle
+          </Button>
         </div>
 
         {format === 'skill' && (
@@ -363,6 +402,21 @@ export function ManifestExportDialog({ project, open: controlledOpen, onOpenChan
                 <Download className="h-4 w-4" />
               )}
               下载 {format.toUpperCase()}
+            </Button>
+          )}
+          {(format === 'rdf' || format === 'ttl') && (
+            <Button
+              type="button"
+              disabled={rdfLoading || ttlLoading}
+              onClick={() => handleDownloadOwl(format)}
+              className="gap-1"
+            >
+              {(format === 'rdf' ? rdfLoading : ttlLoading) ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              下载 {format === 'rdf' ? 'RDF/XML' : 'Turtle'}
             </Button>
           )}
         </DialogFooter>

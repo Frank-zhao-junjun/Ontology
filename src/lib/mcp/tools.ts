@@ -1,4 +1,4 @@
-import type { OntologyProject } from '@/types/ontology';
+import type { Capability, EpcProcess, OntologyProject, Scenario } from '@/types/ontology';
 import type { ToolDefinition, ToolHandler } from './types';
 import { projectStore, uuidv4, readProjectInput } from './types';
 type SkillExportScope = 'all' | 'data' | 'behavior' | 'rule' | 'process' | 'event';
@@ -294,7 +294,7 @@ const addCapabilityHandlers: Record<string, ToolHandler> = {
 
     const id = uuidv4();
     project.capabilities = project.capabilities || [];
-    project.capabilities.push({ id, name, nameEn, description, parentId } as any);
+    project.capabilities.push({ id, name, nameEn, description, parentId } as Capability);
     await projectStore.update(project.id, project);
 
     return {
@@ -339,7 +339,7 @@ const addScenarioHandlers: Record<string, ToolHandler> = {
 
     const id = uuidv4();
     project.scenarios = project.scenarios || [];
-    project.scenarios.push({ id, name, nameEn, description, parentId } as any);
+    project.scenarios.push({ id, name, nameEn, description, parentId } as Scenario);
     await projectStore.update(project.id, project);
     return {
       content: [
@@ -391,7 +391,7 @@ const addEpcProcessHandlers: Record<string, ToolHandler> = {
       steps: [],
       status: 'draft' as const,
       parentId,
-    } as any);
+    } as EpcProcess);
     await projectStore.update(project.id, project);
     return {
       content: [

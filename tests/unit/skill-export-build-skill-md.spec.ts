@@ -72,7 +72,7 @@ describe('skill-export/build-skill-md', () => {
   });
 
   it('domain 为字符串类型时应正确处理', () => {
-    const project = makeProject({ domain: '制造业' as any });
+    const project = makeProject({ domain: '制造业' as unknown as OntologyProject['domain'] });
     const result = buildSkillMd(project, { exportedAt: '2026-07-01T00:00:00.000Z', version: '1.0.0' });
     expect(result).toContain('制造业');
   });

@@ -36,7 +36,7 @@ const sampleMetaElements: MetaElement[] = [
 
 describe('excel-export', () => {
   describe('AC-1: Sheet count', () => {
-    it('should export workbook with 13 sheets (12 modules + 1 hidden ref)', () => {
+    it('should export workbook with 14 sheets (12 modules + 1 EPC steps + 1 hidden ref)', () => {
       const buf = exportModulesToExcel({
         valueDomains: [{ id: 'VD-001', name: '生产制造' }],
         capabilities: [{ id: 'CAP-001', name: '计划能力', parentId: 'VD-001' }],
@@ -46,11 +46,11 @@ describe('excel-export', () => {
         moduleVersionRecords: sampleRecords,
       });
       const wb = read(buf, { type: 'array' });
-      expect(wb.SheetNames).toHaveLength(13);
+      expect(wb.SheetNames).toHaveLength(14);
 
       // Verify visible sheet names
       const visibleNames = wb.SheetNames.filter((n) => !n.startsWith('_'));
-      expect(visibleNames).toHaveLength(12);
+      expect(visibleNames).toHaveLength(13);
     });
   });
 
@@ -198,7 +198,7 @@ describe('excel-export', () => {
         moduleVersionRecords: [],
       });
       const wb = read(buf, { type: 'array' });
-      expect(wb.SheetNames).toHaveLength(13);
+      expect(wb.SheetNames).toHaveLength(14);
     });
 
     it('should return Uint8Array', () => {

@@ -36,6 +36,7 @@ import { WarningCenter } from './warning-center';
 import { ExcelImportExportDialog } from './excel-import-export-dialog';
 import { HRSyncManager } from './hr-sync-manager';
 import { AgentSkillsManager } from './agent-skills-manager';
+import { NlOntologyPreview } from './nl-ontology-preview';
 import { ModelingCopilotPanel } from './copilot/modeling-copilot-panel';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { updateProject, deleteProject } from '@/services/project-service';
@@ -48,7 +49,7 @@ interface ModelingWorkspaceProps {
   project: OntologyProject;
 }
 
-type ContentTab = 'businessChain' | 'elementLibrary' | 'warnings' | 'metrics' | 'governance' | 'dataSources' | 'hrSync' | 'agent';
+type ContentTab = 'businessChain' | 'elementLibrary' | 'warnings' | 'metrics' | 'governance' | 'dataSources' | 'hrSync' | 'agent' | 'nlQuery';
 
 export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
   useProjectSync();
@@ -187,6 +188,7 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
     { id: 'dataSources', label: '数据源', icon: Database },
     { id: 'hrSync', label: 'HR同步', icon: RefreshCw },
     { id: 'agent', label: 'Agent', icon: Bot },
+    { id: 'nlQuery', label: '语义查询', icon: Sparkles },
   ];
 
   if (showMetadata) {
@@ -476,6 +478,18 @@ export function ModelingWorkspace({ project }: ModelingWorkspaceProps) {
             {activeTab === 'agent' && (
               <div className="flex-1 overflow-auto p-6">
                 <AgentSkillsManager />
+              </div>
+            )}
+
+            {/* NL 语义查询 */}
+            {activeTab === 'nlQuery' && (
+              <div className="flex-1 overflow-auto p-6">
+                <NlOntologyPreview
+                  onNavigateToElement={(elementId, dimension) => {
+                    setElementLibraryFocus({ elementId, dimension });
+                    setActiveTab('elementLibrary');
+                  }}
+                />
               </div>
             )}
           </div>
