@@ -122,7 +122,7 @@ const AcceptanceCriteria = () => {
           ref={titleRef}
           className="heading-2 text-center text-[#171717] mb-16"
         >
-          验收<span className="text-[#ff6e00]">标准</span>
+          最大<span className="text-[#ff6e00]">亮点</span>
         </h2>
 
         {/* Criteria Cards */}

@@ -103,7 +103,10 @@ export function projectToOwlOntology(
       continue;
     }
     const childCls = classes.find((c) => c.id === childId);
-    if (childCls) childCls.subClassOf = [...(childCls.subClassOf ?? []), parentId];
+    if (childCls) {
+      const existing = childCls.subClassOf ?? [];
+      if (!existing.includes(parentId)) childCls.subClassOf = [...existing, parentId];
+    }
   }
 
   // ---- 属性/关系 → DatatypeProperty / ObjectProperty ----
@@ -232,9 +235,11 @@ export function projectToOwlOntology(
     const sourceCls = classes.find((c) => c.id === sourceId);
     if (!sourceCls) continue;
     if (sr.type === 'is_a') {
-      sourceCls.subClassOf = [...(sourceCls.subClassOf ?? []), targetId];
+      const existing = sourceCls.subClassOf ?? [];
+      if (!existing.includes(targetId)) sourceCls.subClassOf = [...existing, targetId];
     } else {
-      sourceCls.equivalentTo = [...(sourceCls.equivalentTo ?? []), targetId];
+      const existing = sourceCls.equivalentTo ?? [];
+      if (!existing.includes(targetId)) sourceCls.equivalentTo = [...existing, targetId];
     }
   }
 
