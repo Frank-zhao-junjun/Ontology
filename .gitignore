@@ -98,3 +98,4 @@ logs/
 instance/
 *.db
 .codegraph
+Ontology
