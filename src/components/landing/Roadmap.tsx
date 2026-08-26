@@ -92,7 +92,7 @@ const Roadmap = () => {
     {
       phase: 'P4',
       weeks: 'Phase 4',
-      title: '组织与Excel',
+      title: '组织信息同步',
       description: '部门岗位模型、结构化职责、HR同步、Excel导入',
       icon: Building2,
       deliverables: ['组织模型', '岗位职责', 'HR同步', '8 Sheet导入'],
