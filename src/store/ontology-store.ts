@@ -3718,6 +3718,13 @@ export const useOntologyStore = create<OntologyState>()(
         set((state) => {
           if (!state.project) return state;
 
+          const restoredMasterData = targetVersion.metamodels.masterData
+            ? {
+                masterDataList: JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.definitions)),
+                masterDataRecords: JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.records)),
+              }
+            : {};
+
           return {
             project: {
               ...state.project,
@@ -3731,8 +3738,7 @@ export const useOntologyStore = create<OntologyState>()(
               dataSourcesModel: targetVersion.metamodels.dataSources ? JSON.parse(JSON.stringify(targetVersion.metamodels.dataSources)) : state.project.dataSourcesModel,
               updatedAt: new Date().toISOString(),
             },
-            masterDataList: targetVersion.metamodels.masterData ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.definitions)) : [],
-            masterDataRecords: targetVersion.metamodels.masterData ? JSON.parse(JSON.stringify(targetVersion.metamodels.masterData.records)) : {},
+            ...restoredMasterData,
           };
         });
       },
